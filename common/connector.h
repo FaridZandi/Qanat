@@ -51,9 +51,13 @@ public:
 	void setDropTarget(NsObject *dt) {drop_ = dt; } 
 protected:
 	virtual void drop(Packet* p, const char *s);
-	int command(int argc, const char*const* argv);
+	virtual int command(int argc, const char*const* argv);
 	void recv(Packet*, Handler* callback = 0);
-	inline void send(Packet* p, Handler* h) { target_->recv(p, h); }
+	inline void send(Packet* p, Handler* h) { target_->recv(p, h);}
+
+	//: PFC functionality
+	virtual int CheckState(Packet* p){DBGMARK(DBGPFC,4,"@ %s: Checking PFC sts...target:%s\n",this->name(),target_->name());
+	return target_->CheckState(p);}
 
 	NsObject* target_;
 	NsObject* drop_;	// drop target for this connector

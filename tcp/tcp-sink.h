@@ -128,7 +128,7 @@ protected:
 	double lastreset_; 	/* W.N. used for detecting packets  */
 				/* from previous incarnations */
         int ecn_syn_;           /* allow SYN/ACK packets to be ECN-capable */
-
+	int ecnhat_;            /* Mohammad: added to enable ECNHAT receiver behavior */
 };
 
 class DelAckSink;

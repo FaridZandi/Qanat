@@ -38,6 +38,7 @@
 #define ns_object_h
 
 #include "scheduler.h"
+#include "common.h"
 
 #define NOW Scheduler::instance().clock()
 
@@ -60,6 +61,10 @@ public:
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
 	inline int isdebug() const { return debug_; }
 	virtual void debug(const char *fmt, ...);
+
+	//: PFC functionality
+	virtual int CheckState(Packet* p){DBGMARK(0,0,"No one has defined it yet! Returning Normal State.\n"); return 0;}
+	virtual bool IsMultiPathForwarder(NsObject*node){DBGMARK(0,0,"error! No one has defined it yet!\n"); return false;}
 protected:
 	virtual void reset();
 	void handle(Event*);

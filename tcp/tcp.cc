@@ -1,36 +1,3 @@
-/* -*-	Mode:C++; c-basic-offset:8; tab-width:8; indent-tabs-mode:t -*- */
-/*
- * Copyright (c) 1991-1997 Regents of the University of California.
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. All advertising materials mentioning features or use of this software
- *    must display the following acknowledgement:
- *	This product includes software developed by the Computer Systems
- *	Engineering Group at Lawrence Berkeley Laboratory.
- * 4. Neither the name of the University nor of the Laboratory may be used
- *    to endorse or promote products derived from this software without
- *    specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
 
 #ifndef lint
 static const char rcsid[] =
@@ -67,6 +34,7 @@ public:
 
 TcpAgent::TcpAgent() 
 	: Agent(PT_TCP), 
+		nStartWaitTime(0), nPremptWaitTime(0), nNumPrempt(0),
 	  t_seqno_(0), dupacks_(0), curseq_(0), highest_ack_(0), 
           cwnd_(0), ssthresh_(0), maxseq_(0), count_(0), 
           rtt_active_(0), rtt_seq_(-1), rtt_ts_(0.0), 
@@ -76,7 +44,8 @@ TcpAgent::TcpAgent()
 	  first_decrease_(1), fcnt_(0), nrexmit_(0), restart_bugfix_(1), 
           cong_action_(0), ecn_burst_(0), ecn_backoff_(0), ect_(0), 
           use_rtt_(0), qs_requested_(0), qs_approved_(0),
-	  qs_window_(0), qs_cwnd_(0), frto_(0)
+	  qs_window_(0), qs_cwnd_(0), frto_(0), ecnhat_recalc_seq(0), ecnhat_num_marked(0),ecnhat_total(0),
+	  ecnhat_maxseq(0), ecnhat_not_marked(0), ecnhat_mark_period(0), target_wnd(0) , ecnhat_tcp_friendly_increase_(1.0)
 {
 #ifdef TCP_DELAY_BIND_ALL
         // defined since Dec 1999.
@@ -101,6 +70,22 @@ TcpAgent::TcpAgent()
         bind("necnresponses_", &necnresponses_);
         bind("ncwndcuts_", &ncwndcuts_);
 	bind("ncwndcuts1_", &ncwndcuts1_);
+	// Mohammad
+	bind("ecnhat_", &ecnhat_);
+	bind("ecnhat_smooth_alpha_", &ecnhat_smooth_alpha_);  
+	bind("ecnhat_alpha_", &ecnhat_alpha_);
+	bind("ecnhat_g_", &ecnhat_g_);
+	bind("ecnhat_enable_beta_", &ecnhat_enable_beta_);
+	bind("ecnhat_beta_", &ecnhat_beta_);
+	bind("ecnhat_quadratic_beta_", &ecnhat_quadratic_beta_);
+	bind("ecnhat_tcp_friendly_", &ecnhat_tcp_friendly_);
+	/**
+	 * :
+	 */
+//	bind("start_wait", &nStartWaitTime);
+//	bind("prempt_wait", &nPremptWaitTime);
+//	bind("num_prempt", &nNumPrempt);
+
 #endif /* TCP_DELAY_BIND_ALL */
 
 }
@@ -108,6 +93,10 @@ TcpAgent::TcpAgent()
 void
 TcpAgent::delay_bind_init_all()
 {
+
+//	delay_bind_init_one("start_wait");
+//	delay_bind_init_one("prempt_wait");
+//	delay_bind_init_one("num_prempt");
 
         // Defaults for bound variables should be set in ns-default.tcl.
         delay_bind_init_one("window_");
@@ -123,6 +112,16 @@ TcpAgent::delay_bind_init_all()
         delay_bind_init_one("overhead_");
         delay_bind_init_one("tcpTick_");
         delay_bind_init_one("ecn_");
+	// Mohammad
+	delay_bind_init_one("ecnhat_"); 
+	delay_bind_init_one("ecnhat_smooth_alpha_"); 
+	delay_bind_init_one("ecnhat_alpha_");
+	delay_bind_init_one("ecnhat_g_");
+	delay_bind_init_one("ecnhat_beta_");
+	delay_bind_init_one("ecnhat_enable_beta_");
+	delay_bind_init_one("ecnhat_quadratic_beta_");
+	delay_bind_init_one("ecnhat_tcp_friendly_");
+
         delay_bind_init_one("SetCWRonRetransmit_");
         delay_bind_init_one("old_ecn_");
         delay_bind_init_one("bugfix_ss_");
@@ -234,7 +233,17 @@ TcpAgent::delay_bind_dispatch(const char *varName, const char *localName, TclObj
         if (delay_bind(varName, localName, "overhead_", &overhead_, tracer)) return TCL_OK;
         if (delay_bind(varName, localName, "tcpTick_", &tcp_tick_, tracer)) return TCL_OK;
         if (delay_bind_bool(varName, localName, "ecn_", &ecn_, tracer)) return TCL_OK;
-        if (delay_bind_bool(varName, localName, "SetCWRonRetransmit_", &SetCWRonRetransmit_, tracer)) return TCL_OK;
+	// Mohammad
+        if (delay_bind_bool(varName, localName, "ecnhat_", &ecnhat_, tracer)) return TCL_OK; 
+        if (delay_bind_bool(varName, localName, "ecnhat_smooth_alpha_", &ecnhat_smooth_alpha_, tracer)) return TCL_OK; 
+	if (delay_bind(varName, localName, "ecnhat_alpha_", &ecnhat_alpha_ , tracer)) return TCL_OK;
+        if (delay_bind(varName, localName, "ecnhat_g_", &ecnhat_g_ , tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, "ecnhat_enable_beta_", &ecnhat_enable_beta_ , tracer)) return TCL_OK;
+	if (delay_bind(varName, localName, "ecnhat_beta_", &ecnhat_beta_ , tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, "ecnhat_quadratic_beta_", &ecnhat_quadratic_beta_ , tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, "ecnhat_tcp_friendly_", &ecnhat_tcp_friendly_, tracer)) return TCL_OK; 
+
+	if (delay_bind_bool(varName, localName, "SetCWRonRetransmit_", &SetCWRonRetransmit_, tracer)) return TCL_OK;
         if (delay_bind_bool(varName, localName, "old_ecn_", &old_ecn_ , tracer)) return TCL_OK;
         if (delay_bind_bool(varName, localName, "bugfix_ss_", &bugfix_ss_ , tracer)) return TCL_OK;
         if (delay_bind(varName, localName, "eln_", &eln_ , tracer)) return TCL_OK;
@@ -546,10 +555,12 @@ double TcpAgent::rtt_timeout()
 	if (timeout > maxrto_)
 		timeout = maxrto_;
 
-        if (timeout < 2.0 * tcp_tick_) {
+    if (timeout < 2.0 * tcp_tick_) {
 		if (timeout < 0) {
 			fprintf(stderr, "TcpAgent: negative RTO!  (%f)\n",
 				timeout);
+			fflush(stdout);
+			fflush(stderr);
 			exit(1);
 		} else if (use_rtt_ && timeout < tcp_tick_)
 			timeout = tcp_tick_;
@@ -565,6 +576,7 @@ double TcpAgent::rtt_timeout()
 void TcpAgent::rtt_update(double tao)
 {
 	double now = Scheduler::instance().clock();
+	//printf("%f\n", tao);
 	if (ts_option_)
 		t_rtt_ = int(tao /tcp_tick_ + 0.5);
 	else {
@@ -610,7 +622,8 @@ void TcpAgent::rtt_update(double tao)
 
 void TcpAgent::rtt_backoff()
 {
-	if (t_backoff_ < 64 || rfc2988_)
+	//if (t_backoff_ < 64 || rfc2988_)
+	if (t_backoff_ < 64 || (rfc2988_ && rtt_timeout() < maxrto_))
         	t_backoff_ <<= 1;
         // RFC2988 allows a maximum for the backed-off RTO of 60 seconds.
         // This is applied by maxrto_.
@@ -665,14 +678,17 @@ void TcpAgent::output(int seqno, int reason)
 	// (A real TCP would use scoreboard for this.)
         if (bugfix_ts_ && tss==NULL) {
                 tss = (double*) calloc(tss_size_, sizeof(double));
-                if (tss==NULL) exit(1);
+                if (tss==NULL) {
+					fflush(stdout);
+					exit(1);
+					}
         }
         //dynamically grow the timestamp array if it's getting full
         if (bugfix_ts_ && ((seqno - highest_ack_) > tss_size_* 0.9)) {
                 double *ntss;
                 ntss = (double*) calloc(tss_size_*2, sizeof(double));
                 printf("%p resizing timestamp table\n", this);
-                if (ntss == NULL) exit(1);
+                if (ntss == NULL) { fflush(stdout); exit(1);}
                 for (int i=0; i<tss_size_; i++)
                         ntss[(highest_ack_ + i) % (tss_size_ * 2)] =
                                 tss[(highest_ack_ + i) % tss_size_];
@@ -870,7 +886,25 @@ int TcpAgent::command(int argc, const char*const* argv)
 			t_backoff_ = other->t_backoff_;
 			return (TCL_OK);
 		}
+	} else if (argc==2)
+	{
+		if (strcmp(argv[1], "start_wait") == 0)
+		{
+			Tcl::instance().resultf("%f",nStartWaitTime);
+			return(TCL_OK);
+		}
+		if (strcmp(argv[1], "prempt_wait") == 0)
+		{
+			Tcl::instance().resultf("%f",nPremptWaitTime);
+			return(TCL_OK);
+		}
+		if (strcmp(argv[1], "num_prempt") == 0)
+		{
+			Tcl::instance().resultf("%d",nNumPrempt);
+			return(TCL_OK);
+		}
 	}
+
 	return (Agent::command(argc, argv));
 }
 
@@ -1119,7 +1153,12 @@ void TcpAgent::opencwnd()
 	double increment;
 	if (cwnd_ < ssthresh_) {
 		/* slow-start (exponential) */
-		cwnd_ += 1;
+		if (ecnhat_enable_beta_)
+			cwnd_ += ecnhat_beta_ / cwnd_;
+		else{
+			//cwnd_ += increase_num_ / cwnd_;
+			cwnd_ += 1;
+	       	}
 	} else {
 		/* linear */
 		double f;
@@ -1133,14 +1172,30 @@ void TcpAgent::opencwnd()
 
 		case 1:
 			/* This is the standard algorithm. */
-			increment = increase_num_ / cwnd_;
+			if (ecnhat_enable_beta_)
+				increment = ecnhat_beta_ / cwnd_;
+			else if (ecnhat_tcp_friendly_) {
+				ecnhat_tcp_friendly_increase_ = ((int(t_srtt_) >> T_SRTT_BITS)*tcp_tick_ / 0.0004);// * ((int(t_srtt_) >> T_SRTT_BITS)*tcp_tick_ / 0.0004);
+				//printf("increase_factor = %f, s_rtt = %f\n",  ecnhat_tcp_friendly_increase_, (int(t_srtt_) >> T_SRTT_BITS)*tcp_tick_);				
+				increment = ecnhat_tcp_friendly_increase_ / cwnd_;
+				//increment = increase_num_ / cwnd_;
+			}
+			else
+				increment = increase_num_ / cwnd_;
+
 			if ((last_cwnd_action_ == 0 ||
 			  last_cwnd_action_ == CWND_ACTION_TIMEOUT) 
 			  && max_ssthresh_ > 0) {
 				increment = limited_slow_start(cwnd_,
 				  max_ssthresh_, increment);
 			}
+			//printf("%f: target = %f cwnd = %f\n", Scheduler::instance().clock(), target_wnd, (double) cwnd_);
+			/*if (1) {
+				target_wnd += increment;
+				cwnd_ += (target_wnd - cwnd_)/2.0/cwnd_;
+				} else*/
 			cwnd_ += increment;
+			
 			break;
 
 		case 2:
@@ -1245,6 +1300,8 @@ TcpAgent::slowdown(int how)
 	if (!(how & TCP_IDLE) && !(how & NO_OUTSTANDING_DATA)){
 		++ncwndcuts1_; 
 	}
+
+	//ecnhat_alpha_ = 0.07;
 	// we are in slowstart for sure if cwnd < ssthresh
 	if (cwnd_ < ssthresh_) 
 		slowstart = 1;
@@ -1264,6 +1321,7 @@ TcpAgent::slowdown(int how)
 	 		decreasewin = decrease_num_ * windowd();
 		}
 		win = windowd();
+		//printf("decrease param = %f window = %f decwin = %f\n", decrease_num_, win, decreasewin);
 	} else  {
 		int temp;
 		temp = (int)(window() / 2);
@@ -1295,6 +1353,9 @@ TcpAgent::slowdown(int how)
 		} else {
 			ssthresh_ = (int) decreasewin;
 		}
+	else if (how & CLOSE_SSTHRESH_ECNHAT) 
+		ssthresh_ = (int) ((1 - ecnhat_alpha_/2.0) * windowd());
+	//ssthresh_ = (int) (windowd() - sqrt(2*windowd())/2.0);		
         else if (how & THREE_QUARTER_SSTHRESH)
 		if (ssthresh_ < 3*cwnd_/4)
 			ssthresh_  = (int)(3*cwnd_/4);
@@ -1304,7 +1365,10 @@ TcpAgent::slowdown(int how)
 		if (first_decrease_ == 1 || slowstart || decrease_num_ == 0.5) {
 			cwnd_ = halfwin;
 		} else cwnd_ = decreasewin;
-        else if (how & CWND_HALF_WITH_MIN) {
+        else if (how & CLOSE_CWND_ECNHAT)
+		cwnd_ = (1 - ecnhat_alpha_/2.0) * windowd();
+	//cwnd_ = windowd() - sqrt(2*windowd())/2.0;      
+	else if (how & CWND_HALF_WITH_MIN) {
 		// We have not thought about how non-standard TCPs, with
 		// non-standard values of decrease_num_, should respond
 		// after quiescent periods.
@@ -1314,8 +1378,8 @@ TcpAgent::slowdown(int how)
 	}
 	else if (how & CLOSE_CWND_RESTART) 
 		cwnd_ = int(wnd_restart_);
-	else if (how & CLOSE_CWND_INIT)
-		cwnd_ = int(wnd_init_);
+	else if (how & CLOSE_CWND_INIT) 	  
+	        cwnd_ = int(wnd_init_);
 	else if (how & CLOSE_CWND_ONE)
 		cwnd_ = 1;
 	else if (how & CLOSE_CWND_HALF_WAY) {
@@ -1326,7 +1390,9 @@ TcpAgent::slowdown(int how)
 	}
 	if (ssthresh_ < 2)
 		ssthresh_ = 2;
-	if (how & (CLOSE_CWND_HALF|CLOSE_CWND_RESTART|CLOSE_CWND_INIT|CLOSE_CWND_ONE))
+	if (cwnd_ < 1)
+		cwnd_ = 1; // Added by Mohammad
+	if (how & (CLOSE_CWND_HALF|CLOSE_CWND_RESTART|CLOSE_CWND_INIT|CLOSE_CWND_ONE|CLOSE_CWND_ECNHAT))
 		cong_action_ = TRUE;
 
 	fcnt_ = count_ = 0;
@@ -1418,20 +1484,73 @@ void TcpAgent::newack(Packet* pkt)
  */
 void TcpAgent::ecn(int seqno)
 {
-	if (seqno > recover_ || 
-	      last_cwnd_action_ == CWND_ACTION_TIMEOUT) {
+	if (seqno > recover_ ||  
+	    last_cwnd_action_ == CWND_ACTION_TIMEOUT) {
 		recover_ =  maxseq_;
 		last_cwnd_action_ = CWND_ACTION_ECN;
 		if (cwnd_ <= 1.0) {
 			if (ecn_backoff_) 
 				rtt_backoff();
 			else ecn_backoff_ = 1;
-		} else ecn_backoff_ = 0;
-		slowdown(CLOSE_CWND_HALF|CLOSE_SSTHRESH_HALF);
+			} else ecn_backoff_ = 0;
+		if (ecnhat_) { 
+			if (ecnhat_tcp_friendly_) {
+				target_wnd = cwnd_;
+				//printf("changed target wnd = %f\n", target_wnd);
+				ecnhat_tcp_friendly_increase_ = 1.5/(2.0/ecnhat_alpha_ - 0.5);
+			}
+			slowdown(CLOSE_CWND_ECNHAT|CLOSE_SSTHRESH_ECNHAT);
+		
+		}
+			
+		else
+			slowdown(CLOSE_CWND_HALF|CLOSE_SSTHRESH_HALF);
 		++necnresponses_ ;
 		// added by sylvia to count number of ecn responses 
-	}
+		}
 }
+
+/*
+ * Mohammad: Update ecnhat alpha based on the ecn bit in the received packet.
+ *
+ * This procedure is called only when ecnhat_ is 1.
+ */
+void TcpAgent::update_ecnhat_alpha(Packet *pkt)
+{
+	int ecnbit = hdr_flags::access(pkt)->ecnecho();
+	int ackno = hdr_tcp::access(pkt)->ackno();
+	
+	if (!ecnhat_smooth_alpha_) 
+		ecnhat_alpha_ = (1 - ecnhat_g_) * ecnhat_alpha_ + ecnhat_g_ * ecnbit;
+	else {
+	        int acked_bytes = ackno - highest_ack_; 
+		if (acked_bytes <= 0) 
+		  acked_bytes = size_;
+		//printf("size_ = %d, acked_bytes = %d\n",size_, acked_bytes);
+		//ecnhat_total++;
+		ecnhat_total += acked_bytes;
+		if (ecnbit) {
+		  //ecnhat_num_marked++;
+		        ecnhat_num_marked += acked_bytes;
+		        ecnhat_beta_ = 1;
+		}
+		if (ackno > ecnhat_recalc_seq) {
+			double temp_alpha;
+			ecnhat_recalc_seq = ecnhat_maxseq;
+			if (ecnhat_total > 0) { 
+				temp_alpha = ((double) ecnhat_num_marked) / ecnhat_total;
+			} else temp_alpha = 0.0;
+
+			
+			//printf("%f %f %f %f\n", Scheduler::instance().clock(), (double) cwnd_, temp_alpha, ecnhat_alpha_);
+			ecnhat_alpha_ = (1 - ecnhat_g_) * ecnhat_alpha_ + ecnhat_g_ * temp_alpha;	
+			ecnhat_num_marked = 0;
+			ecnhat_total = 0;
+		}
+	}
+
+}
+ 
 
 /*
  *  Is the connection limited by the network (instead of by a lack
@@ -1453,6 +1572,7 @@ void TcpAgent::recv_newack_helper(Packet *pkt) {
                 // We can exit the Quick-Start phase.
                 qs_window_ = 0;
         }
+       
 	if (!ect_ || !hdr_flags::access(pkt)->ecnecho() ||
 		(old_ecn_ && ecn_burst_)) {
 		/* If "old_ecn", this is not the first ACK carrying ECN-Echo
@@ -1797,8 +1917,10 @@ void TcpAgent::recv(Packet *pkt, Handler*)
 	++nackpack_;
 	ts_peer_ = tcph->ts();
 	int ecnecho = hdr_flags::access(pkt)->ecnecho();
-	if (ecnecho && ecn_)
+	
+	if (ecnecho && ecn_) 
 		ecn(tcph->seqno());
+	
 	recv_helper(pkt);
 	recv_frto_helper(pkt);
 	/* grow cwnd and check if the connection is done */ 
@@ -1812,6 +1934,7 @@ void TcpAgent::recv(Packet *pkt, Handler*)
                         tcp_eln(pkt);
                         return;
                 }
+printf("dupacks= %d\n",dupacks_+1);
 		if (++dupacks_ == numdupacks_ && !noFastRetrans_) {
 			dupack_action();
 		} else if (dupacks_ < numdupacks_ && singledup_ ) {

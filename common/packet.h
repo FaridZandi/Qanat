@@ -47,6 +47,15 @@
 #include "packet-stamp.h"
 #include "ns-process.h"
 
+//--------------------------------------------------------------------------
+/**
+ * : PFC Definitions
+ */
+#define PFC_NORMAL_STS		0
+#define PFC_PAUSED_STS		1
+
+//--------------------------------------------------------------------------
+
 // Used by wireless routing code to attach routing agent
 #define RT_PORT		255	/* port that all route msgs are sent to */
 

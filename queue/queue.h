@@ -38,6 +38,7 @@
 #define ns_queue_h
 
 #include "connector.h"
+#include "classifier.h"
 #include "packet.h"
 #include "ip.h"
 class Packet;
@@ -109,6 +110,7 @@ private:
 };
 
 class Queue;
+class Classifier;
 
 class QueueHandler : public Handler {
 public:
@@ -142,6 +144,15 @@ public:
 	   Returns the maximum of recent measurements stored in util_buf_*/
 	double peak_utilization(void);
 	virtual ~Queue();
+
+	//: PFC functionality
+	int GetState(Packet* p);
+
+	//: PFC functionality
+	virtual int CheckState(Packet* p){DBGERROR("Error! No Implementation for ChackState!\n");return 0;}
+	virtual int command(int argc, const char*const* argv);
+
+	Classifier *nodeEntry_;
 protected:
 	Queue();
 	void reset();

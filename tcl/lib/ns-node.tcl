@@ -88,9 +88,9 @@ Node instproc init args {
 	set nodetype_ [$ns_ get-nodetype]
 
 	$self mk-default-classifier
-
 	# XXX Eventually these two should also be converted to modules
 	set multiPath_ [$class set multiPath_]
+
 }
 
 # XXX This instproc is backward compatibility; when satellite node, mobile
@@ -205,6 +205,7 @@ Node instproc insert-entry { module clsfr {hook ""} } {
 			$clsfr target $classifier_
 		} elseif { $hook != "" } {
 			$clsfr install $hook $classifier_
+			#puts "insertentry $clsfr $hook $classifier_"
 		}
 	}
 	# Associate this module to the classifier, so if the classifier is
@@ -231,6 +232,7 @@ Node instproc install-entry { module clsfr {hook ""} } {
 				$clsfr target $hook_assoc($classifier_)
 			} elseif { $hook != "" } {
 				$clsfr install $hook $hook_assoc_($classifier_)
+				#puts "installentry $clsfr $hook $classifier_"
 			}
 			set hook_assoc_($clsfr) $hook_assoc_($classifier_)
 			unset hook_assoc_($classifier_)
@@ -338,11 +340,14 @@ Node instproc add-routes {id ifs} {
 		}
 		$self add-route $id [$ifs head]
 		set routes_($id) 1
+	#puts "344"
 		return
 	}
+	#puts "346"
 	if {$routes_($id) <= 0 && [llength $ifs] == 1 && \
 			![info exists mpathClsfr_($id)]} {
 		$self add-route $id [$ifs head]
+			#puts "350"
 		set routes_($id) 1
 	} else {
 		if ![info exists mpathClsfr_($id)] {
@@ -350,18 +355,39 @@ Node instproc add-routes {id ifs} {
 			# 1. get new MultiPathClassifier,
 			# 2. migrate existing routes to that mclassifier
 			# 3. install the mclassifier in the node classifier_
-			#
+			#			
 			set mpathClsfr_($id) [new Classifier/MultiPath]
+			$mpathClsfr_($id) set nodeid_ [$self id]
+			set nodecolor_ [$self get-attribute "COLOR"]
+			set nodetype_ 0
+			if {$nodecolor_ == "green"} {
+				set nodetype_ 1
+			}
+			if {$nodecolor_ == "blue"} {
+				set nodetype_ 2
+			}
+			if {$nodecolor_ == "red"} {
+				set nodetype_ 3
+			}
+			$mpathClsfr_($id) set nodetype_ $nodetype_
 			if {$routes_($id) > 0} {
 				assert "$routes_($id) == 1"
 				$mpathClsfr_($id) installNext \
 						[$classifier_ in-slot? $id]
 			}
+#puts "22"
 			$classifier_ install $id $mpathClsfr_($id)
+	#puts "23"		
 		}
 		foreach L $ifs {
-			$mpathClsfr_($id) installNext [$L head]
+			#puts "24-L head:[$L head] -- $mpathClsfr_($id) ntoNodeid [[$L set toNode_] id]"
+			#$mpathClsfr_($id) installNext [$L head]
+			#:
+			
+			set sl [$mpathClsfr_($id) cmd installNext [$L head] [[$L set toNode_] id]]
+			$mpathClsfr_($id) set slots_($sl) [$L head]			
 			incr routes_($id)
+			#puts "25"
 		}
 	}
 }

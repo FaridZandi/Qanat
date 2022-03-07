@@ -189,6 +189,7 @@ TcpSink::TcpSink(Acker* acker) : Agent(PT_ACK), acker_(acker), save_(NULL),
 #if defined(TCP_DELAY_BIND_ALL) && 0
 #else /* ! TCP_DELAY_BIND_ALL */
 	bind("maxSackBlocks_", &max_sack_blocks_); // used only by sack
+	bind("ecnhat_", &ecnhat_);
 #endif /* TCP_DELAY_BIND_ALL */
 }
 
@@ -203,6 +204,7 @@ TcpSink::delay_bind_init_all()
 	delay_bind_init_one("qs_enabled_");
 	delay_bind_init_one("RFC2581_immediate_ack_");
 	delay_bind_init_one("ecn_syn_");
+	delay_bind_init_one("ecnhat_");
 #if defined(TCP_DELAY_BIND_ALL) && 0
         delay_bind_init_one("maxSackBlocks_");
 #endif /* TCP_DELAY_BIND_ALL */
@@ -220,6 +222,7 @@ TcpSink::delay_bind_dispatch(const char *varName, const char *localName, TclObje
         if (delay_bind_bool(varName, localName, "qs_enabled_", &qs_enabled_, tracer)) return TCL_OK;
         if (delay_bind_bool(varName, localName, "RFC2581_immediate_ack_", &RFC2581_immediate_ack_, tracer)) return TCL_OK;
 	if (delay_bind_bool(varName, localName, "ecn_syn_", &ecn_syn_ ,tracer)) return TCL_OK;
+	if (delay_bind_bool(varName, localName, "ecnhat_", &ecnhat_ ,tracer)) return TCL_OK;
 #if defined(TCP_DELAY_BIND_ALL) && 0
         if (delay_bind(varName, localName, "maxSackBlocks_", &max_sack_blocks_, tracer)) return TCL_OK;
 #endif /* TCP_DELAY_BIND_ALL */
@@ -321,9 +324,16 @@ void TcpSink::ack(Packet* opkt)
 			(of->ect() && of->ce()) )
 		// New report of congestion.  
 		acker_->update_ecn_unacked(1);
-	if ( (sf != 0 && sf->ect()) || of->ect() )
-		// Set EcnEcho bit.  
-		nf->ecnecho() = acker_->ecn_unacked();
+	if ( (sf != 0 && sf->ect()) || of->ect() ) {
+		// Set EcnEcho bit.
+		if (ecnhat_) {
+			if ( (sf != 0 && sf->ect() && sf->ce()) ||
+			     (of->ect() && of->ce()) )
+			     nf->ecnecho() = 1;
+			else
+			     nf->ecnecho() = 0;  			
+		} else nf->ecnecho() = acker_->ecn_unacked();
+	}
 	if (!of->ect() && of->ecnecho() ||
 		(sf != 0 && !sf->ect() && sf->ecnecho()) ) {
 		 // This is the negotiation for ECN-capability.

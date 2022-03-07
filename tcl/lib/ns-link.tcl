@@ -195,7 +195,10 @@ SimpleLink instproc init { src dst bw delay q {lltype "DelayLink"} } {
 	$queue_ target $link_
 	$link_ target [$dst entry]
 	$queue_ drop-target $drophead_
-
+	
+	#	
+	$queue_ nodeEntry [$dst entry]
+	
 	# XXX
 	# put the ttl checker after the delay
 	# so we don't have to worry about accounting
@@ -218,7 +221,7 @@ SimpleLink instproc init { src dst bw delay q {lltype "DelayLink"} } {
             	$self enable-src-rt $src $dst $head_
         	}
 	}
-
+	puts "$src $dst $head_ $queue_ $link_ $ttl_ [$dst entry]"
 }
 
 SimpleLink instproc enable-src-rt {src dst head} {

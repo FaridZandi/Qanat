@@ -59,6 +59,15 @@
 class PortClassifier : public Classifier {
 protected:
 	int classify(Packet *p);
+
+	//: PFC Functionality
+	/**
+	 * End-Hosts should return Normal state since there is no further queue in front of them!
+	 */
+//	virtual int CheckState(Packet* p) {
+//		DBGMARK(DBGPFC,4,"@ %s: End-Host:Port Classifier! Returning normal state...\n",this->name());
+//		return PFC_NORMAL_STS;}
+
 // 	void clear(int slot);
 // 	int getnxt(NsObject *);
 //	int command(int argc, const char*const* argv);

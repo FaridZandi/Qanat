@@ -41,6 +41,27 @@ static const char rcsid[] =
 #include <math.h>
 #include <stdio.h>
 
+//:
+int Queue::GetState(Packet* p)
+{
+	DBGMARK(DBGPFC,4,"now:%f, pkt:%p @ %s: Checking PFC sts from %s\n",NOW,p,this->name(),nodeEntry_->name());
+
+	return nodeEntry_->CheckState(p);
+}
+int Queue::command(int argc, const char*const* argv)
+{
+	Tcl& tcl = Tcl::instance();
+	if (strcmp(argv[1], "nodeEntry") == 0) {
+		nodeEntry_ = (Classifier*)TclObject::lookup(argv[2]);
+		if (nodeEntry_ == 0) {
+			tcl.resultf("no such object %s", argv[2]);
+			return (TCL_ERROR);
+		}
+		return (TCL_OK);
+	}
+	return (Connector::command(argc, argv));
+}
+
 void PacketQueue::remove(Packet* target)
 {
 	for (Packet *pp= 0, *p= head_; p; pp= p, p= p->next_) {
@@ -56,6 +77,7 @@ void PacketQueue::remove(Packet* target)
 			return;
 		}
 	}
+	DBGERROR("PacketQueue:: remove() couldn't find target: %p\n",target);
 	fprintf(stderr, "PacketQueue:: remove() couldn't find target\n");
 	abort();
 }
@@ -129,6 +151,7 @@ void Queue::recv(Packet* p, Handler*)
 			utilUpdate(last_change_, now, blocked_);
 			last_change_ = now;
 			blocked_ = 1;
+			DBGMARK(DBGPFC,4,"@ %s: ... target:%s\n",this->name(),target_->name());
 			target_->recv(p, &qh_);
 		}
 	}

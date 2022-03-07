@@ -49,7 +49,8 @@ public:
 		size_(0), pkts_(0),
 		parrivals_(0), barrivals_(0),
 		pdepartures_(0), bdepartures_(0),
-		pdrops_(0), pmarks_(0), bdrops_(0), 
+		pdrops_(0), pmarks_(0), bdrops_(0), num_monitor_(50),
+		ack_arrivals_(0), ack_drops_(0), ack_departures_(0),
 			 qs_pkts_(0), qs_bytes_(0), qs_drops_(0),
 		keepRTTstats_(0), maxRTT_(1), numRTTs_(0), binsPerSec_(10),
 		keepSeqnoStats_(0), maxSeqno_(1000), 
@@ -59,7 +60,22 @@ public:
 		k_(0.1), 
 		estRate_(0.0),
 		temp_size_(0) {
-		
+
+		//Shuang: monitor the kth drop
+		for (int i = 0; i < num_monitor_; i++) {
+			char buf[20];
+			memset(buf, 0, sizeof(buf));
+			sprintf(buf, "kdrops%d", i);
+			bind(buf, &kdrops_[i]);
+			memset(buf, 0, sizeof(buf));
+			sprintf(buf, "karrivals%d", i);
+			bind(buf, &karrivals_[i]);
+		}
+		bind("num_monitor_", &num_monitor_);
+		bind("ack_arrivals_", &ack_arrivals_);
+		bind("ack_drops_", &ack_drops_);
+		bind("ack_departures_", &ack_departures_);
+
 		bind("size_", &size_);
 		bind("pkts_", &pkts_);
 		bind("parrivals_", &parrivals_);
@@ -150,6 +166,12 @@ protected:
 	int pdrops_;
 	int pmarks_;
 	int bdrops_;
+	int kdrops_[50];	//Shuang: count the num of kth drop
+	int karrivals_[50];	//Shuang: count the num of kth arrival
+	int num_monitor_;	//Shuang: maximum of k to monitor
+	int ack_arrivals_;  //Shuang: number of ack pkts arrival
+	int ack_drops_;		//Shuang: number of ack pkts dropped
+	int ack_departures_;	//Shuang: number of ack pkts departured
 
 	int qs_pkts_;			/* Number of Quick-Start packets */
 	int qs_bytes_;			/* Number of Quick-Start bytes */
@@ -192,6 +214,7 @@ protected:
 	void estimateRate(Packet *p);
 	void keepRTTstats(Packet *p);
 	void keepSeqnoStats(Packet *p);
+	int calc_prio(int prio);
 };
 
 class SnoopQueue : public Connector {

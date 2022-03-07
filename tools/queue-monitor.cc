@@ -41,6 +41,8 @@ static const char rcsid[] =
 #include "trace.h"
 #include <math.h>
 
+#include "ip.h"
+
 int QueueMonitor::command(int argc, const char*const* argv)
 {
 	Tcl& tcl = Tcl::instance();
@@ -245,6 +247,20 @@ void QueueMonitor::in(Packet* p)
 		prevTime_ = now;
 	}
 
+	//Shuang: count small flow arrivals
+	hdr_ip* iph = hdr_ip::access(p);
+	int prio = iph->prio() / 1460;
+	if (prio < 100000 && pktsz > 100) {
+		karrivals_[calc_prio(prio)] ++;
+	}
+
+	//Shuang: count ack arrivals
+	//hdr_rcp* rh = hdr_rcp::access(p);
+	//if (rh->RCP_pkt_type() == RCP_ACK) {
+	//	ack_arrivals_++;
+	//}
+
+
 	barrivals_ += pktsz;
 	parrivals_++;
 	size_ += pktsz;
@@ -273,6 +289,13 @@ void QueueMonitor::out(Packet* p)
 	pkts_--;
 	bdepartures_ += pktsz;
 	pdepartures_++;
+	
+	//Shuang: count ack departure
+	//hdr_rcp* rh = hdr_rcp::access(p);
+	//if (rh->RCP_pkt_type() == RCP_ACK) {
+	//	ack_departures_++;
+	//}
+
 	if (bytesInt_)
 		bytesInt_->newPoint(now, double(size_));
 	if (pktsInt_)
@@ -302,6 +325,19 @@ void QueueMonitor::drop(Packet* p)
 	bdrops_ += pktsz;
 	pdrops_++;
 
+	//Shuang: count small flow dropping
+	hdr_ip* iph = hdr_ip::access(p);
+	int prio = iph->prio() / 1460;
+	if (prio < 100000 && pktsz > 100) {
+		kdrops_[calc_prio(prio)] ++;
+	}
+	//Shuang: count ack dropping
+	//hdr_rcp* rh = hdr_rcp::access(p);
+	//if (rh->RCP_pkt_type() == RCP_ACK) {
+	//	ack_drops_++;
+	//}
+
+
 	if (pf->qs())
 		qs_drops_++;
 
@@ -311,6 +347,20 @@ void QueueMonitor::drop(Packet* p)
 		pktsInt_->newPoint(now, double(pkts_));
 	if (channel_)
 		printStats();
+}
+
+int QueueMonitor::calc_prio(int prio)
+{
+	if (prio <= 10)
+		return prio;
+	if (prio <= 100)
+		return 10 + prio / 10;
+	if (prio <= 1000)
+		return 20 + prio / 100;
+	if (prio <= 10000)
+		return 30 + prio / 1000;
+	if (prio <= 100000)
+		return 40 + prio / 10000;
 }
 
 // The procedure to estimate the rate of the incoming traffic
@@ -448,7 +498,6 @@ public:
  * ############################################################
  */
 
-#include "ip.h"
 QueueMonitorCompat::QueueMonitorCompat()
 {
 	memset(pkts_, 0, sizeof(pkts_));

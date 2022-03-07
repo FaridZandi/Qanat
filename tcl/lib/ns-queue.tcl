@@ -42,6 +42,29 @@
 # procs for some queues like FQ and RED/PD
 #
 
+#: Adding PFC to RPQ
+
+#
+# RPQ
+#
+
+Queue/RPQ instproc srcnode { src } {
+	$self instvar srcnode_
+	$self set srcnode_ $src
+}
+
+Queue/RPQ instproc srcnode_instance {} {
+	$self instvar srcnode_
+	return $srcnode_
+}
+
+Queue/RPQ instproc sendpfcmessage { prio duration } {
+	$self instvar srcnode_
+	puts "calling pfcmessage @ Classifier: entry [[$self srcnode_instance] entry] pfcmessage [$srcnode_ id]  $prio $duration"
+	set src [[$self srcnode_instance] entry]
+	$src pfcmessage [[$self srcnode_instance] id]  $prio $duration
+}
+
 #
 # CBQ
 #
@@ -400,6 +423,7 @@ FQLink instproc init { src dst bw delay q } {
 	$self instvar link_ queue_ head_ toNode_ ttl_ classifier_ \
 		nactive_ 
 	$self instvar drophead_		;# idea stolen from CBQ and Kevin
+#	$self instvar NodeEntry_		;# End of the link: node's entrance 
 
 	set nactive_ 0
 

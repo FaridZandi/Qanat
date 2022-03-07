@@ -50,6 +50,11 @@ public:
 	}
 } class_classifier;
 
+void Classifier::pfcmessage(int ntoNodeid,int npriority,int nduration)
+{
+
+}
+
 
 Classifier::Classifier() : 
 	slot_(0), nslot_(0), maxslot_(-1), shift_(0), mask_(0xffffffff), nsize_(0)
@@ -101,7 +106,7 @@ void Classifier::alloc(int slot)
 }
 
 
-void Classifier::install(int slot, NsObject* p)
+void Classifier::install(int slot, NsObject* p,int ntoNodeid)
 {
 	if (slot >= nslot_)
 		alloc(slot);
@@ -142,6 +147,7 @@ int Classifier::getnxt(NsObject *nullagent)
 void Classifier::recv(Packet* p, Handler*h)
 {
 	NsObject* node = find(p);
+	DBGMARK(DBGPFC,4,"@ %s: rcv...target:%s\n",this->name(),node->name());
 	if (node == NULL) {
 		/*
 		 * XXX this should be "dropped" somehow.  Right now,
@@ -162,6 +168,7 @@ NsObject* Classifier::find(Packet* p)
 {
 	NsObject* node = NULL;
 	int cl = classify(p);
+	DBGMARK(DBGPFC,4,"@ %s: cl:%d nslot_:%d PFC sts...\n",this->name(),cl,nslot_);
 	if (cl < 0 || cl >= nslot_ || (node = slot_[cl]) == 0) { 
 		if (default_target_) 
 			return default_target_;
@@ -182,7 +189,7 @@ NsObject* Classifier::find(Packet* p)
 	return (node);
 }
 
-int Classifier::install_next(NsObject *node) {
+int Classifier::install_next(NsObject *node, int ntoNode) {
 	int slot = maxslot_ + 1;
 	install(slot, node);
 	return (slot);
@@ -191,6 +198,7 @@ int Classifier::install_next(NsObject *node) {
 int Classifier::command(int argc, const char*const* argv)
 {
 	Tcl& tcl = Tcl::instance();
+	DBGMARK(DBGCLS,4,"argv[1]:%s, argc:%d\n",argv[1],argc);
 	if(argc == 2) {
                 if (strcmp(argv[1], "defaulttarget") == 0) {
                         if (default_target_ != 0)
@@ -286,5 +294,49 @@ int Classifier::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 	}
+	else if (strcmp(argv[1], "pfcmessage") == 0)
+	{
+		if(argc == 5)
+		{
+			int ntoNodeid = atoi(argv[2]);
+			int npriority = atoi(argv[3]);
+			int nduration = atoi(argv[4]);
+			DBGMARK(1,1,"ntoNodeid_:%d priority:%d duration:%d\n",ntoNodeid,npriority,nduration);
+			pfcmessage(ntoNodeid,npriority,nduration);
+			return TCL_OK;
+		}
+	}
+
 	return (NsObject::command(argc, argv));
+}
+
+
+int Classifier::CheckState(Packet* p)
+{
+	DBGMARK(DBGPFC,4,"now:%f, pkt:%p @ %s: Checking PFC sts...\n",NOW,p,this->name());
+	NsObject* node = find(p);
+	DBGMARK(DBGPFC,4,"next node:%s \n",node->name());
+	Classifier* clf;
+	bool multipath=false;
+	if (node == NULL)
+	{
+		DBGMARK(0,0,"node is null, returning normal...\n");
+		return PFC_NORMAL_STS;
+	}
+
+	//node could be next link (connector of the next link), or RXing Agent (TCP in our case)
+	//If node == Connector ==> it should call its target (Queue.CheckState)
+	//If node == RX Agent ==> it should return NORMAL State!
+
+	clf = dynamic_cast<Classifier*>(node);
+
+
+	if(clf!=0 && node->IsMultiPathForwarder(node)==0)
+	{
+//		DBGMARK(0,0,"Link pfc sts checking! returning normal.\n");
+		DBGMARK(DBGPFC,4,"node:%s End Host! returning normal.\n",node->name());
+		return PFC_NORMAL_STS;
+	}
+	DBGMARK(DBGPFC,4,"node:%s ,checking next Queue!\n",node->name());
+	return node->CheckState(p);
 }

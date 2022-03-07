@@ -55,6 +55,7 @@ static const char rcsid[] =
 
 int PortClassifier::classify(Packet *p) 
 {
+	DBGMARK(DBGPFC,4,"@ %s:",this->name());
 	// Port classifier returns the destination port.  No shifting
 	// or masking is required since in the 32-bit addressing,
 	// ports are stored in a seperate variable.

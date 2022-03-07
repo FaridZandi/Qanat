@@ -103,8 +103,16 @@ Queue/DropTail set drop_front_ false
 Queue/DropTail set summarystats_ false
 Queue/DropTail set queue_in_bytes_ false
 Queue/DropTail set mean_pktsize_ 500
+# Mohammad: Smart drop
+Queue/DropTail set drop_smart_ false
+Queue/DropTail set sq_limit_ 10
 
 Queue/DropTail/PriQueue set Prefer_Routing_Protocols    1
+
+# Shuang: Priority drop
+Queue/DropTail set drop_prio_ false
+Queue/DropTail set deque_prio_ false
+Queue/DropTail set keep_order_ false
 
 # special cmu implemented priority queue used by DSR
 CMUPriQueue set qlen_logthresh_ 10
@@ -118,6 +126,24 @@ Queue/dsRED set ecn_ 0
 # XXX Temporary fix XXX
 # support only xcp flows; set to 1 when supporting both tcp and xcp flows; temporary fix for allocating link BW between xcp and tcp queues until dynamic queue weights come into effect. This fix should then go away
 Queue/XCP set tcp_xcp_on_ 0  ;
+
+# Drop Tail Variant
+# Queue/DropTailVariant set drop_front_ false
+# Queue/DropTailVariant set summarystats_ false
+# Queue/DropTailVariant set queue_in_bytes_ false
+# Queue/DropTailVariant set mean_pktsize_ 500
+# Queue/DropTailVariant set tcp_queue_limit_pkts_ 1000
+
+# Queue/DropTailVariant/RCP set alpha_ 0.4
+# Queue/DropTailVariant/RCP set beta_ 0.4
+# Queue/DropTailVariant/RCP set gamma_ 1
+# Queue/DropTailVariant/RCP set min_pprtt_ 0.01
+# Queue/DropTailVariant/RCP set init_rate_fact_ 0.05
+# Queue/DropTailVariant/RCP set print_status_ 1
+# Queue/DropTailVariant/RCP set rate_fact_mode_ 0
+# Queue/DropTailVariant/RCP set fixed_rate_fact_ 0.05 ;# effecitve only if rate_fact_mode = 1
+# Queue/DropTailVariant/RCP set propag_rtt_ 1.0  ;# effecitve only if rate_fact_mode = 3
+# Queue/DropTailVariant/RCP set upd_timeslot_ 0.01  ;# rate update interval (sec).
 
 Queue/RED set bytes_ true ;		# default changed on 10/11/2004.
 Queue/RED set queue_in_bytes_ true ;	# default changed on 10/11/2004.
@@ -168,6 +194,156 @@ Queue/RED set bottom_ 0
 ###   for automatic configuration.
 Queue/RED set cautious_ 0
 Queue/RED set feng_adaptive_ 0
+# Mohammad: Phantom Queue extensions
+Queue/RED set pq_enable_ 0
+Queue/RED set pq_mode_ 0
+Queue/RED set pq_drainrate_ 0 ; # need to set this when PQ is enabled
+                                # always in bps
+Queue/RED set pq_thresh_ 0
+# Shuang: priority dropping/deque extensions
+Queue/RED set drop_prio_ 0
+Queue/RED set deque_prio_ 0
+
+#
+#######################################################
+Agent/TCP/FullTcp/Sack/SolTCP set NI 1 ;#1Gbps
+Agent/TCP set start_wait 0 
+Agent/TCP set prempt_wait 0
+Agent/TCP set num_prempt 0
+
+if {1} {
+Queue/RPQ set queue_num_ 2
+Queue/RPQ set pfc_enable 0
+Queue/RPQ set pfc_threshold_0 500 ; #desabling pfc for queue #0
+Queue/RPQ set pfc_threshold_1 175
+Queue/RPQ set size_0 225
+Queue/RPQ set size_1 225
+Queue/RPQ set margin 10
+
+Queue/RPQ set bytes_ true ;		# default changed on 10/11/2004.
+Queue/RPQ set queue_in_bytes_ true ;	# default changed on 10/11/2004.
+# Queue/RPQ set thresh_ 5
+Queue/RPQ set thresh_ 0
+# Queue/RPQ/thresh_ was changed on 12/29/01, for automatic configuration.
+# Queue/RPQ set maxthresh_ 15
+Queue/RPQ set maxthresh_ 0
+# Queue/RPQ/maxthresh_ was changed on 12/29/01, for automatic configuration.
+Queue/RPQ set thresh_queue_ [Queue set limit_]
+# Note from Sally: I don't see that thresh_queue_ is used for anything.
+Queue/RPQ set maxthresh_queue_ [Queue set limit_]
+# Note from Sally: I don't see that maxthresh_queue_ is used for anything.
+Queue/RPQ set mean_pktsize_ 500
+Queue/RPQ set idle_pktsize_ 100
+# Queue/RPQ set q_weight_ 0.002
+Queue/RPQ set q_weight_ -1
+# Queue/RPQ/q_weight_ was changed on 12/29/01, for automatic configuration.
+Queue/RPQ set wait_ true
+Queue/RPQ set linterm_ 10
+Queue/RPQ set mark_p_ 0.1
+Queue/RPQ set use_mark_p_ true
+# Queue/RPQ/use_mark_p_ was added on 11/23/05.
+# Queue/RPQ/use_mark_p_ was changed to true on 12/22/05.
+Queue/RPQ set setbit_ false
+Queue/RPQ set gentle_ true
+### Queue/RPQ/gentle_ was changed from false to true on Apr 23, 2001.
+Queue/RPQ set drop_tail_ true
+Queue/RPQ set drop_front_ false
+Queue/RPQ set drop_rand_ false
+Queue/RPQ set doubleq_ false
+Queue/RPQ set ns1_compat_ false
+Queue/RPQ set dqthresh_ 50
+Queue/RPQ set ave_ 0.0
+Queue/RPQ set prob1_ 0.0
+Queue/RPQ set curq_ 0
+Queue/RPQ set cur_max_p_ 0
+Queue/RPQ set summarystats_ false
+### Adaptive RPQ.
+Queue/RPQ set alpha_ 0.01
+Queue/RPQ set beta_ 0.9 
+Queue/RPQ set adaptive_ 0
+Queue/RPQ set interval_ 0.5
+Queue/RPQ set targetdelay_ 0.005
+Queue/RPQ set top_ 0.5
+Queue/RPQ set bottom_ 0
+### Queue/RPQ/bottom_ was changed from 0.01 to 0 on June 23, 2004,
+###   for automatic configuration.
+Queue/RPQ set cautious_ 0
+Queue/RPQ set feng_adaptive_ 0
+# Mohammad: Phantom Queue extensions
+Queue/RPQ set pq_enable_ 0
+Queue/RPQ set pq_mode_ 0
+Queue/RPQ set pq_drainrate_ 0 ; # need to set this when PQ is enabled
+                                # always in bps
+Queue/RPQ set pq_thresh_ 0
+# Shuang: priority dropping/deque extensions
+Queue/RPQ set drop_prio_ 0
+Queue/RPQ set deque_prio_ 0
+
+}
+#Q[1]
+if {1} {
+Queue/RPQ set bytes_1 true ;		# default changed on 10/11/2004.
+Queue/RPQ set queue_in_bytes_1 true ;	# default changed on 10/11/2004.
+# Queue/RPQ set thresh_ 5
+Queue/RPQ set thresh_1 0
+# Queue/RPQ/thresh_ was changed on 12/29/01, for automatic configuration.
+# Queue/RPQ set maxthresh_ 15
+Queue/RPQ set maxthresh_1 0
+# Queue/RPQ/maxthresh_ was changed on 12/29/01, for automatic configuration.
+Queue/RPQ set thresh_queue_1 [Queue set limit_]
+# Note from Sally: I don't see that thresh_queue_ is used for anything.
+Queue/RPQ set maxthresh_queue_1 [Queue set limit_]
+# Note from Sally: I don't see that maxthresh_queue_ is used for anything.
+Queue/RPQ set mean_pktsize_1 500
+Queue/RPQ set idle_pktsize_1 100
+# Queue/RPQ set q_weight_ 0.002
+Queue/RPQ set q_weight_1 -1
+# Queue/RPQ/q_weight_ was changed on 12/29/01, for automatic configuration.
+Queue/RPQ set wait_1 true
+Queue/RPQ set linterm_1 10
+Queue/RPQ set mark_p_1 0.1
+Queue/RPQ set use_mark_p_1 true
+# Queue/RPQ/use_mark_p_ was added on 11/23/05.
+# Queue/RPQ/use_mark_p_ was changed to true on 12/22/05.
+Queue/RPQ set setbit_1 false
+Queue/RPQ set gentle_1 true
+### Queue/RPQ/gentle_ was changed from false to true on Apr 23, 2001.
+Queue/RPQ set drop_tail_1 true
+Queue/RPQ set drop_front_1 false
+Queue/RPQ set drop_rand_1 false
+Queue/RPQ set doubleq_1 false
+Queue/RPQ set ns1_compat_1 false
+Queue/RPQ set dqthresh_1 50
+Queue/RPQ set ave_1 0.0
+Queue/RPQ set prob1_1 0.0
+Queue/RPQ set curq_1 0
+Queue/RPQ set cur_max_p_1 0
+Queue/RPQ set summarystats_1 false
+### Adaptive RPQ.
+Queue/RPQ set alpha_1 0.01
+Queue/RPQ set beta_1 0.9 
+Queue/RPQ set adaptive_1 0
+Queue/RPQ set interval_1 0.5
+Queue/RPQ set targetdelay_1 0.005
+Queue/RPQ set top_1 0.5
+Queue/RPQ set bottom_1 0
+### Queue/RPQ/bottom_ was changed from 0.01 to 0 on June 23, 2004,
+###   for automatic configuration.
+Queue/RPQ set cautious_1 0
+Queue/RPQ set feng_adaptive_1 0
+# Mohammad: Phantom Queue extensions
+Queue/RPQ set pq_enable_1 0
+Queue/RPQ set pq_mode_1 0
+Queue/RPQ set pq_drainrate_1 0 ; # need to set this when PQ is enabled
+                                # always in bps
+Queue/RPQ set pq_thresh_1 0
+# Shuang: priority dropping/deque extensions
+Queue/RPQ set drop_prio_1 0
+Queue/RPQ set deque_prio_1 0
+
+}
+
+#######################################################
 
 Queue/RED/RIO set bytes_ false
 Queue/RED/RIO set queue_in_bytes_ false
@@ -235,6 +411,9 @@ Queue/Vq set mean_pktsize_ 1000
 Queue/Vq set curq_ 0
 Queue/Vq set drop_front_ 0
 Queue/Vq set markfront_ 0
+# Mohammad
+Queue/Vq set ctilde_ 0
+Queue/Vq set vq_len_ 0
 
 Queue/REM set gamma_ 0.001
 Queue/REM set phi_ 1.001
@@ -298,6 +477,20 @@ QueueMonitor set pdrops_ 0
 QueueMonitor set pmarks_ 0
 QueueMonitor set bdrops_ 0
 
+#added for count dropping from small flow - Shuang
+QueueMonitor set num_monitor_ 50
+for {set k 0} {$k < 50} {incr k} {
+    set tmp kdrops$k
+	QueueMonitor set $tmp 0
+	set tmp karrivals$k
+	QueueMonitor set $tmp 0
+}
+
+QueueMonitor set ack_arrivals_ 0
+QueueMonitor set ack_drops_ 0
+QueueMonitor set ack_departures_ 0
+
+
 QueueMonitor set qs_pkts_ 0
 QueueMonitor set qs_bytes_ 0
 QueueMonitor set qs_drops_ 0
@@ -360,8 +553,7 @@ DelayLink set bandwidth_ 1.5Mb
 DelayLink set delay_ 100ms
 DelayLink set debug_ false
 DelayLink set avoidReordering_ false ;	# Added 3/27/2003.
-					# Set to true to avoid reordering when
-					#   changing link bandwidth or delay.
+					# Set to true to avoid reordering when				
 DynamicLink set status_ 1
 DynamicLink set debug_ false
 
@@ -389,6 +581,11 @@ Classifier/Addr/MPLS set reroute_option_ 0
 Classifier/Addr/MPLS set control_driven_ 0
 Classifier/Addr/MPLS set data_driven_ 0
 
+# Mohammad
+Classifier/MultiPath set nodeid_ 0
+Classifier/MultiPath set nodetype_ 0
+Classifier/MultiPath set perflow_ 0
+Classifier/MultiPath set checkpathid_ 0
 #
 # FEC models
 #
@@ -634,7 +831,16 @@ NetworkInterface set debug_ false
 TBF set rate_ 64k
 TBF set bucket_ 1024
 TBF set qlen_ 0
-
+# Mohammad: Pacer variables
+TBF set pacer_enable_ 0
+TBF set assoc_timeout_ 0.01
+TBF set assoc_prob_ 0.125
+TBF set maxrate_ 1000000000
+TBF set minrate_ 10000000
+TBF set qlength_factor_ 122;
+TBF set rate_ave_factor_ 0.125
+TBF set rate_update_interval_  0.000064
+TBF set debug_ 0
 #
 # mobile Ip
 #
@@ -1022,6 +1228,18 @@ Agent/TCP set control_increase_ 0
 
 Agent/TCP set SetCWRonRetransmit_ true ; # added on 2005/06/19.
 				 	 # default changed on 2008/06/05. 
+# Mohammad
+Agent/TCP set ecnhat_ false;
+Agent/TCP set ecnhat_smooth_alpha_ true;
+Agent/TCP set ecnhat_alpha_ 0.0;
+Agent/TCP set ecnhat_g_ 0.125;
+Agent/TCP set ecnhat_enable_beta_ false;
+Agent/TCP set ecnhat_beta_ 0.0;
+Agent/TCP set ecnhat_quadratic_beta_ false;
+Agent/TCP set ecnhat_tcp_friendly_ false;
+Agent/TCP set perPacketMP_ false;
+Agent/TCP set pathAwareMP_ false;
+Agent/TCP set num_paths_ 1
 
 # XXX Generate nam trace or plain old text trace for variables. 
 # When it's true, generate nam trace.
@@ -1057,6 +1275,7 @@ Agent/TCPSink set qs_enabled_ false
 Agent/TCPSink set RFC2581_immediate_ack_ true
 Agent/TCPSink set bytes_ 0
 Agent/TCPSink set ecn_syn_ false ;	# Added 2005/11/21 for SYN/ACK pkts.
+Agent/TCPSink set ecnhat_ false;
 
 Agent/TCPSink/DelAck set interval_ 100ms
 catch {
@@ -1229,6 +1448,21 @@ if [TclObject is-class Agent/TCP/FullTcp] {
         Agent/TCP/FullTcp set ecn_syn_ false; # Make SYN/ACK packet ECN-Capable?
         Agent/TCP/FullTcp set ecn_syn_wait_ 0; # Wait after marked SYN/ACK? 
         Agent/TCP/FullTcp set debug_ false;  # Added Sept. 16, 2007.
+	Agent/TCP/FullTcp set flow_remaining_ -1; #Mohammad: added for robust FCT measurement
+	Agent/TCP/FullTcp set dynamic_dupack_ 0; # Mohammad: if non-zero, set dupack threshold to max(3, dynamic_dupack_ * cwnd_)
+	Agent/TCP/FullTcp set prio_scheme_ 2; #Shuang: priority scheme
+	Agent/TCP/FullTcp set prio_num_ 0; #Shuang: number of priority
+	Agent/TCP/FullTcp set pfc_enable 0; #: pfc
+	Agent/TCP/FullTcp set prio_cap0 6*1460+15;
+	Agent/TCP/FullTcp set prio_cap1 16*1460+15;
+	Agent/TCP/FullTcp set prio_cap2 30*1460+15;
+	Agent/TCP/FullTcp set prio_cap3 49*1460+15;
+	Agent/TCP/FullTcp set prio_cap4 266*1460+15;
+	Agent/TCP/FullTcp set prio_cap5 1001*1460+15;
+	Agent/TCP/FullTcp set prio_cap6 2825*1460+15;
+	Agent/TCP/FullTcp set prob_cap_ 0; #Shuang: prob mode
+	Agent/TCP/FullTcp set deadline 0; #Shuang: deadline
+	Agent/TCP/FullTcp set early_terminated_ 0; #Shuang
 
 	Agent/TCP/FullTcp/Newreno set recov_maxburst_ 2; # max burst dur recov
 
@@ -1257,6 +1491,18 @@ if [TclObject is-class Agent/TCP/FullTcp] {
 		$self next
 		$self instvar open_cwnd_on_pack_
 		set open_cwnd_on_pack_ false
+	}
+
+	Agent/TCP/FullTcp/Sack/MinTCP instproc init {} {
+		$self next
+	}
+
+	Agent/TCP/FullTcp/Sack/DDTCP instproc init {} {
+		$self next
+	}
+
+	Agent/TCP/FullTcp/Sack/SolTCP instproc init {} {
+		$self next
 	}
 
 }
@@ -1450,6 +1696,24 @@ Queue set util_records_ 5 ; 		# Changed from 0 to 5, 2/25/05.
 # Quick Start definitions end here
 
 Delayer set debug_ false
+
+# # Nandita: Following is for Video traffic. Taken from Xiaoqing Zhu
+# Application/Traffic/VideoCBR set rate_ 0
+# Application/Traffic/VideoCBR set pktsize_ 1500
+# Application/Traffic/VideoCBR set fps_ 30
+# Application/Traffic/VideoCBR set gop_ 15
+# Application/Traffic/VideoCBR set fix_interval_ 0
+# Application/Traffic/VideoCBR set init_delay_ 0.5
+# Application/Traffic/VideoCBR set debug_ 0
+# Application/Traffic/VideoCBR set random_ 0
+
+# Application/Traffic/VideoTrace set init_delay_ 0.5
+# Application/Traffic/VideoTrace set quality_ 0
+# Application/Traffic/VideoTrace set fps_ 30
+# Application/Traffic/VideoTrace set advance_per_gop_ 1
+# Application/Traffic/VideoTrace set debug_ 0
+# Application/Traffic/VideoTrace set random_ 0
+# Application/Traffic/VideoTrace set loop_ 0
 
 Agent/TCP/Linux set rtxcur_init_ 3
 Agent/TCP/Linux set maxrto_ 120

@@ -61,6 +61,32 @@ struct hdr_ip {
 	ns_addr_t	dst_;
 	int		ttl_;
 
+	/**
+	 * : It is the path determined by the controller,
+	 * Consider it as IEEE QinQ structure. we have different vlan tags showing the next hop in a multipath scenarios.
+	 * path structure: 4Bytes: each Byte shows next hop {only where there is a multipath option},
+	 * at most four hops are supported. {FirstOption|SecondOption|ThirdOption|FourthOption}
+	 * MSB in each Byte shows whether this byte is used by the previous switches.
+	 * If not used, the switch should use the first available option.
+	 * It is like striping VLAN tag on output when they are used.
+	 */
+	int path_;
+	/**
+	 * this bit shows whether the path is determined by the controller.
+	 * 1 indicates next hop is known, 0 indicates that we should use normal structure including ECMP.
+	 */
+	bool path_enable_;
+	bool& path_enable() {return (path_enable_); }
+	int& path() {return (path_); }
+
+	/* Mohammad: flag to indicate 
+	 * the last TCP ack for this flow 
+	 * had EcnEcho set. This is used by 
+	 * TBF to determin if flow should be 
+	 *paced. */
+	int             gotecnecho;
+	//abd
+
 	/* Monarch extn */
 // 	u_int16_t	sport_;
 // 	u_int16_t	dport_;
@@ -68,6 +94,7 @@ struct hdr_ip {
 	/* IPv6 */
 	int		fid_;	/* flow id */
 	int		prio_;
+	int 	prio_type_; //Shuang
 
 	static int offset_;
 	inline static int& offset() { return offset_; }
@@ -87,6 +114,7 @@ struct hdr_ip {
 	/* ipv6 fields */
 	int& flowid() { return (fid_); }
 	int& prio() { return (prio_); }
+	int& prio_type() {return (prio_type_); }
 };
 
 #endif

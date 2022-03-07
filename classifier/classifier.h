@@ -38,6 +38,8 @@
 #define ns_classifier_h
 
 #include "object.h"
+#include "common.h"
+#define DBGCLS 0
 
 class Packet;
 
@@ -56,6 +58,8 @@ public:
 	inline void set_default_target(NsObject *obj) { 
 		default_target_ = obj;
 	}
+	//:
+	virtual void pfcmessage(int ntoNodeid,int npriority,int nduration);
 
 	virtual void recv(Packet* p, Handler* h);
 	virtual NsObject* find(Packet*);
@@ -66,19 +70,27 @@ public:
 	virtual void do_install(char* dst, NsObject *target) {
 		int slot = atoi(dst);
 		install(slot, target); }
-	int install_next(NsObject *node);
-	virtual void install(int slot, NsObject*);
+	virtual int install_next(NsObject *node,int ntoNode=(-1));
+	virtual void install(int slot, NsObject*,int ntoNode=(-1));
 
 	// function to set the rtg table size
 	void set_table_size(int nn);
 	// hierarchical specific
 	virtual void set_table_size(int level, int nn) {}
 
-	int allocPort (NsObject *);	
+	int allocPort (NsObject *);
+
+	/**
+	 * :
+	 * Check State, Classifier generally calls target's checkState function, except for PortClassifier
+	 * in which There is no further queues (target). PortClassifier will overload this function!
+	 */
+	virtual int CheckState(Packet* p);
+	virtual bool IsMultiPathForwarder(NsObject*node){	return false;}
 protected:
 	virtual int getnxt(NsObject *);
 	virtual int command(int argc, const char*const* argv);
-	void alloc(int);
+	virtual void alloc(int);
 	NsObject** slot_;	/* table that maps slot number to a NsObject */
 	int nslot_;
 	int maxslot_;

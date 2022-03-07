@@ -140,6 +140,7 @@ struct edv {
 };
 
 class REDQueue : public Queue {
+	friend class RPQ;
  public:	
 	/*	REDQueue();*/
 	REDQueue(const char * = "Drop");
@@ -163,10 +164,15 @@ class REDQueue : public Queue {
 	  double v_a, double v_b, double v_c, double v_d, double max_p);
  	double calculate_p(double v_ave, double th_max, int gentle, 
 	  double v_a, double v_b, double v_c, double v_d, double max_p_inv);
-        virtual void reportDrop(Packet *pkt) {}  //pushback
+ 	virtual void reportDrop(Packet *pkt)
+	{	hdr_ip* iph = hdr_ip::access(pkt);
+		if(iph->prio_)DBGMARK(0,4,"name:%s, now:%f **********drop********prio:%d pkt=%p lenght:%d byteLength():%d limit:%d fid:%d\n",
+				name(),NOW,iph->prio_,pkt,length(),byteLength(),limit(),iph->fid_);
+	}  //pushback
 	void print_summarystats();
 
-	
+	//:
+	void SetIdle();
 	int summarystats_;	/* true to print true average queue size */
 
 	LinkDelay* link_;	/* outgoing link */
@@ -212,6 +218,168 @@ class REDQueue : public Queue {
 	void print_edp();	// for debugging
 	void print_edv();	// for debugging
 
+};
+
+class RPQ;
+
+class PFCTimer : public TimerHandler {
+public:
+	PFCTimer(RPQ *a=0) : TimerHandler() { a_ = a; }
+	void setid(int id){this->id=id;}
+	void setRPQ(RPQ *a){a_=a;}
+protected:
+	virtual void expire(Event *e);
+	RPQ *a_;
+	int id;
+};
+
+class PFCDeQTimer :public TimerHandler {
+public:
+	PFCDeQTimer(RPQ *a=0) : TimerHandler() { a_ = a; }
+	void setid(int id){this->id=id;}
+	void setRPQ(RPQ *a){a_=a;}
+protected:
+	virtual void expire(Event *e);
+	RPQ *a_;
+	int id;
+};
+
+/**
+ * 
+ */
+class RPQ: public Queue
+{
+public:
+	RPQ(/*int nQueueNum*/)
+	{
+//		FILE* pFile;
+//		char pName[255];
+//		sprintf(pName,"/home/student/Desktop/log.txt");
+
+		Writecounter=0;
+		m_nNumQueues = 2;
+		m_bPFC=0;
+		m_nMargin=10;
+		for(int i=0;i<8;i++)
+		{
+			m_pfcState[i]=PFC_NORMAL_STS;
+			m_pfcTimer[i].setRPQ(this);
+			m_pfcTimer[i].setid(i);
+			m_pfcDQTimer[i].setRPQ(this);
+			m_pfcDQTimer[i].setid(i);
+
+		}
+//		m_Queues = new REDQueue;
+//		for (int i=0;i<8;i++)
+//		{
+//			m_Queues[i] = new REDQueue;
+//		}
+/*
+		q1_ = new REDQueue;
+		q2_ = new REDQueue;
+		q3_ = new REDQueue;
+		q4_ = new REDQueue;
+		q5_ = new REDQueue;
+		q6_ = new REDQueue;
+		q7_ = new REDQueue;
+		q8_ = new REDQueue;
+*/
+		pq_ = m_Queues->pq_;
+
+/*
+		if(Writecounter)
+			pFile = fopen (pName,"a");
+		else
+			pFile = fopen (pName,"w");
+		Writecounter++;
+	//
+
+		fprintf(pFile,"pq_=%p \n",pq_);
+
+		fclose (pFile);
+*/
+
+		bind("queue_num_", &m_nNumQueues);		    // minthresh
+		bind("pfc_enable", &m_bPFC);
+		bind("pfc_threshold_0", &m_nThreshold[0]);
+		bind("pfc_threshold_1", &m_nThreshold[1]);
+
+		bind("size_0", &m_Queues[0].qlim_);
+		bind("size_1", &m_Queues[1].qlim_);
+		bind("margin",&m_nMargin);
+		bindparams();
+	}
+//	void SetNumQueue(int num)	{m_nNumQueues=num;};
+	int command(int argc, const char*const* argv);
+	void bindparams();
+	void reset();
+	void initialize_params();
+	void print_summarystats();
+	void SendPFCMessage(int Priority, int PauseDuration);
+	int Writecounter;
+	void enque(Packet*);
+	Packet* deque();
+	Packet* pfcdeque(int id);
+	REDQueue m_Queues[8];   // FIFO queues
+	int m_nThreshold[8];
+	int m_bPFC;
+	int m_nNumQueues;
+	int m_nMargin;
+
+	//PFC functionality
+	virtual int CheckState(Packet* p);
+	int m_pfcState[8];
+	void pfctimeout(int id);
+	void pfcResume(int id);
+	Event intr_;
+
+	PFCTimer m_pfcTimer[8];
+	PFCDeQTimer m_pfcDQTimer[8];
+	//NsObject* m_pSrcNode;
+
+	void CopyPacket(Packet *pTmp,Packet *p);
+protected:
+/*
+	REDQueue *q1_;   // 1st FIFO queue
+	REDQueue *q2_;   // 2nd FIFO queue
+	REDQueue *q3_;   // 3rd FIFO queue
+	REDQueue *q4_;   // 4th FIFO queue
+	REDQueue *q5_;   // 5th FIFO queue
+	REDQueue *q6_;   // 6th FIFO queue
+	REDQueue *q7_;   // 7th FIFO queue
+	REDQueue *q8_;   // 8th FIFO queue
+*/
+public:
+//	REDQueue* queue(int i)
+//	{
+//		if(i<m_nNumQueues)
+//			return m_Queues[i];
+//		else
+//			return NULL;
+//	};
+};
+
+
+
+
+
+
+class DtRrQueue : public Queue {
+ public:
+	DtRrQueue() {
+		q1_ = new PacketQueue;
+		q2_ = new PacketQueue;
+		pq_ = q1_;
+		deq_turn_ = 1;
+	}
+
+ protected:
+         void enque(Packet*);
+	 Packet* deque();
+
+	 PacketQueue *q1_;   // First  FIFO queue
+	 PacketQueue *q2_;   // Second FIFO queue
+	 int deq_turn_;      // 1 for First queue 2 for Second
 };
 
 #endif

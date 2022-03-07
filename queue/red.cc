@@ -560,7 +560,7 @@ REDQueue::drop_early(Packet* pkt)
 		edv_.count_bytes = 0;
 		hdr_flags* hf = hdr_flags::access(pickPacketForECN(pkt));
 		if (edp_.setbit && hf->ect() && 
-                     (!edp_.use_mark_p || edv_.v_prob1 < edp_.mark_p)) { 
+		    (!edp_.use_mark_p || edv_.v_prob1 <= edp_.mark_p)) { // Mohammad: I changed < to <= 
 			hf->ce() = 1; 	// mark Congestion Experienced bit
 			// Tell the queue monitor here - call emark(pkt)
 			return (0);	// no drop
@@ -982,5 +982,827 @@ void REDQueue::run_estimator(int nqueued, int m)
 #endif
 	edv_.v_ave = f;
 	edv_.v_slope = f_sl;
+}
+
+//
+void REDQueue::SetIdle()
+{
+	idle_ = 1;
+	// deque() may invoked by Queue::reset at init
+	// time (before the scheduler is instantiated).
+	// deal with this case
+	if (&Scheduler::instance() != NULL)
+		idletime_ = Scheduler::instance().clock();
+	else
+		idletime_ = 0.0;
+}
+
+
+/**
+ * : RPQ
+ */
+
+void PFCTimer::expire(Event*)
+{
+	a_->pfctimeout(id);
+}
+
+void PFCDeQTimer::expire(Event*)
+{
+	a_->pfcResume(id);
+}
+
+/////////////////////////////////////////////////////////
+static class RPQClass : public TclClass {
+public:
+	RPQClass() : TclClass("Queue/RPQ") {}
+	TclObject* create(int argc, const char*const* argv) {
+		//printf("creating RED Queue. argc = %d\n", argc);
+/*
+		//mod to enable RED to take arguments
+		if (argc==5)
+			return (new RPQ(argv[4]));
+		else
+*/
+		return (new RPQ);
+	}
+} class_rpq;
+
+/************************************************************/
+/*
+
+void RPQ::enque(Packet* p)
+{
+	hdr_ip* hdr = hdr_ip::access(p);
+	FILE* pFile;
+	char pName[255];
+	sprintf(pName,"/home/student/Desktop/log.txt");
+//
+	//FIXME: First time we need "w" instead of "a"
+	if(Writecounter)
+		pFile = fopen (pName,"a");
+	else
+		pFile = fopen (pName,"w");
+	Writecounter++;
+//
+	fprintf(pFile,"Writecounter=%d enque: hdr->prio()=%d\n",Writecounter,hdr->prio());
+	int prio = hdr->prio();
+	if(prio>=0 && prio<m_nNumQueues )
+	{
+		fprintf(pFile,"enque:\n");
+		m_Queues[prio]->enque(p);
+		fprintf(pFile,"enque:2\n");
+	}
+	else
+	{
+		fprintf(pFile,"else:\n");
+		m_Queues[m_nNumQueues-1]->enque(p);
+		fprintf(pFile,"else:3\n");
+	}
+
+	fprintf(pFile,"pFile=%p before closing:\n",pFile);
+	fclose (pFile);
+}
+
+**********************************************************
+Packet* RPQ::deque()
+{
+	for(int i=0;i<m_nNumQueues;i++)
+	{
+		if(m_Queues[i]->length()!=0)
+		{
+			return m_Queues[i]->deque();
+		}
+	}
+	return m_Queues[0]->deque();
+}
+*/
+//**********************************************************
+void RPQ::pfctimeout(int id)
+{
+	if(id>=0 && id<m_nNumQueues)
+	{
+		if(m_Queues[id].length()<(m_nThreshold[id]-m_nMargin) || m_Queues[id].length()==0)
+		{
+			DBGMARK(DBGPFC,4,"pfctimeout (id:%d):  Changing sts to from %d to Normal...\n",id,m_pfcState[id]);
+			m_pfcState[id]=PFC_NORMAL_STS;
+		}
+		else
+		{
+			double pasueTime = 0.000001;//1us
+			m_pfcTimer[id].resched(pasueTime);
+		}
+	}
+}
+
+void RPQ::pfcResume(int id)
+{
+	if(m_bPFC)
+	{
+		Packet *p;
+		int bussy=false;
+//		DBGMARK(DBGPFC,2,"@%s : Dequeuing...\n",this->name());
+		for(int i=0;i<id;i++)
+		{
+			if(m_Queues[i].length()!=0)
+			{
+				bussy=true;
+			}
+		}
+		if(!bussy)
+		{
+//			Scheduler::instance().schedule(&qh_, &intr_, 0.000001);
+			if(m_Queues[id].length()!=0)
+			{
+//				DBGMARK(0,0," try to send it at now:%f\n",NOW);
+				if (!blocked_) {
+//					DBGMARK(0,0," \n");
+					/*
+					 * We're not blocked.
+					 */
+					p=pfcdeque(id);
+					if (p != 0) {
+						utilUpdate(last_change_, NOW, blocked_);
+						last_change_ = NOW;
+						blocked_ = 1;
+						target_->recv(p, &qh_);
+					}
+				}
+				else
+				{
+//					DBGMARK(0,0,"Blocked!\n");
+				}
+			}
+		}
+		else
+		{
+			m_pfcDQTimer[id].resched(0.000001);
+		}
+	}
+}
+
+void RPQ::SendPFCMessage(int Priority, int PauseDuration)
+{
+
+	Tcl::instance().evalf("%s sendpfcmessage %d %d", this->name(),Priority,PauseDuration);
+}
+
+int RPQ::command(int argc, const char*const* argv)
+{
+	int ret=TCL_OK;
+/*
+	FILE* pFile;
+	char pName[255];
+	sprintf(pName,"/home/student/Desktop/log.txt");
+	pFile = fopen (pName,"a");
+
+	fprintf(pFile,"command: \n");
+*/
+	for(int i=0;i<argc;i++)
+	{
+//		fprintf(pFile,"argv[%d]=%s \n",i,argv[i]);
+	}
+	if (strcmp(argv[1], "per-queue") == 0)
+	{
+		printf("per-queue command is empty!\n");
+	}
+//	else if (strcmp(argv[1], "queue_num_") == 0)
+//	{
+//		SetNumQueue(atoi(argv[2]));
+//	}
+	else
+	{
+		Tcl& tcl = Tcl::instance();
+		if (argc == 2) {
+			if (strcmp(argv[1], "reset") == 0) {
+				reset();
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "early-drop-target") == 0) {
+				if (m_Queues->de_drop_ != NULL)
+					tcl.resultf("%s", m_Queues->de_drop_->name());
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "edrop-trace") == 0) {
+				if (m_Queues->EDTrace != NULL) {
+					tcl.resultf("%s", m_Queues->EDTrace->name());
+					if (debug_)
+						printf("edrop trace exists according to RED\n");
+				}
+				else {
+					if (debug_)
+						printf("edrop trace doesn't exist according to RED\n");
+					tcl.resultf("0");
+				}
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "trace-type") == 0) {
+				tcl.resultf("%s", m_Queues->traceType);
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "printstats") == 0) {
+				m_Queues->print_summarystats();
+				return (TCL_OK);
+			}
+
+//			if (strcmp(argv[1], "srcnode") == 0) {
+//				NsObject* node = (NsObject*)TclObject::lookup(argv[2]);
+//
+//				return (TCL_OK);
+//			}
+		}
+		else if (argc == 3) {
+			if (strcmp(argv[1], "nodeEntry") == 0) {
+				nodeEntry_ = (Classifier*)TclObject::lookup(argv[2]);
+				if (nodeEntry_ == 0) {
+					tcl.resultf("no such object %s", argv[2]);
+					return (TCL_ERROR);
+				}
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "get-size") == 0)
+			{
+				int queueNum=atoi(argv[2]);
+				if(queueNum<0 || queueNum>1)
+					return(TCL_ERROR);
+				DBGMARK(0,0,"%d",m_Queues[queueNum].qlim_);
+				return(TCL_OK);
+			}
+			if (strcmp(argv[1], "get-threshold") == 0)
+			{
+				int queueNum=atoi(argv[2]);
+				if(queueNum<0 || queueNum>1)
+					return(TCL_ERROR);
+				DBGMARK(0,0,"%d",m_nThreshold[queueNum]);
+				return(TCL_OK);
+			}
+
+			// attach a file for variable tracing
+			if (strcmp(argv[1], "attach") == 0) {
+				int mode;
+				const char* id = argv[2];
+				m_Queues->tchan_ = Tcl_GetChannel(tcl.interp(), (char*)id, &mode);
+				if (m_Queues->tchan_ == 0) {
+					tcl.resultf("RED: trace: can't attach %s for writing", id);
+					return (TCL_ERROR);
+				}
+				return (TCL_OK);
+			}
+			// tell RED about link stats
+			if (strcmp(argv[1], "link") == 0) {
+				LinkDelay* del = (LinkDelay*)TclObject::lookup(argv[2]);
+				if (del == 0) {
+					tcl.resultf("RED: no LinkDelay object %s",
+						argv[2]);
+					return(TCL_ERROR);
+				}
+				// set ptc now
+				m_Queues->link_ = del;
+				m_Queues->edp_.ptc = m_Queues->link_->bandwidth() /
+					(8.0 * m_Queues->edp_.mean_pktsize);
+				m_Queues->edp_.delay = m_Queues->link_->delay();
+				if (
+				  (m_Queues->edp_.q_w <= 0.0 || m_Queues->edp_.th_min_pkts == 0 ||
+						  m_Queues->edp_.th_max_pkts == 0))
+					initialize_params();
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "early-drop-target") == 0) {
+				NsObject* p = (NsObject*)TclObject::lookup(argv[2]);
+				if (p == 0) {
+					tcl.resultf("no object %s", argv[2]);
+					return (TCL_ERROR);
+				}
+				m_Queues->de_drop_ = p;
+				return (TCL_OK);
+			}
+			if (strcmp(argv[1], "edrop-trace") == 0) {
+				if (debug_)
+					printf("Ok, Here\n");
+				NsObject * t  = (NsObject *)TclObject::lookup(argv[2]);
+				if (debug_)
+					printf("Ok, Here too\n");
+				if (t == 0) {
+					tcl.resultf("no object %s", argv[2]);
+					return (TCL_ERROR);
+				}
+				m_Queues->EDTrace = t;
+				if (debug_)
+					printf("Ok, Here too too too %d\n", ((Trace *)m_Queues->EDTrace)->type_);
+				return (TCL_OK);
+			}
+			if (!strcmp(argv[1], "packetqueue-attach")) {
+				delete m_Queues->q_;
+				if (!(m_Queues->q_ = (PacketQueue*) TclObject::lookup(argv[2])))
+					return (TCL_ERROR);
+				else {
+					pq_ = m_Queues->q_;
+					return (TCL_OK);
+				}
+			}
+		}
+//		fprintf(pFile,"command End: %d\n",ret);
+//		fclose(pFile);
+		return (Queue::command(argc, argv));
+	}
+	return ret;
+}
+
+void RPQ::bindparams()
+{
+	/**
+	 * Q[0] Params
+	 */
+	bind_bool("bytes_", &m_Queues->edp_.bytes);	    // boolean: use bytes?
+	bind_bool("queue_in_bytes_", &m_Queues->qib_);	    // boolean: q in bytes?
+	//	_RENAMED("queue-in-bytes_", "queue_in_bytes_");
+	bind("thresh_", &m_Queues->edp_.th_min_pkts);		    // minthresh
+	bind("thresh_queue_", &m_Queues->edp_.th_min);
+	bind("maxthresh_", &m_Queues->edp_.th_max_pkts);	    // maxthresh
+	bind("maxthresh_queue_", &m_Queues->edp_.th_max);
+	bind("mean_pktsize_", &m_Queues->edp_.mean_pktsize);  // avg pkt size
+	bind("idle_pktsize_", &m_Queues->edp_.idle_pktsize);  // avg pkt size for idles
+	bind("q_weight_", &m_Queues->edp_.q_w);		    // for EWMA
+	bind("adaptive_", &m_Queues->edp_.adaptive);          // 1 for adaptive red
+	bind("cautious_", &m_Queues->edp_.cautious);          // 1 for cautious marking
+	bind("alpha_", &m_Queues->edp_.alpha); 	  	    // adaptive red param
+	bind("beta_", &m_Queues->edp_.beta);                  // adaptive red param
+	bind("interval_", &m_Queues->edp_.interval);	    // adaptive red param
+	bind("feng_adaptive_",&m_Queues->edp_.feng_adaptive); // adaptive red variant
+	bind("targetdelay_", &m_Queues->edp_.targetdelay);    // target delay
+	bind("top_", &m_Queues->edp_.top);		    // maximum for max_p
+	bind("bottom_", &m_Queues->edp_.bottom);		    // minimum for max_p
+	bind_bool("wait_", &m_Queues->edp_.wait);
+	bind("linterm_", &m_Queues->edp_.max_p_inv);
+	bind("mark_p_", &m_Queues->edp_.mark_p);
+	bind_bool("use_mark_p_", &m_Queues->edp_.use_mark_p);
+	bind_bool("setbit_", &m_Queues->edp_.setbit);	    // mark instead of drop
+	bind_bool("gentle_", &m_Queues->edp_.gentle);         // increase the packet
+
+	bind_bool("summarystats_", &m_Queues->summarystats_);
+	bind_bool("drop_tail_", &m_Queues->drop_tail_);	    // drop last pkt
+	//	_RENAMED("drop-tail_", "drop_tail_");
+
+	bind_bool("drop_front_", &m_Queues->drop_front_);	    // drop first pkt
+	//	_RENAMED("drop-front_", "drop_front_");
+
+	bind_bool("drop_rand_", &m_Queues->drop_rand_);	    // drop pkt at random
+	//	_RENAMED("drop-rand_", "drop_rand_");
+
+	bind_bool("ns1_compat_", &m_Queues->ns1_compat_);	    // ns-1 compatibility
+	//	_RENAMED("ns1-compat_", "ns1_compat_");
+
+	bind("ave_", &m_Queues->edv_.v_ave);		    // average queue sie
+	bind("prob1_", &m_Queues->edv_.v_prob1);		    // dropping probability
+	bind("curq_", &m_Queues->curq_);			    // current queue size
+	bind("cur_max_p_", &m_Queues->edv_.cur_max_p);        // current max_p
+
+	/**
+	 * Q[1] Params
+	 */
+	bind_bool("bytes_1", &m_Queues[1].edp_.bytes);	    // boolean: use bytes?
+	bind_bool("queue_in_bytes_1", &m_Queues[1].qib_);	    // boolean: q in bytes?
+	//	_RENAMED("queue-in-bytes_", "queue_in_bytes_");
+	bind("thresh_1", &m_Queues[1].edp_.th_min_pkts);		    // minthresh
+	bind("thresh_queue_1", &m_Queues[1].edp_.th_min);
+	bind("maxthresh_1", &m_Queues[1].edp_.th_max_pkts);	    // maxthresh
+	bind("maxthresh_queue_1", &m_Queues[1].edp_.th_max);
+	bind("mean_pktsize_1", &m_Queues[1].edp_.mean_pktsize);  // avg pkt size
+	bind("idle_pktsize_1", &m_Queues[1].edp_.idle_pktsize);  // avg pkt size for idles
+	bind("q_weight_1", &m_Queues[1].edp_.q_w);		    // for EWMA
+	bind("adaptive_1", &m_Queues[1].edp_.adaptive);          // 1 for adaptive red
+	bind("cautious_1", &m_Queues[1].edp_.cautious);          // 1 for cautious marking
+	bind("alpha_1", &m_Queues[1].edp_.alpha); 	  	    // adaptive red param
+	bind("beta_1", &m_Queues[1].edp_.beta);                  // adaptive red param
+	bind("interval_1", &m_Queues[1].edp_.interval);	    // adaptive red param
+	bind("feng_adaptive_1",&m_Queues[1].edp_.feng_adaptive); // adaptive red variant
+	bind("targetdelay_1", &m_Queues[1].edp_.targetdelay);    // target delay
+	bind("top_1", &m_Queues[1].edp_.top);		    // maximum for max_p
+	bind("bottom_1", &m_Queues[1].edp_.bottom);		    // minimum for max_p
+	bind_bool("wait_1", &m_Queues[1].edp_.wait);
+	bind("linterm_1", &m_Queues[1].edp_.max_p_inv);
+	bind("mark_p_1", &m_Queues[1].edp_.mark_p);
+	bind_bool("use_mark_p_1", &m_Queues[1].edp_.use_mark_p);
+	bind_bool("setbit_1", &m_Queues[1].edp_.setbit);	    // mark instead of drop
+	bind_bool("gentle_1", &m_Queues[1].edp_.gentle);         // increase the packet
+
+	bind_bool("summarystats_1", &m_Queues[1].summarystats_);
+	bind_bool("drop_tail_1", &m_Queues[1].drop_tail_);	    // drop last pkt
+	//	_RENAMED("drop-tail_", "drop_tail_");
+
+	bind_bool("drop_front_1", &m_Queues[1].drop_front_);	    // drop first pkt
+	//	_RENAMED("drop-front_", "drop_front_");
+
+	bind_bool("drop_rand_1", &m_Queues[1].drop_rand_);	    // drop pkt at random
+	//	_RENAMED("drop-rand_", "drop_rand_");
+
+	bind_bool("ns1_compat_1", &m_Queues[1].ns1_compat_);	    // ns-1 compatibility
+	//	_RENAMED("ns1-compat_", "ns1_compat_");
+
+	bind("ave_1", &m_Queues[1].edv_.v_ave);		    // average queue sie
+	bind("prob1_1", &m_Queues[1].edv_.v_prob1);		    // dropping probability
+	bind("curq_1", &m_Queues[1].curq_);			    // current queue size
+	bind("cur_max_p_1", &m_Queues[1].edv_.cur_max_p);        // current max_p
+
+}
+
+void RPQ::reset()
+{
+	for(int i=0;i<8;i++)
+	{
+		m_Queues[i].reset();
+		m_pfcState[i]=PFC_NORMAL_STS;
+	}
+}
+void RPQ::print_summarystats()
+{
+	for(int i=0;i<8;i++)
+	{
+		m_Queues[i].print_summarystats();
+	}
+}
+
+void RPQ::initialize_params()
+{
+	for(int i=0;i<8;i++)
+	{
+		m_Queues[i].initialize_params();
+		m_pfcState[i]=PFC_NORMAL_STS;
+	}
+}
+//**********************************************************
+
+void RPQ::enque(Packet* p)
+{
+	hdr_ip* iph = hdr_ip::access(p);
+
+/*
+	FILE* pFile;
+	char pName[255];
+	sprintf(pName,"/home/student/Desktop/log.txt");
+
+	if(Writecounter)
+		pFile = fopen (pName,"a");
+	else
+		pFile = fopen (pName,"w");
+	Writecounter++;
+*/
+	DBGMARK(DBGPFC,4,"@ %s :Enqueuing...prio:%d\n",this->name(),iph->prio_);
+	if (iph->prio_>=0 && iph->prio_<m_nNumQueues)
+	{
+		DBGMARK(DBGPFC,4,"...\n");
+		//if(iph->prio_)DBGMARK(0,0,"m_bPFC:%d now:%f @ %s :Enqueuing...prio:%d pkt=%p qlentgh:%d\n",m_bPFC,NOW,this->name(),iph->prio_,p,m_Queues[iph->prio_].length());
+		if(m_bPFC)
+		{
+			if(m_Queues[iph->prio_].length()<(m_nThreshold[iph->prio_]-m_nMargin) || m_Queues[iph->prio_].length()==0)
+			{
+				m_pfcState[iph->prio_]=PFC_NORMAL_STS;
+			}
+
+			if(m_Queues[iph->prio_].length()>(m_nThreshold[iph->prio_]) && m_pfcState[iph->prio_]!=PFC_PAUSED_STS)
+			{
+				DBGMARK(DBGPFC,4,"Changing the State to PAUSED...\n");
+				m_pfcState[iph->prio_]=PFC_PAUSED_STS;
+				//fixme: Calculate Pause Time:
+				double pasueTime = 0.000010;//1us		//Random::uniform(0.1);//100ms
+				m_pfcTimer[iph->prio_].resched(pasueTime);
+				if(iph->prio_)DBGMARK(DBGPFC,4,"\\\\\\\\\\\\name:%s now:%f paused!\n",name(),NOW);
+			}
+			else
+			{
+				DBGMARK(DBGPFC,4,"m_Queues[iph->prio_].length():%d\n",m_Queues[iph->prio_].length());
+			}
+		}
+		if(iph->prio_ /*&& m_Queues[iph->prio_].length()>m_nThreshold[iph->prio_]*/)
+			DBGMARK(DBGPFC,4,"{****\n now:%f @ %s state:%d Enqueuing...prio:%d pkt=%p qlentgh:%d\n",
+					NOW,this->name(),m_pfcState[iph->prio_],iph->prio_,p,m_Queues[iph->prio_].length());
+		m_Queues[iph->prio_].enque(p);
+
+		if(iph->prio_ /*&& m_Queues[iph->prio_].length()>m_nThreshold[iph->prio_]*/)
+			DBGMARK(DBGPFC,4,"****}\nnow:%f @ %s state:%d Enqueuing...prio:%d pkt=%p qlentgh:%d\n",
+					NOW,this->name(),m_pfcState[iph->prio_],iph->prio_,p,m_Queues[iph->prio_].length());
+
+//		fprintf(pFile,"W=%d enque:Q[%d] length:%d src:%d ,dst=%d, blocked=%d \n",Writecounter,iph->prio_,m_Queues[iph->prio_].length(),iph->src_.addr_,iph->dst_.addr_,blocked_);
+
+
+//    if (m_Queues->length() > qlim_) {
+//    	m_Queues->remove(p);
+//      drop(p);
+//    }
+	}
+	else
+	{
+		DBGERROR("Error! INVALID PRIORITY...\n");
+		m_Queues[m_nNumQueues-1].enque(p);
+//		fprintf(pFile,"OUT of Range Prio enque:Q[%d] length:%d src:%d ,dst=%d, blocked=%d \n",m_nNumQueues-1,m_Queues[m_nNumQueues-1].length(),iph->src_.addr_,iph->dst_.addr_,blocked_);
+
+		//    if (m_Queues->length() > qlim_) {
+		//    	m_Queues->remove(p);
+		//      drop(p);
+		//    }
+	}
+
+//	fclose (pFile);
+}
+
+Packet* RPQ::pfcdeque(int i)
+{
+	if(m_bPFC)
+	{
+		Packet *p;
+		if(m_Queues[i].length()!=0)
+		{
+			int pfc_sts=PFC_NORMAL_STS;
+//					DBGMARK(DBGPFC,2,"@%s : Dequeuing...\n",this->name());
+			if (m_Queues[i].summarystats_ && &Scheduler::instance() != NULL) {
+				Queue::updateStats(m_Queues[i].qib_?m_Queues[i].q_->byteLength():m_Queues[i].q_->length());
+			}
+			DBGMARK(DBGPFC,4,"...\nm_Queues[i].length():%d",m_Queues[i].length());
+			for(int n=0;n<m_Queues[i].length();n++)
+			{
+//						DBGMARK(DBGPFC,2,"n:%d m_Queues[%d].length():%d...\n",n,i,m_Queues[i].length());
+				//To simulate VOQ:
+				//If one output queue is paused other pkts should be able to go to other outputs!
+				p = m_Queues[i].q_->lookup(n);
+				if(p==0)
+				{
+					DBGMARK(DBGPFC,4,"now:%f @ %s state:%d No More packet .qlentgh:%d\n",
+							NOW,this->name(),m_pfcState[i],m_Queues[i].length());
+					//All are paused! Or no pkt to send.
+					m_Queues[i].SetIdle();
+					m_pfcDQTimer[i].resched(0.000001);
+					return 0;
+				}
+
+				//Check PFC State
+				int path = hdr_ip::access(p)->path_;
+//						DBGMARK(DBGPFC,1,"now:%f @ %s state:%d n:%d Dequeuing...pkt=%p path:%0x qlentgh:%d\n",
+//								NOW,this->name(),m_pfcState[i],n,p,hdr_ip::access(p)->path_,m_Queues[i].length());
+				pfc_sts = GetState(p);
+//						DBGMARK(0,0,"GetState: now:%f ",Scheduler::instance().clock());
+				if(path!=hdr_ip::access(p)->path_)
+				{
+					DBGMARK(DBGPFC,4,"now:%f @ %s state:%d n:%d path_change...pkt=%p p->path:%08x path:%08x qlentgh:%d\n",
+						NOW,this->name(),m_pfcState[i],n,p,hdr_ip::access(p)->path_,path,m_Queues[i].length());
+					hdr_ip::access(p)->path_= path;
+				}
+//						DBGMARK(DBGPFC,1,"now:%f @ %s state:%d n:%d Dequeuing...pkt=%p path:%0x qlentgh:%d\n",
+//								NOW,this->name(),m_pfcState[i],n,p,hdr_ip::access(p)->path_,m_Queues[i].length());
+
+				if(pfc_sts==PFC_NORMAL_STS)
+				{
+					DBGMARK(DBGPFC,4,"now:%f @ %s state:%d n:%d Dequeuing...pkt=%p qlentgh:%d\n",
+							NOW,this->name(),m_pfcState[i],n,p,m_Queues[i].length());
+					m_Queues[i].q_->remove(p);
+					m_Queues[i].idle_=0.0;
+//							Packet::free(pTmp);
+					m_pfcDQTimer[i].force_cancel();
+					return p;
+				}
+				else
+				{
+//							Packet::free(pTmp);
+					m_pfcDQTimer[i].resched(0.000001);
+					DBGMARK(DBGPFC,4,"now:%f name:%s we are paused... My queue length:%d, qlim:%d\n",NOW,name(),m_Queues[i].length(),m_Queues[i].qlim_);
+				}
+			}
+			m_Queues[i].SetIdle();
+			return 0;
+		}
+	//	fprintf(pFile,"EMPTY! deque: length:%d \n",m_Queues[0].length());
+	//	fclose (pFile);
+		m_Queues[0].SetIdle();
+		return 0;
+	}
+}
+
+Packet* RPQ::deque()
+{
+	if(m_bPFC)
+	{
+		Packet *p;
+//		DBGMARK(DBGPFC,2,"@%s : Dequeuing...\n",this->name());
+		for(int i=0;i<m_nNumQueues;i++)
+		{
+			if(m_Queues[i].length()!=0)
+			{
+				int pfc_sts=PFC_NORMAL_STS;
+				if(i>0)
+				{
+//					DBGMARK(DBGPFC,2,"@%s : Dequeuing...\n",this->name());
+					if (m_Queues[i].summarystats_ && &Scheduler::instance() != NULL) {
+						Queue::updateStats(m_Queues[i].qib_?m_Queues[i].q_->byteLength():m_Queues[i].q_->length());
+					}
+					DBGMARK(DBGPFC,4,"...\nm_Queues[i].length():%d",m_Queues[i].length());
+					for(int n=0;n<m_Queues[i].length();n++)
+					{
+//						DBGMARK(DBGPFC,2,"n:%d m_Queues[%d].length():%d...\n",n,i,m_Queues[i].length());
+						//To simulate VOQ:
+						//If one output queue is paused other pkts should be able to go to other outputs!
+						p = m_Queues[i].q_->lookup(n);
+						if(p==0)
+						{
+							DBGMARK(DBGPFC,4,"now:%f @ %s state:%d No More packet .qlentgh:%d\n",
+									NOW,this->name(),m_pfcState[i],m_Queues[i].length());
+							//All are paused! Or no pkt to send.
+							m_Queues[i].SetIdle();
+							m_pfcDQTimer[i].resched(0.00001);
+							return 0;
+						}
+
+						//Check PFC State
+						int path = hdr_ip::access(p)->path_;
+//						DBGMARK(DBGPFC,1,"now:%f @ %s state:%d n:%d Dequeuing...pkt=%p path:%0x qlentgh:%d\n",
+//								NOW,this->name(),m_pfcState[i],n,p,hdr_ip::access(p)->path_,m_Queues[i].length());
+						pfc_sts = GetState(p);
+//						DBGMARK(0,0,"GetState: now:%f ",Scheduler::instance().clock());
+						if(path!=hdr_ip::access(p)->path_)
+						{
+							DBGMARK(DBGPFC,4,"now:%f @ %s state:%d n:%d path_change...pkt=%p p->path:%08x path:%08x qlentgh:%d\n",
+								NOW,this->name(),m_pfcState[i],n,p,hdr_ip::access(p)->path_,path,m_Queues[i].length());
+							hdr_ip::access(p)->path_= path;
+						}
+//						DBGMARK(DBGPFC,1,"now:%f @ %s state:%d n:%d Dequeuing...pkt=%p path:%0x qlentgh:%d\n",
+//								NOW,this->name(),m_pfcState[i],n,p,hdr_ip::access(p)->path_,m_Queues[i].length());
+
+						if(pfc_sts==PFC_NORMAL_STS)
+						{
+							DBGMARK(DBGPFC,4,"now:%f @ %s state:%d n:%d Dequeuing...pkt=%p qlentgh:%d\n",
+									NOW,this->name(),m_pfcState[i],n,p,m_Queues[i].length());
+							m_Queues[i].q_->remove(p);
+							m_Queues[i].idle_=0.0;
+//							Packet::free(pTmp);
+							m_pfcDQTimer[i].force_cancel();
+							return p;
+						}
+						else
+						{
+//							Packet::free(pTmp);
+							m_pfcDQTimer[i].resched(0.00001);
+							DBGMARK(DBGPFC,4,"now:%f name:%s we are paused... My queue length:%d, qlim:%d\n",NOW,name(),m_Queues[i].length(),m_Queues[i].qlim_);
+						}
+					}
+					m_Queues[i].SetIdle();
+					return 0;
+				}
+				else
+				{
+					return m_Queues[i].deque();
+				}
+			}
+		}
+	//	fprintf(pFile,"EMPTY! deque: length:%d \n",m_Queues[0].length());
+	//	fclose (pFile);
+		m_Queues[0].SetIdle();
+		return 0;
+/*
+		for(int i=0;i<m_nNumQueues;i++)
+		{
+			if(m_Queues[i].length()!=0)
+			{
+				int pfc_sts=PFC_NORMAL_STS;
+				if(i>0)
+				{
+					Packet *p;
+					p = m_Queues[i].q_->lookup(0);
+					pfc_sts = GetState(p);
+				}
+				DBGMARK(0,4,"GetState: now:%f ",Scheduler::instance().clock());
+				if(pfc_sts==PFC_NORMAL_STS)
+				{
+					return m_Queues[i].deque();
+				}
+			}
+		}
+	//	fprintf(pFile,"EMPTY! deque: length:%d \n",m_Queues[0].length());
+	//	fclose (pFile);
+		return m_Queues[0].deque();
+*/
+	}
+	else
+	{
+		Packet *p;
+		for(int i=0;i<m_nNumQueues;i++)
+		{
+			if(m_Queues[i].length()!=0)
+			{
+	//			fprintf(pFile,"deque:Q[%d] length:%d\n",i,m_Queues[i].length());
+	//			fclose (pFile);
+				return m_Queues[i].deque();
+			}
+		}
+	//	fprintf(pFile,"EMPTY! deque: length:%d \n",m_Queues[0].length());
+	//	fclose (pFile);
+		return m_Queues[0].deque();
+	}
+
+}
+
+//PFC functionality
+int RPQ::CheckState(Packet* p)
+{
+	if(m_bPFC)
+	{
+		hdr_ip* iph = hdr_ip::access(p);
+		DBGMARK(DBGPFC,4,"@%s: target:%s\n",this->name(),target_->name());
+		if (iph->prio_>=0 && iph->prio_<m_nNumQueues)
+		{
+			if(iph->prio_)
+				DBGMARK(DBGPFC,4,"now:%f @ %s state:%d CheckState...pkt=%p qlentgh:%d\n",
+					NOW,this->name(),m_pfcState[iph->prio_],p,m_Queues[iph->prio_].length());
+
+			return m_pfcState[iph->prio_];
+		}
+		DBGERROR("Error! Nothing is found!\n");
+	}
+	return PFC_NORMAL_STS;
+}
+
+void RPQ::CopyPacket(Packet *pTmp,Packet *p)
+{
+//	hdr_cmn* chOriginal = hdr_cmn::access(p);
+//	hdr_cmn* ch = hdr_cmn::access(pTmp);
+//
+//	ch->uid() = Agent::uidcnt_++;
+//	ch->ptype() = chOriginal->ptype_;
+//	ch->size() = chOriginal->size_;
+//	ch->timestamp() = Scheduler::instance().clock();
+//	ch->iface() = UNKN_IFACE.value(); // from packet.h (agent is local)
+//	ch->direction() = hdr_cmn::NONE;
+//
+//	ch->error() = 0;	/* pkt not corrupt to start with */
+//
+//	hdr_ip* iph = hdr_ip::access(pTmp);
+//	hdr_ip* iphOrg = hdr_ip::access(p);
+//	iph->saddr() = iphOrg->src_.addr_;
+//	iph->sport() = iphOrg->src_.port_;
+//	iph->daddr() = iphOrg->dst_.addr_;
+//	iph->dport() = iphOrg->dst_.port_;
+//
+//	iph->flowid() = iphOrg->fid_;
+//	iph->prio() = iphOrg->prio_;
+//	iph->ttl() = iphOrg->ttl_;
+}
+
+//:Test
+////////////////////////////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+static class DtRrQueueClass : public TclClass {
+public:
+        DtRrQueueClass() : TclClass("Queue/DTRR") {}
+        TclObject* create(int, const char*const*) {
+	         return (new DtRrQueue);
+	}
+} class_dropt_tail_round_robin;
+
+
+void DtRrQueue::enque(Packet* p)
+{
+  hdr_ip* iph = hdr_ip::access(p);
+
+  // if IPv6 priority = 15 enqueue to queue1
+  if (iph->prio_ < 1) {
+    q1_->enque(p);
+    if ((q1_->length() + q2_->length()) > qlim_) {
+      q1_->remove(p);
+      drop(p);
+    }
+  }
+  else {
+    q2_->enque(p);
+    if ((q1_->length() + q2_->length()) > qlim_) {
+      q2_->remove(p);
+      drop(p);
+    }
+  }
+}
+
+
+Packet* DtRrQueue::deque()
+{
+  Packet *p;
+
+  if (deq_turn_ == 1) {
+    p =  q1_->deque();
+    if (p == 0) {
+      p = q2_->deque();
+      deq_turn_ = 1;
+    }
+    else {
+      deq_turn_ = 2;
+    }
+  }
+  else {
+    p =  q2_->deque();
+    if (p == 0) {
+      p = q1_->deque();
+      deq_turn_ = 2;
+    }
+    else {
+      deq_turn_ = 1;
+    }
+  }
+
+  return (p);
 }
 

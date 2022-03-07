@@ -1015,6 +1015,24 @@ Simulator instproc clearMemTrace {} {
 	$scheduler_ clearMemTrace
 }
 
+#:
+##
+Simulator instproc get-size { n1 n2 queuenum } {
+	$self instvar link_
+	puts "----"
+	set size [[$link_([$n1 id]:[$n2 id]) queue] get-size queuenum]
+	puts "size:$size"
+}
+
+Simulator instproc get-thr { n1 n2 queuenum } {
+	$self instvar link_	
+	puts "----"
+	set size [[$link_([$n1 id]:[$n2 id]) queue] get-threshold queuenum]
+	puts "size:$size"
+
+}
+##
+
 Simulator instproc simplex-link { n1 n2 bw delay qtype args } {
 	$self instvar link_ queueMap_ nullAgent_ useasim_
 	set sid [$n1 id]
@@ -1089,7 +1107,14 @@ Simulator instproc simplex-link { n1 n2 bw delay qtype args } {
 		set pushback 0
 	}
 	$n1 add-neighbor $n2 $pushback
-	
+	if {$qtype == "RPQ"} {
+		puts "making an RPQ: setting proper queue's parameters"
+		[$link_($sid:$did) queue] srcnode $n1 
+		[$link_($sid:$did) queue] get-size 0
+		[$link_($sid:$did) queue] get-size 1
+		[$link_($sid:$did) queue] get-threshold 0
+		[$link_($sid:$did) queue] get-threshold 1
+	}
 	#XXX yuck
 	if {[string first "RED" $qtype] != -1 || 
 	    [string first "PI" $qtype] != -1 || 
@@ -1221,6 +1246,7 @@ Simulator instproc duplex-link { n1 n2 bw delay type args } {
 	$self instvar link_
 	set i1 [$n1 id]
 	set i2 [$n2 id]
+#	puts "duplex-link"
 	if [info exists link_($i1:$i2)] {
 		$self remove-nam-linkconfig $i1 $i2
 	}

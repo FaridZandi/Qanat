@@ -144,7 +144,10 @@ NewRenoTcpAgent::dupack_action()
                  * all unnecessary Fast Retransmits.
                  */
                 reset_rtx_timer(1,0);
-                output(last_ack_ + 1, TCP_REASON_DUPACK);
+		/* Mohammad: cut window by half when we have 3 dup ack */
+		if (ecnhat_) 
+			slowdown(CLOSE_SSTHRESH_HALF|CLOSE_CWND_HALF); 
+                output(last_ack_ + 1, TCP_REASON_DUPACK);	
 		dupwnd_ = numdupacks_;
                 return;
         }
@@ -218,9 +221,14 @@ void NewRenoTcpAgent::recv(Packet *pkt, Handler*)
         }
 	++nackpack_;
 	ts_peer_ = tcph->ts();
-
+	
+	
+	if (ecnhat_) 
+		update_ecnhat_alpha(pkt);
+	
 	if (hdr_flags::access(pkt)->ecnecho() && ecn_)
 		ecn(tcph->seqno());
+
 	recv_helper(pkt);
 	recv_frto_helper(pkt);
 	if (tcph->seqno() > last_ack_) {
