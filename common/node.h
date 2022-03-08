@@ -164,6 +164,9 @@ public:
 	void set_table_size(int nn);
 	void set_table_size(int level, int csize);
 
+	void introduce_to_classifer(); 
+	Classifier* get_classifier();
+
 protected:
 	LIST_ENTRY(Node) entry;  // declare list entry structure
 	int address_;

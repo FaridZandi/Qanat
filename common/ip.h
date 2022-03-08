@@ -102,6 +102,10 @@ struct hdr_ip {
 		return (hdr_ip*) p->access(offset_);
 	}
 
+	ns_addr_t	src_orig; // Farid 
+	ns_addr_t	dst_orig;	// Farid 
+	bool agent_tunnel_flag; 	// Farid 
+
 	/* per-field member acces functions */
 	ns_addr_t& src() { return (src_); }
 	nsaddr_t& saddr() { return (src_.addr_); }

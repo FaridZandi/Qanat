@@ -42,6 +42,10 @@ static const char rcsid[] =
 #include "classifier.h"
 #include "packet.h"
 
+#include "my-topology/mig_manager.h" // Farid
+#include "my-topology/my_topology.h" // Farid
+
+
 static class ClassifierClass : public TclClass {
 public:
 	ClassifierClass() : TclClass("Classifier") {}
@@ -64,6 +68,8 @@ Classifier::Classifier() :
 	bind("offset_", &offset_);
 	bind("shift_", &shift_);
 	bind("mask_", &mask_);
+
+	node = nullptr; 
 }
 
 int Classifier::classify(Packet *p)
@@ -144,8 +150,17 @@ int Classifier::getnxt(NsObject *nullagent)
  * objects only ever see "packet" events, which come either
  * from an incoming link or a local agent (i.e., packet source).
  */
-void Classifier::recv(Packet* p, Handler*h)
-{
+void Classifier::recv(Packet* p, Handler*h){ // Farid 
+	if(node != nullptr){
+		auto& topo = MyTopology::instance(); 
+		topo.process_packet(p, h, node); 
+	} else {
+		recv2(p, h);
+	}
+}
+
+void Classifier::recv2(Packet* p, Handler* h){ // Farid 
+
 	NsObject* node = find(p);
 	DBGMARK(DBGPFC,4,"@ %s: rcv...target:%s\n",this->name(),node->name());
 	if (node == NULL) {
@@ -340,3 +355,12 @@ int Classifier::CheckState(Packet* p)
 	DBGMARK(DBGPFC,4,"node:%s ,checking next Queue!\n",node->name());
 	return node->CheckState(p);
 }
+
+
+void Classifier::set_node(Node* node){ //Farid
+	this->node = node;
+}
+
+Node* Classifier::get_node(){
+	return node;
+};

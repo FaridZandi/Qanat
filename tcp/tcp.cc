@@ -13,6 +13,7 @@ static const char rcsid[] =
 #include "random.h"
 #include "basetrace.h"
 #include "hdr_qs.h"
+#include <iostream>
 
 int hdr_tcp::offset_;
 
@@ -786,6 +787,11 @@ void TcpAgent::output(int seqno, int reason)
 
         ++ndatapack_;
         ndatabytes_ += databytes;
+
+
+	std::cout << "Sending a packet here, seq no: ";
+	std::cout << seqno << std::endl;
+
 	send(p, 0);
 	if (seqno == curseq_ && seqno > maxseq_)
 		idle();  // Tell application I have sent everything so far

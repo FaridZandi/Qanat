@@ -38,6 +38,7 @@
 #include "ip.h"
 #include "tcp-sink.h"
 #include "hdr_qs.h"
+#include <iostream>
 
 static class TcpSinkClass : public TclClass {
 public:
@@ -365,6 +366,7 @@ void TcpSink::add_to_ack(Packet*)
 
 void TcpSink::recv(Packet* pkt, Handler*)
 {
+	
 	int numToDeliver;
 	int numBytes = hdr_cmn::access(pkt)->size();
 	// number of bytes in the packet just received
@@ -375,6 +377,10 @@ void TcpSink::recv(Packet* pkt, Handler*)
 		Packet::free(pkt);
 		return;
 	}
+
+	std::cout << "TcpSink::recv with seqno: " << th->seqno() << std::endl;
+	
+	
 	acker_->update_ts(th->seqno(),th->ts(),ts_echo_rfc1323_);
 	// update the timestamp to echo
 	

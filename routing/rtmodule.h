@@ -98,6 +98,8 @@ public:
 	void set_table_size(int level, int csize);
 	RoutingModule *next_rtm_;
 	
+	Classifier* get_classifier();
+	
 protected:
 	Node *n_;
 	Classifier *classifier_;

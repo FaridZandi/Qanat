@@ -509,3 +509,7 @@ void ManualRoutingModule::add_route(char *dst, NsObject *target) {
 		next_rtm_->add_route(dst, target); 
 }
 
+
+Classifier* RoutingModule::get_classifier(){
+	return classifier_;
+}

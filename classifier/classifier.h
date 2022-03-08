@@ -42,6 +42,8 @@
 #define DBGCLS 0
 
 class Packet;
+class Node; 
+
 
 class Classifier : public NsObject {
 public:
@@ -61,7 +63,38 @@ public:
 	//:
 	virtual void pfcmessage(int ntoNodeid,int npriority,int nduration);
 
-	virtual void recv(Packet* p, Handler* h);
+/**
+	 * @author Farid
+	 * 
+	 * @brief Entry point for the packet in a node. 
+	 * 
+	 * It will the process functions from the topology. It
+	 * might call the recv2 function right away, call it after 
+	 * a while, or it might never call it if the packet is
+	 * decided to be dropped.
+	 * 
+	 * @param p The packet. 
+	 * @param h The event handler. 
+	 */
+	virtual void recv(Packet* p, Handler* h); // Farid 
+
+	/**
+	 * @author Farid 
+	 * 
+	 * @brief To be called after recv. Breaking functionality
+	 * of the recv function into two halves to allow asyncronous
+	 * execution. 
+	 * 
+	 * If the recv function decides to stall, delay, buffer,
+	 * or whatever else to the packet, the call to recv2 
+	 * might be delayed.
+	 * 
+	 * @param p The packet. 
+	 * @param h The event handler. 
+	 */
+	virtual void recv2(Packet* p, Handler* h); // Farid 
+
+
 	virtual NsObject* find(Packet*);
 	virtual int classify(Packet *);
 	virtual void clear(int slot);
@@ -87,6 +120,11 @@ public:
 	 */
 	virtual int CheckState(Packet* p);
 	virtual bool IsMultiPathForwarder(NsObject*node){	return false;}
+
+
+	void set_node(Node* node);
+	Node* get_node();
+	
 protected:
 	virtual int getnxt(NsObject *);
 	virtual int command(int argc, const char*const* argv);
@@ -99,6 +137,9 @@ protected:
 	int mask_;
 	NsObject *default_target_;
 	int nsize_;       //what size of nslot_ should be
+
+	Node* node;  // Farid 
+
 };
 
 #endif

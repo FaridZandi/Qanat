@@ -322,3 +322,14 @@ Node* Node::get_node_by_address (nsaddr_t id)
 	}
 	return NULL;
 }
+
+
+
+
+void Node::introduce_to_classifer(){
+	get_classifier()->set_node(this); 
+}
+
+Classifier* Node::get_classifier(){
+	return this->rtnotif_->get_classifier();
+}
