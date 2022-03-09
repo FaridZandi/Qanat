@@ -97,12 +97,23 @@ void StupidOrchestrator::start_migration(){
 
 
 void StupidOrchestrator::start_vm_precopy(Node* vm){
+    auto& topo = MyTopology::instance(); 
+
     print_time(); 
     std::cout << "sending the VM precopy for node: ";
     std::cout << vm->address() << std::endl;
 
-    
     mig_state[vm] = MigState::PreMig; 
+
+    auto& topo = MyTopology::instance();
+    auto peer = topo.data[vm].peer;
+    auto peer_data = topo.data[peer];
+    auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
+    
+    setup_nth_layer_tunnel(vm, 1);
+
+    // BUG HERE
+    topo.tcl_command({topo.sim_ptr, "vm_precopy.tcl", vm, peer});
 
     auto t = new VMPrecopySender; 
     t->vm = vm; 
