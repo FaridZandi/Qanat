@@ -79,7 +79,28 @@ protected:
 };
 
 
-class Monitor : public NF {
+class StatefulNF : public NF {
+public: 
+    StatefulNF(TopoNode* toponode, int chain_pos); 
+
+    virtual ~StatefulNF(); 
+
+    virtual bool recv(Packet* p, Handler* h);
+
+    void print_state();
+
+    void 
+
+protected: 
+
+    bool record_state; 
+    bool load_state; 
+    std::map<std::string, std::string> state; 
+};
+
+
+
+class Monitor : public StatefulNF {
 public:
     Monitor(TopoNode* toponode, int chain_pos); 
 
@@ -91,14 +112,7 @@ public:
 
     virtual std::string get_type(); 
     
-    virtual void print_info(); 
-
-private:
-
-    int packet_count;
-    std::map<int, int> dst_counter; 
-    std::map<int, int> src_counter; 
-
+    virtual void print_info();  
 };
 
 

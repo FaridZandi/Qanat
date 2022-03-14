@@ -34,13 +34,49 @@ void NF::print_info(){
 }
 
 /**********************************************************
+ * StatefulNF Implementation                              *  
+ *********************************************************/
+
+StatefulNF::StatefulNF(TopoNode* toponode, int chain_pos) 
+    : NF(toponode, chain_pos) {
+
+    record_state[]
+}
+
+StatefulNF::~StatefulNF(){
+
+}
+
+bool StatefulNF::recv(Packet* p, Handler* h){
+    hdr_ip* iph = hdr_ip::access(p); 
+    
+    if (load_state){
+        if (iph->state_dst == toponode_->me->address()){
+            state[iph->key] = key->value; 
+
+            delete iph->key;
+            delete iph->value; 
+            iph->state_dst = -1; 
+        }
+    }
+    return true; 
+}
+
+void StatefulNF::print_state(){
+    for (auto const& x : state){
+        std::cout << x.first  << ':' << x.second << std::endl;
+    }
+}
+
+
+/**********************************************************
  * Monitor Implementation                                 *  
  *********************************************************/
 
-
 Monitor::Monitor(TopoNode* toponode, int chain_pos) 
-    : NF(toponode, chain_pos) {
-    packet_count = 0; 
+    : StatefulNF(toponode, chain_pos) {
+
+    state["packet_count"] = "0";
 }
 
 Monitor::~Monitor(){
@@ -48,19 +84,19 @@ Monitor::~Monitor(){
 }
 
 bool Monitor::recv(Packet* p, Handler* h){
+    StatefulNF::recv(p, h); 
+
     std::cout << "[monitr] "; 
     std::cout << toponode_->me->address();  
     std::cout << " recved packet here" << std::endl;
-
 
     hdr_ip* iph = hdr_ip::access(p); 
     auto p_src = iph->src_.addr_;
 	auto p_dst = iph->dst_.addr_;
 
-
-    packet_count++;
-    dst_counter[p_dst]++; 
-    src_counter[p_src]++; 
+    int count = std::stoi(state["packet_count"]);
+    count ++; 
+    state["packet_count"] = to_string(count);
 
     return true; 
 }
@@ -75,9 +111,9 @@ std::string Monitor::get_type(){
 
 void Monitor::print_info(){
     std::cout << "monitor on node " ;
-    std::cout << this->toponode_->me->address();
+    std::cout << toponode_->me->address();
     std::cout << ", current count is: "; 
-    std::cout << this->packet_count; 
+    std::cout << state["packet_count"]; 
     std::cout << std::endl;  
 }
 
