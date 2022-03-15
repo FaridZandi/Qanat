@@ -4,10 +4,14 @@
 #include "my_topology.h"
 #include "mig_manager.h"
 #include <iostream>
+#include <sstream>
 
 NF::NF(TopoNode* toponode, 
        int chain_pos) : toponode_(toponode),
-                        chain_pos_(chain_pos) { }
+                        chain_pos_(chain_pos) {
+                            
+    verbose = true;
+}
 
 NF::~NF(){
 
@@ -19,6 +23,10 @@ void NF::send(Event* e){
     toponode_->process_packet(
         p, p->handler_, chain_pos_ + 1
     );
+}
+
+bool NF::is_stateful(){
+    return false; 
 }
 
 int NF::get_chain_pos(){
@@ -33,6 +41,8 @@ void NF::print_info(){
     std::cout << get_type() << std::endl; 
 }
 
+
+
 /**********************************************************
  * StatefulNF Implementation                              *  
  *********************************************************/
@@ -40,7 +50,8 @@ void NF::print_info(){
 StatefulNF::StatefulNF(TopoNode* toponode, int chain_pos) 
     : NF(toponode, chain_pos) {
 
-    record_state[]
+    is_loading = false; 
+    is_recording = false; 
 }
 
 StatefulNF::~StatefulNF(){
@@ -48,18 +59,87 @@ StatefulNF::~StatefulNF(){
 }
 
 bool StatefulNF::recv(Packet* p, Handler* h){
+    load_state(p); 
+    return true; 
+}
+
+
+std::string StatefulNF::get_five_tuple(Packet* p){
+    std::stringstream five_tuple;
     hdr_ip* iph = hdr_ip::access(p); 
+
+    five_tuple << iph->src_.addr_ << "-";
+    five_tuple << iph->src_.port_ << "-";
+    five_tuple << iph->dst_.addr_ << "-";
+    five_tuple << iph->dst_.port_;
+
+    // where is the protocol?  
+    // five_tuple << protocol;
+
+    return five_tuple.str();
+}
+
+void StatefulNF::increment_key(std::string key){
     
-    if (load_state){
+    std::string value; 
+
+    if (state.find(key) == state.end()) {
+        value = "0";
+    } else {
+        value = state[key];
+    }   
+
+    int count = std::stoi(value) + 1;
+    state[key] = to_string(count);
+    std::cout << "increment " << key << " to " << state[key] << std::endl; 
+}
+
+
+void StatefulNF::load_state(Packet* p){
+    if (is_loading){
+        hdr_ip* iph = hdr_ip::access(p); 
+
+        // std::cout << iph->state_dst << " " << toponode_->me->address() << std::endl; 
+
         if (iph->state_dst == toponode_->me->address()){
-            state[iph->key] = key->value; 
+            state[std::string(iph->key)] = std::string(iph->value); 
+
+
+            std::cout << "Node " << this->toponode_->me->address(); 
+            std::cout << " loaded " << iph->key << ": " << state[iph->key];
+            std::cout << " from packet" << std::endl;
 
             delete iph->key;
             delete iph->value; 
             iph->state_dst = -1; 
+
         }
     }
-    return true; 
+}
+
+void StatefulNF::record_state(std::string key, Packet* p){
+
+    if (is_recording){
+        hdr_ip* iph = hdr_ip::access(p); 
+
+        iph->state_dst = this->toponode_->peer->address();
+
+        iph->key = new char[key.length() + 1];
+        memcpy(iph->key, key.c_str(), key.length() + 1); 
+
+        auto value = state[key];
+        iph->value = new char[value.length() + 1];
+        memcpy(iph->value, value.c_str(), value.length() + 1);
+
+        std::cout << "Node " << this->toponode_->me->address(); 
+        std::cout << " stored " << iph->key << ": " << iph->value;
+        std::cout << " to packet" << std::endl;
+    }
+}
+
+
+bool StatefulNF::is_stateful(){
+    return true;
 }
 
 void StatefulNF::print_state(){
@@ -75,8 +155,7 @@ void StatefulNF::print_state(){
 
 Monitor::Monitor(TopoNode* toponode, int chain_pos) 
     : StatefulNF(toponode, chain_pos) {
-
-    state["packet_count"] = "0";
+        state["packet_count"] = "0"; 
 }
 
 Monitor::~Monitor(){
@@ -86,17 +165,21 @@ Monitor::~Monitor(){
 bool Monitor::recv(Packet* p, Handler* h){
     StatefulNF::recv(p, h); 
 
-    std::cout << "[monitr] "; 
-    std::cout << toponode_->me->address();  
-    std::cout << " recved packet here" << std::endl;
+    if(verbose){
+        std::cout << "[monitr] "; 
+        std::cout << toponode_->me->address();  
+        std::cout << " recved packet here" << std::endl;
+    }
 
     hdr_ip* iph = hdr_ip::access(p); 
     auto p_src = iph->src_.addr_;
 	auto p_dst = iph->dst_.addr_;
 
-    int count = std::stoi(state["packet_count"]);
-    count ++; 
-    state["packet_count"] = to_string(count);
+    increment_key("packet_count");
+    auto five_tuple = get_five_tuple(p);
+    increment_key(five_tuple); 
+
+    record_state(five_tuple, p);
 
     return true; 
 }
@@ -136,49 +219,64 @@ Buffer::~Buffer(){
 }
 
 bool Buffer::recv(Packet* p, Handler* h){
-    std::cout << "[buffer] "; 
-    std::cout << toponode_->me->address();   
+    if(verbose){
+        std::cout << "[buffer] "; 
+        std::cout << toponode_->me->address();   
+    }
 
     if(buffering){
         if(pq->length() == size_){
             // TODO: drop the packet (free the memory, etc.) 
-            std::cout << " Buffer is full. Dropping packet. ";
-            std::cout << std::endl;
+            if(verbose){
+                std::cout << " Buffer is full. Dropping packet. ";
+                std::cout << std::endl;
+            }
         } else {
-            pq->enque(p); 
-            std::cout << " Buffering the packet. New Q length:"; 
-            std::cout << pq->length() << std::endl;
+            pq->enque(p);
+
+            if(verbose){
+                std::cout << " Buffering the packet. New Q length:"; 
+                std::cout << pq->length() << std::endl;
+            }
         }
         return false;
     } else {        
-        std::cout << " Letting the packet pass through.";
-        std::cout <<  std::endl;
+        if(verbose){
+            std::cout << " Letting the packet pass through.";
+            std::cout <<  std::endl;
+        }   
         return true; 
     }
 }
 
 void Buffer::start_buffering(){
-    buffering = true; 
+    buffering = true;
 
-    std::cout << "start buffering for ";
-    std::cout << toponode_->me->address(); 
-    std::cout << std::endl; 
+    if(verbose){
+        std::cout << "start buffering for ";
+        std::cout << toponode_->me->address(); 
+        std::cout << std::endl; 
+    }
 }
 
 void Buffer::stop_buffering(){
-    std::cout << "stopped buffering for ";
-    std::cout << toponode_->me->address(); 
-    std::cout << std::endl; 
+    if(verbose){
+        std::cout << "stopped buffering for ";
+        std::cout << toponode_->me->address(); 
+        std::cout << std::endl; 
+    }
     
     while (pq->length() > 0){
-        std::cout << "[buffer] "; 
-        std::cout << toponode_->me->address();   
-        std::cout << " releasing a packet here. " << std::endl;
+        if(verbose){
+            std::cout << "[buffer] "; 
+            std::cout << toponode_->me->address();   
+            std::cout << " releasing a packet here. " << std::endl;
+        }
+
         send(pq->deque());
     } 
+
     buffering = false; 
-
-
 }
 
 std::string Buffer::get_type(){
@@ -215,17 +313,25 @@ double RateLimiterNF::get_interval(){
 }
 
 bool RateLimiterNF::recv(Packet* p, Handler* h){
-    std::cout << "[ratlim] ";
-    std::cout << toponode_->me->address();
+    if(verbose){
+        std::cout << "[ratlim] ";
+        std::cout << toponode_->me->address();
+    }
 
     if(busy_){
-        pq->enque(p); 
-        std::cout << " Queuing the packet. New Q length:"; 
-        std::cout << pq->length() << std::endl;
+        pq->enque(p);
+
+        if(verbose){
+            std::cout << " Queuing the packet. New Q length:"; 
+            std::cout << pq->length() << std::endl;
+        }
+
         return false; 
     } else {
-        std::cout << " Letting the packet pass through.";
-        std::cout << std::endl; 
+        if(verbose){
+            std::cout << " Letting the packet pass through.";
+            std::cout << std::endl; 
+        }
         
         busy_ = true; 
         Event* e = new Event; 
@@ -247,10 +353,12 @@ void RateLimiterNF::handle(Event* event){
 }
 
 void RateLimiterNF::send_and_sched(){
-    std::cout << "[ratlim] ";
-    std::cout << toponode_->me->address();
-    std::cout << " DeQ packet. New Q length:"; 
-    std::cout << pq->length() - 1 << std::endl;
+    if(verbose){
+        std::cout << "[ratlim] ";
+        std::cout << toponode_->me->address();
+        std::cout << " DeQ packet. New Q length:"; 
+        std::cout << pq->length() - 1 << std::endl;
+    }
 
     send(pq->deque()); 
 
@@ -286,10 +394,15 @@ DelayerNF::~DelayerNF(){
 }
 
 bool DelayerNF::recv(Packet* p, Handler* h){
-    std::cout << "[delayr] ";
-    std::cout << toponode_->me->address(); 
-    std::cout << " recved a packet here." << std::endl;
+
+    if(verbose){
+        std::cout << "[delayr] ";
+        std::cout << toponode_->me->address(); 
+        std::cout << " recved a packet here." << std::endl;
+    }
+    
     Scheduler::instance().schedule(this, p, delay);
+
     return false; 
 }
 
@@ -322,9 +435,12 @@ TunnelManagerNF::~TunnelManagerNF(){
 }
 
 bool TunnelManagerNF::recv(Packet* p, Handler* h){
-    std::cout << "[tunnel] ";
-    std::cout << toponode_->me->address(); 
-    std::cout << " recved a packet here." << std::endl;
+
+    if(verbose){   
+        std::cout << "[tunnel] ";
+        std::cout << toponode_->me->address(); 
+        std::cout << " recved a packet here." << std::endl;
+    }
 
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 

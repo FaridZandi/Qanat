@@ -9,11 +9,13 @@ class Handler;
 
 struct tunnel_data { 
 	bool valid; 
+
 	Node* in;
 	Node* out;
-	Node* src;
-	Node* dst; 
-	Node* dst_new; 
+
+	Node* from; 
+	Node* to; 
+
 	int uid; 
 };
 
@@ -21,8 +23,8 @@ enum Tunnel_Point {
     Tunnel_None, 
     Tunnel_In, 
     Tunnel_Out, 
-    Tunnel_Dst, 
-    Tunnel_Dst_New
+    Tunnel_From, 
+    Tunnel_To
 };
 
 enum Direction {
@@ -72,16 +74,13 @@ public:
      * 
      * @param in The entry point of the tunnel.
      * @param out The exit point of the tunnel.
-     * @param src The expected source of the traffic.
-     * @param dst The expected destination of the traffic.
-     * @param dst_new The new desination to deliver the 
-     * packets to.
+     * @param from Migration source.
+     * @param to Migration destination.
      * 
      * @return The uid of this tunnel.
      */
     int activate_tunnel(Node* in, Node* out, 
-                         Node* src, Node* dst,
-                         Node* dst_new);
+                        Node* from, Node* to);
     
     /**
      * @brief removes the tunnel from active tunnels.
@@ -103,18 +102,15 @@ private:
     
     bool tunnel_packet_in(tunnel_data, Packet*, Node*);
 	bool tunnel_packet_out(tunnel_data, Packet*, Node*);
-    bool handle_packet_at_dst(tunnel_data, Packet*, 
-                              Handler*, Node*);
-    bool handle_packet_at_dst_new(tunnel_data, Packet*, 
-                                  Handler*, Node*);
-
-
+    bool handle_packet_from(tunnel_data, Packet*, Handler*, Node*);
+    bool handle_packet_to(tunnel_data, Packet*, Handler*, Node*);
 
     tunnel_data* tunnels; 
 
     static int tunnel_uid_counter;
 	static const int tunnel_count = 10; 
 
+    bool verbose;
 };
 
 #endif

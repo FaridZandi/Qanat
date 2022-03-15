@@ -35,12 +35,14 @@ public:
      * @brief Event handler function.
      * 
      * The NF can possible schedule events for the future.
-     * Those event can be handled by itselft. 
+     * Those event can be handled by itself. 
      * 
      * @param event The event (packet) to be handled. 
      */
     virtual void handle(Event* event) = 0;
 
+
+    virtual bool is_stateful(); 
 
     /**
      * @brief Get the position of this NF in the chain. 
@@ -70,12 +72,15 @@ public:
      */
     virtual std::string get_type() = 0; 
 
+    
 protected: 
 
     void send(Event* e);
 
     TopoNode* toponode_; 
     int chain_pos_;
+
+    bool verbose; 
 };
 
 
@@ -87,14 +92,26 @@ public:
 
     virtual bool recv(Packet* p, Handler* h);
 
+    bool is_recording; 
+
+    bool is_loading; 
+
+    virtual bool is_stateful(); 
+    
+    // utility functions 
+    
+    std::string get_five_tuple(Packet* p);
+
+    void increment_key(std::string key); 
+
+    virtual void load_state(Packet* p); 
+
+    virtual void record_state(std::string key, Packet* p);
+
     void print_state();
 
-    void 
 
 protected: 
-
-    bool record_state; 
-    bool load_state; 
     std::map<std::string, std::string> state; 
 };
 

@@ -108,9 +108,9 @@ struct hdr_ip {
 	bool agent_tunnel_flag; 	// Farid 
 	
 	// For State Migration
-	int32_t state_dst; 
-	char * key; 
-	char * value; 
+	int32_t state_dst; // Farid 
+	char* key; // Farid 
+	char* value; // Farid 
 
 	/* per-field member acces functions */
 	ns_addr_t& src() { return (src_); }

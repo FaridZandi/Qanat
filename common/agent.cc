@@ -470,7 +470,9 @@ Agent::initpkt(Packet* p) const
 	iph->sport() = here_.port_;
 	iph->daddr() = dst_.addr_;
 	iph->dport() = dst_.port_;
-	iph->agent_tunnel_flag = false; 
+	
+	iph->agent_tunnel_flag = false; // Farid 
+	iph->state_dst = -1; // Farid 
 
 	//DEBUG
 	//if (dst_ != -1)

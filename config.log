@@ -27,6 +27,7 @@ uname -v = #100-Ubuntu SMP Fri Sep 24 14:50:10 UTC 2021
 /usr/bin/oslevel       = unknown
 /bin/universe          = unknown
 
+PATH: /home/faridzandi/.vscode-server/bin/f80445acd5a3dadef24aa209168452a3d97cc326/bin/remote-cli
 PATH: /usr/local/sbin
 PATH: /usr/local/bin
 PATH: /usr/sbin
@@ -36,6 +37,12 @@ PATH: /bin
 PATH: /usr/games
 PATH: /usr/local/games
 PATH: /snap/bin
+PATH: /home/faridzandi/ns2/ns-allinone-2.34/bin
+PATH: /home/faridzandi/ns2/ns-allinone-2.34/tcl8.4.18/unix
+PATH: /home/faridzandi/ns2/ns-allinone-2.34/tk8.4.18/unix
+PATH: /home/faridzandi/ns2/ns-allinone-2.34/bin
+PATH: /home/faridzandi/ns2/ns-allinone-2.34/tcl8.4.18/unix
+PATH: /home/faridzandi/ns2/ns-allinone-2.34/tk8.4.18/unix
 PATH: /home/faridzandi/ns2/ns-allinone-2.34/bin
 PATH: /home/faridzandi/ns2/ns-allinone-2.34/tcl8.4.18/unix
 PATH: /home/faridzandi/ns2/ns-allinone-2.34/tk8.4.18/unix

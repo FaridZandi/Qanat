@@ -155,13 +155,11 @@ int MyTopology::command(int argc, const char*const* argv){
             
             auto in = (Node*)TclObject::lookup(argv[2]);
             auto out = (Node*)TclObject::lookup(argv[3]);
-            auto src = (Node*)TclObject::lookup(argv[4]);
-            auto dst = (Node*)TclObject::lookup(argv[5]);
-            auto dst_new = (Node*)TclObject::lookup(argv[6]);
+            auto from = (Node*)TclObject::lookup(argv[5]);
+            auto to = (Node*)TclObject::lookup(argv[6]);
             
             int uid = mig_manager().activate_tunnel(in, out, 
-                                                    src, dst, 
-                                                    dst_new);
+                                                    from, to);
 
             tcl.resultf("%d", uid);
 
@@ -174,7 +172,7 @@ int MyTopology::command(int argc, const char*const* argv){
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
     tcl_command({sim_ptr, "connect", 
-                data[n1].tcp, data[n2].tcp});
+                data[n1].tcp, data[n2].tcp_sink});
 }
 
 
@@ -188,20 +186,13 @@ void MyTopology::connect_nodes(Node* parent, Node* child){
 void MyTopology::setup_apps(){
 
     for(Node* node: nodes){
-        // set up the agent
+        // set up the agents
         tcl_command({"new Agent/UDP"});
         data[node].udp = Tcl::instance().result();
-
-        if(node == traffic_src){
-            tcl_command({"new Agent/TCP"});
-        } else {
-            tcl_command({"new Agent/TCPSink"});
-        }
-
-        // tcl_command({"new Agent/TCP/FullTcp"});
-
-        
+        tcl_command({"new Agent/TCP"});
         data[node].tcp = Tcl::instance().result();
+        tcl_command({"new Agent/TCPSink"});
+        data[node].tcp_sink = Tcl::instance().result();
 
         // connect the agent to the node 
         tcl_command({sim_ptr, "attach-agent",
@@ -212,6 +203,9 @@ void MyTopology::setup_apps(){
                      data[node].pointer, 
                      data[node].tcp});
 
+        tcl_command({sim_ptr, "attach-agent",
+                     data[node].pointer, 
+                     data[node].tcp_sink});
 
         // set up the application 
         tcl_command({"new Application"});

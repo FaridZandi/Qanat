@@ -56,7 +56,15 @@ void StupidOrchestrator::setup_node_types(){
         }
         for(auto& node: topo.get_internal_nodes(root)){        
             topo.data[node].mode = OpMode::GW;
-            topo.data[node].add_nf("monitor");
+            auto m = (Monitor*)topo.data[node].add_nf("monitor");
+
+            // temp
+            if (root == mig_root){
+                m->is_recording = true; 
+            } else {
+                m->is_loading = true; 
+            }
+            
             topo.data[node].add_nf("delayer", 0.01);
             topo.data[node].add_nf("tunnel_manager");
             topo.data[node].print_nfs(); 
@@ -347,16 +355,14 @@ void StupidOrchestrator::setup_nth_layer_tunnel(Node* node, int layer){
     auto nth_parent_peer = topo.data[nth_parent].peer; 
 
     print_time(); 
-    std::cout << "traffic from " << topo.traffic_src->address() << " ";                           
-    std::cout << "to " << node->address() << "      ";                           
-    std::cout << "tunneled from " << nth_parent->address() << " ";                           
-    std::cout << "to " << nth_parent_peer->address() << "      ";
-    std::cout << "new dst: " << peer->address() << " ";
+    std::cout << "traffic to " << node->address() << " ";                           
+    std::cout << "migrated to " << peer->address() << " ";                           
+    std::cout << "tunnelled from " << nth_parent->address() << "  ";
+    std::cout << "to " << nth_parent_peer->address() << " ";
     std::cout << std::endl;
 
     topo.mig_manager().activate_tunnel(
-        nth_parent, nth_parent_peer, 
-        topo.traffic_src, 
+        nth_parent, nth_parent_peer,  
         node, peer
     );
 }; 

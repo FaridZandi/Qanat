@@ -102,6 +102,7 @@ public:
     std::string pointer; 
     std::string udp;
     std::string tcp;  
+    std::string tcp_sink;  
     std::string app; 
 
     std::vector<Node*> children; 
