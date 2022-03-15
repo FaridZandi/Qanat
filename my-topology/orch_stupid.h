@@ -28,7 +28,6 @@ public:
     GWDiffSender() : TimerHandler() { }
     inline virtual void expire(Event*); 
     Node* gw;
-    Node* vm;
 };
 
 class GWSnapshotSender: public TimerHandler {
@@ -36,7 +35,6 @@ public:
     GWSnapshotSender() : TimerHandler() { }
     inline virtual void expire(Event*); 
     Node* gw;
-    Node* vm;
 };
 
 class LastPacketSender : public TimerHandler {
@@ -76,8 +74,8 @@ public:
 
     virtual void vm_precopy_finished(Node* vm); 
     virtual void vm_migration_finished(Node* vm); 
-    virtual void gw_snapshot_sent(Node* gw, Node* vm); 
-    virtual void gw_diff_sent(Node* gw, Node* vm); 
+    virtual void gw_snapshot_sent(Node* gw); 
+    virtual void gw_diff_sent(Node* gw); 
     virtual void gw_sent_last_packet(Node* gw); 
     virtual void gw_received_last_packet(Node* gw); 
 
@@ -85,14 +83,11 @@ private:
 
     void start_vm_precopy(Node* vm); 
     void start_vm_migration(Node* vm); 
-    void start_gw_snapshot(Node* gw, Node* vm); 
-    void start_gw_diff(Node* gw, Node* vm);  
+    void start_gw_snapshot(Node* gw); 
+    void start_gw_diff(Node* gw);  
     void copy_gw_state(Node* gw){}; 
     void mark_last_packet(Node* parent, Node* child); 
-    void start_gw_migration_if_possible(Node* gw); 
-    void finish_gw_migration_if_possible(Node* gw); 
-    
-
+    void start_gw_migration_if_possible(Node* gw);     
 
     // utility
     void setup_nth_layer_tunnel(Node* vm, int n); 
@@ -104,8 +99,9 @@ private:
 
     std::queue<Node*> vm_migration_queue;
     std::map<Node*, MigState> mig_state; 
-    std::map<Node*, std::map<Node*, bool> > gw_snapshot_vm_sent; 
-    std::map<Node*, std::map<Node*, bool> > gw_diff_vm_sent; 
+
+    // std::map<Node*, std::map<Node*, bool> > gw_snapshot_vm_sent; 
+    // std::map<Node*, std::map<Node*, bool> > gw_diff_vm_sent; 
 
     static const int parallel_migrations = 2; 
 };

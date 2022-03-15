@@ -34,11 +34,6 @@ void StupidOrchestrator::setup_node_types(){
 
     for(auto& node: topo.get_internal_nodes(mig_root)){
         mig_state[node] = MigState::NoMigState;
-
-        for (auto& vm: topo.get_leaves(node)){
-            gw_snapshot_vm_sent[node][vm] = false;
-            gw_diff_vm_sent[node][vm] = false;
-        }
     }
 
     // TODO: I should probably move this to another class
@@ -58,12 +53,13 @@ void StupidOrchestrator::setup_node_types(){
             topo.data[node].mode = OpMode::GW;
             auto m = (Monitor*)topo.data[node].add_nf("monitor");
 
-            // temp
-            if (root == mig_root){
-                m->is_recording = true; 
-            } else {
-                m->is_loading = true; 
-            }
+            ////////////////////////////////
+            // if (root == mig_root){
+            //     m->is_recording = true; 
+            // } else {
+            //     m->is_loading = true; 
+            // }
+            ////////////////////////////////
             
             topo.data[node].add_nf("delayer", 0.01);
             topo.data[node].add_nf("tunnel_manager");
@@ -81,7 +77,6 @@ void StupidOrchestrator::setup_node_types(){
 void StupidOrchestrator::start_migration(){
     std::srand(123);
 
-
     auto& topo = MyTopology::instance(); 
 
     std::cout << "VM migration Queue: ";
@@ -90,7 +85,6 @@ void StupidOrchestrator::start_migration(){
         std::cout << leave->address() << " ";
     }
     std::cout << std::endl;
-
 
     for(int i = 0; i < parallel_migrations; i++){
         if(vm_migration_queue.size() > 0){
@@ -102,21 +96,16 @@ void StupidOrchestrator::start_migration(){
 };
     
   
-
-
 void StupidOrchestrator::start_vm_precopy(Node* vm){
     print_time(); 
     std::cout << "sending the VM precopy for node: ";
     std::cout << vm->address() << std::endl;
 
-    
     mig_state[vm] = MigState::PreMig; 
 
     auto t = new VMPrecopySender; 
     t->vm = vm; 
     t->sched(random_wait()); 
-
-    
 }
 
 void StupidOrchestrator::vm_precopy_finished(Node* vm){
@@ -129,11 +118,6 @@ void StupidOrchestrator::vm_precopy_finished(Node* vm){
 
 
 void StupidOrchestrator::start_vm_migration(Node* vm){
-
-    print_time(); 
-    std::cout << "sending the VM snanshot for node: ";
-    std::cout << vm->address() << std::endl;
-
     mig_state[vm] = MigState::InMig; 
 
     auto& topo = MyTopology::instance();
@@ -142,23 +126,24 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
     
     setup_nth_layer_tunnel(vm, 1); 
+
     print_time(); 
+    std::cout << "start buffering for ";
+    std::cout << peer->address() << std::endl; 
     peer_buffer->start_buffering();
+
+    print_time(); 
+    std::cout << "sending the VM snanshot for node: ";
+    std::cout << vm->address() << std::endl;
 
     auto vmss = new VMSnapshotSender; 
     vmss->vm = vm; 
     vmss->sched(random_wait());  
-
-
-    auto gw = topo.get_nth_parent(vm, 1);
-    start_gw_snapshot(gw, vm); 
-
 }
 
 
 
 void StupidOrchestrator::vm_migration_finished(Node* vm){
-
     print_time(); 
     std::cout << "VM migration finished for: ";
     std::cout << vm->address() << std::endl;
@@ -170,7 +155,10 @@ void StupidOrchestrator::vm_migration_finished(Node* vm){
     auto peer = topo.data[vm].peer;
     auto peer_data = topo.data[peer];
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
+
     print_time(); 
+    std::cout << "stopped buffering for ";
+    std::cout << peer->address() << std::endl; 
     peer_buffer->stop_buffering();
 
     // signal parent migration
@@ -186,36 +174,6 @@ void StupidOrchestrator::vm_migration_finished(Node* vm){
 }
 
 
-
-void StupidOrchestrator::start_gw_snapshot(Node* gw, Node* vm){
-
-    print_time(); 
-    std::cout << "sending the GW snapshot for VM: ";
-    std::cout << vm->address();
-    std::cout << " on GW: " << gw->address() << std::endl;
-
-    mig_state[gw] = MigState::PreMig; 
-
-    auto gwss = new GWSnapshotSender;
-    gwss->gw = gw;
-    gwss->vm = vm; 
-    gwss->sched(random_wait());
-}
-
-
-void StupidOrchestrator::gw_snapshot_sent(Node* gw, Node* vm){
-    print_time(); 
-    std::cout << "finished sending the GW snapshot for VM: ";
-    std::cout << vm->address();
-    std::cout << " on GW: " << gw->address() << std::endl;
-
-    gw_snapshot_vm_sent[gw][vm] = true;
-
-    start_gw_migration_if_possible(gw); 
-}; 
-
-
-
 void StupidOrchestrator::start_gw_migration_if_possible(
                                                Node* gw){
     auto& topo = MyTopology::instance();
@@ -227,24 +185,47 @@ void StupidOrchestrator::start_gw_migration_if_possible(
         }
     }
 
-    // check if all the snapshots of the VMs has been sent.
-    for(auto& vm: topo.get_leaves(gw)){
-        if(gw_snapshot_vm_sent[gw][vm] == false){
-            return; 
-        }
-    }
-    
     print_time(); 
     std::cout << "all conditions ok to start migrating GW: ";
     std::cout << gw->address() << std::endl;
 
-    mark_last_packet(topo.get_nth_parent(gw, 1), gw);
+    start_gw_snapshot(gw); 
 }
+
+
+void StupidOrchestrator::start_gw_snapshot(Node* gw){
+    print_time(); 
+    std::cout << "sending the GW snapshot for GW: ";
+    std::cout << gw->address() << std::endl;
+
+    mig_state[gw] = MigState::PreMig; 
+
+    auto gwss = new GWSnapshotSender;
+    gwss->gw = gw;
+    gwss->sched(random_wait());
+}
+
+
+void StupidOrchestrator::gw_snapshot_sent(Node* gw){
+    print_time(); 
+    std::cout << "finished sending the GW snapshot for GW: ";
+    std::cout << gw->address() << std::endl;
+
+    auto& topo = MyTopology::instance();
+
+    if (gw == topo.mig_root){
+        start_gw_diff(gw);
+    } else {
+        mark_last_packet(topo.get_nth_parent(gw, 1), gw);
+    }
+    
+}; 
+
+
 
 void StupidOrchestrator::mark_last_packet(Node* parent, 
                                           Node* child){
                                             
-
     print_time(); 
     std::cout << "waiting of the last packet to be sent "; 
     std::cout << "from GW: " << parent->address() << " "; 
@@ -274,7 +255,6 @@ void StupidOrchestrator::gw_sent_last_packet(Node* gw){
 
     for(auto vm: topo.get_leaves(gw)){
         setup_nth_layer_tunnel(vm, gw_layer + 1);
-        start_gw_snapshot(parent, vm);
     }
 
     auto lpr = new LastPacketReceiver; 
@@ -284,7 +264,6 @@ void StupidOrchestrator::gw_sent_last_packet(Node* gw){
 
 
 void StupidOrchestrator::gw_received_last_packet(Node* gw){
-    
     print_time(); 
     std::cout << "last packet has been received by GW: "; 
     std::cout << gw->address() << std::endl;
@@ -293,52 +272,37 @@ void StupidOrchestrator::gw_received_last_packet(Node* gw){
 
     mig_state[gw] = MigState::InMig; 
 
-    for (auto vm: topo.get_leaves(gw)){
-        start_gw_diff(gw, vm); 
-    }
+    start_gw_diff(gw); 
 }
 
 
-void StupidOrchestrator::start_gw_diff(Node* gw, Node* vm){
+void StupidOrchestrator::start_gw_diff(Node* gw){
     print_time(); 
-    std::cout << "sending the GW diff for VM: ";
-    std::cout << vm->address();
-    std::cout << " on GW: " << gw->address() << std::endl;
+    std::cout << "sending the GW diff for GW: ";
+    std::cout << gw->address() << std::endl;
 
     auto gwds = new GWDiffSender;
     gwds->gw = gw;
-    gwds->vm = vm; 
     gwds->sched(random_wait());
 }
 
 
-void StupidOrchestrator::gw_diff_sent(Node* gw, Node* vm){
+void StupidOrchestrator::gw_diff_sent(Node* gw){
     print_time(); 
-    std::cout << "finished sending the GW diff for VM: ";
-    std::cout << vm->address();
-    std::cout << " on GW: " << gw->address() << std::endl;
-
-    gw_diff_vm_sent[gw][vm] = true; 
-
-    finish_gw_migration_if_possible(gw); 
-}; 
-
-void StupidOrchestrator::finish_gw_migration_if_possible(
-                                               Node* gw){
-    auto& topo = MyTopology::instance();
-
-    for (auto vm: topo.get_leaves(gw)){
-        if(gw_diff_vm_sent[gw][vm] == false){
-            return; 
-        }
-    }
-
-    print_time(); 
-    std::cout << "all conditions ok to finish migrating GW: ";
+    std::cout << "GW migration finished for GW: ";
     std::cout << gw->address() << std::endl;
 
     mig_state[gw] = MigState::Migrated; 
-}
+
+    auto& topo = MyTopology::instance();
+    auto parent = topo.get_nth_parent(gw, 1); 
+
+    if (gw != topo.mig_root){
+        start_gw_migration_if_possible(parent);
+    }
+    
+}; 
+
 
   
 
@@ -355,9 +319,9 @@ void StupidOrchestrator::setup_nth_layer_tunnel(Node* node, int layer){
     auto nth_parent_peer = topo.data[nth_parent].peer; 
 
     print_time(); 
-    std::cout << "traffic to " << node->address() << " ";                           
+    std::cout << "node " << node->address() << " ";                           
     std::cout << "migrated to " << peer->address() << " ";                           
-    std::cout << "tunnelled from " << nth_parent->address() << "  ";
+    std::cout << "tunnelled from " << nth_parent->address() << " ";
     std::cout << "to " << nth_parent_peer->address() << " ";
     std::cout << std::endl;
 
@@ -392,12 +356,12 @@ double StupidOrchestrator::random_wait(){
 
 void GWSnapshotSender::expire(Event* e){  
     auto& orch = StupidOrchestrator::instance(); 
-    orch.gw_snapshot_sent(gw, vm);  
+    orch.gw_snapshot_sent(gw);  
 }
 
 void GWDiffSender::expire(Event* e){  
     auto& orch = StupidOrchestrator::instance(); 
-    orch.gw_diff_sent(gw, vm);  
+    orch.gw_diff_sent(gw);  
 }
 
 void VMSnapshotSender::expire(Event* e){  

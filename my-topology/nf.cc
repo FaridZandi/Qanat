@@ -251,21 +251,9 @@ bool Buffer::recv(Packet* p, Handler* h){
 
 void Buffer::start_buffering(){
     buffering = true;
-
-    if(verbose){
-        std::cout << "start buffering for ";
-        std::cout << toponode_->me->address(); 
-        std::cout << std::endl; 
-    }
 }
 
 void Buffer::stop_buffering(){
-    if(verbose){
-        std::cout << "stopped buffering for ";
-        std::cout << toponode_->me->address(); 
-        std::cout << std::endl; 
-    }
-    
     while (pq->length() > 0){
         if(verbose){
             std::cout << "[buffer] "; 
