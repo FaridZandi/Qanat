@@ -90,6 +90,7 @@ private:
     void start_gw_migration_if_possible(Node* gw);     
 
     // utility
+    
     void setup_nth_layer_tunnel(Node* vm, int n); 
     
     void print_time();
@@ -99,9 +100,6 @@ private:
 
     std::queue<Node*> vm_migration_queue;
     std::map<Node*, MigState> mig_state; 
-
-    // std::map<Node*, std::map<Node*, bool> > gw_snapshot_vm_sent; 
-    // std::map<Node*, std::map<Node*, bool> > gw_diff_vm_sent; 
 
     static const int parallel_migrations = 2; 
 };

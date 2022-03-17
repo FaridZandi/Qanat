@@ -131,7 +131,7 @@ Tunnel_Point MigrationManager::packet_match(tunnel_data td,
 			}
 		}	
 		if (p_dst == t_from){									// the packet is going to DST
-			return Tunnel_Point::Tunnel_Out; 				
+			return Tunnel_Point::Tunnel_Out; 					// used for early redirectin of packets
 		}	
 	} else if (n_addr == t_from){								// this is the DST node
 		if (p_dst == t_from or p_src == t_from){				// the packet was destined to DST
@@ -335,4 +335,68 @@ bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p,
 	td.from->get_classifier()->recv(p, h); 
 
     return false; 
+}
+
+/**********************************************************
+ * EfficentMigrationManager Implementation                                 *  
+ *********************************************************/
+
+
+
+EfficentMigrationManager::EfficentMigrationManager(){
+	verbose = false; 	
+}
+
+EfficentMigrationManager::~EfficentMigrationManager(){
+
+}
+
+bool EfficentMigrationManager::pre_classify(
+						Packet* p, Handler* h, Node* n){
+						
+	hdr_ip* iph = hdr_ip::access(p); 
+
+	auto p_src = iph->src_.addr_;
+	auto p_dst = iph->dst_.addr_;	
+	
+	auto p_src_orig = iph->src_orig.addr_;
+	auto p_dst_orig = iph->dst_orig.addr_;
+
+
+	auto n_addr = n->address(); 
+
+	Tunnel_Point tp = rules[n_addr][p_dst];
+
+	if (tp == Tunnel_Point::Tunnel_In) {
+		// return tunnel_packet_in(td, p, n); 
+	} else if (tp == Tunnel_Point::Tunnel_Out) {
+		// return tunnel_packet_out(td, p, n); 
+	} else if (tp == Tunnel_Point::Tunnel_From) {
+		// return handle_packet_from(td, p, h, n);
+	} else if (tp == Tunnel_Point::Tunnel_To) {
+		// return handle_packet_to(td, p, h, n); 
+	}	
+
+	return true; 
+}
+
+
+void EfficentMigrationManager::deactivate_tunnel(int uid){
+
+}
+
+
+void EfficentMigrationManager::add_tunnel(tunnel_data tunnel){
+	
+	auto t_in = tunnel.in->address(); 
+	auto t_out = tunnel.out->address(); 
+	auto t_from = tunnel.from->address(); 
+	auto t_to = tunnel.to->address(); 
+
+	rules[t_in][t_from] = Tunnel_Point::Tunnel_In;
+	rules[t_out][t_out] = Tunnel_Point::Tunnel_Out;
+	rules[t_out][t_from] = Tunnel_Point::Tunnel_Out;
+	rules[t_from][0] = Tunnel_Point::Tunnel_From; 
+	rules[t_to][t_to] = Tunnel_Point::Tunnel_To; 
+
 }

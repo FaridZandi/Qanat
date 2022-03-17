@@ -104,7 +104,6 @@ void StatefulNF::load_state(Packet* p){
         if (iph->state_dst == toponode_->me->address()){
             state[std::string(iph->key)] = std::string(iph->value); 
 
-
             std::cout << "Node " << this->toponode_->me->address(); 
             std::cout << " loaded " << iph->key << ": " << state[iph->key];
             std::cout << " from packet" << std::endl;
@@ -112,7 +111,6 @@ void StatefulNF::load_state(Packet* p){
             delete iph->key;
             delete iph->value; 
             iph->state_dst = -1; 
-
         }
     }
 }

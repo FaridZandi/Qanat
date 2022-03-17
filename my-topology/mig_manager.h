@@ -1,7 +1,7 @@
 #ifndef mig_manager_h
 #define mig_manager_h
 
- 
+#include <map>
 
 class Node; 
 class Packet; 
@@ -52,10 +52,10 @@ public:
      * @return false if the packet should be ignored by the 
      * calling classify function. 
      */
-    bool pre_classify(Packet* p, Handler* h, Node* n);
+    virtual bool pre_classify(Packet* p, Handler* h, Node* n);
     
 
-       /**
+    /**
      * @brief Checks if the further functions in the NF chain
      * should be applied to this packet or not. 
      * 
@@ -87,12 +87,11 @@ public:
      * 
      * @param uid The uid of the deactivating tunnel. 
      */
-    void deactivate_tunnel(int uid); 
+    virtual void deactivate_tunnel(int uid); 
 
-private: 
+protected: 
 
-   
-    void add_tunnel(tunnel_data tunnel);    
+    virtual void add_tunnel(tunnel_data tunnel);    
     
     void log_packet(Packet* p); 
     void log_tunnel(tunnel_data td, Tunnel_Point tp, Packet* p);
@@ -111,6 +110,27 @@ private:
 	static const int tunnel_count = 10; 
 
     bool verbose;
+};
+
+
+class EfficentMigrationManager: public MigrationManager{
+
+public: 
+    EfficentMigrationManager(); 
+
+    virtual ~EfficentMigrationManager(); 
+
+    virtual bool pre_classify(Packet* p, Handler* h, Node* n);
+
+    virtual void deactivate_tunnel(int uid); 
+
+protected: 
+
+    virtual void add_tunnel(tunnel_data tunnel); 
+private: 
+
+    std::map<int, std::map<int, Tunnel_Point> > rules; 
+    std::map<int, std::map<int, tunnel_data> > data; 
 };
 
 #endif
