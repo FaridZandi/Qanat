@@ -219,7 +219,11 @@ void MyTopology::setup_apps(){
     }
 }
 
-
+void MyTopology::notify_flow_fin(Node* n){
+    auto& orch = BaseOrchestrator::instance();    
+    orch.vm_precopy_finished(n);
+    std::cout << "precopy finished";
+}
 
 void MyTopology::add_link(Node* parent, Node* child){
     tcl_command({sim_ptr, "duplex-link",

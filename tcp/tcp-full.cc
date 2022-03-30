@@ -48,6 +48,7 @@ static const char rcsid[] =
 #include "template.h"
 #include "math.h"
 #include "common/common.h"
+#include "my-topology/my_topology.h"
 #define DBGTCP 0
 #define DBGCOST 0
 //(curseq_>1000000)?4:0
@@ -453,6 +454,9 @@ FullTcpAgent::bufferempty()
 
 	//printf("flow fid= %d is done\n",fid_);
 	Tcl::instance().evalf("%s done_data", this->name());
+	Node* node = (Node*)TclObject::lookup(this->name());
+	auto& topo = MyTopology::instance();
+	topo.notify_flow_fin(node);
 }
 
 

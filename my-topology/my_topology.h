@@ -138,6 +138,8 @@ public:
 
 	virtual int command(int argc, const char*const* argv);
 
+    void notify_flow_fin(Node* n);
+
 
 private:
 
