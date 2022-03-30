@@ -10,7 +10,7 @@ NF::NF(TopoNode* toponode,
        int chain_pos) : toponode_(toponode),
                         chain_pos_(chain_pos) {
                             
-    verbose = true;
+    verbose = false;
 }
 
 NF::~NF(){
@@ -91,7 +91,9 @@ void StatefulNF::increment_key(std::string key){
 
     int count = std::stoi(value) + 1;
     state[key] = to_string(count);
-    std::cout << "increment " << key << " to " << state[key] << std::endl; 
+    if (verbose){
+        std::cout << "increment " << key << " to " << state[key] << std::endl; 
+    }
 }
 
 

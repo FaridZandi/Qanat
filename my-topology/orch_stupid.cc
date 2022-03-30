@@ -103,9 +103,12 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
 
     mig_state[vm] = MigState::PreMig; 
 
-    auto t = new VMPrecopySender; 
-    t->vm = vm; 
-    t->sched(random_wait()); 
+    auto& topo = MyTopology::instance();
+    topo.connect_agents(vm, topo.data[vm].peer);
+    Agent* agent = (Agent*)TclObject::lookup(topo.data[vm].tcp.c_str());
+    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}; 
+    int state_size = 1000000;
+    topo.send_data(vm, state_size);
 }
 
 void StupidOrchestrator::vm_precopy_finished(Node* vm){
@@ -133,12 +136,14 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     peer_buffer->start_buffering();
 
     print_time(); 
-    std::cout << "sending the VM snanshot for node: ";
+    std::cout << "sending the VM snapshot for node: ";
     std::cout << vm->address() << std::endl;
 
-    auto vmss = new VMSnapshotSender; 
-    vmss->vm = vm; 
-    vmss->sched(random_wait());  
+    topo.connect_agents(vm, topo.data[vm].peer);
+    Agent* agent = (Agent*)TclObject::lookup(topo.data[vm].tcp.c_str());
+    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}; 
+    int state_size = 100000;
+    topo.send_data(vm, state_size);
 }
 
 
@@ -200,9 +205,12 @@ void StupidOrchestrator::start_gw_snapshot(Node* gw){
 
     mig_state[gw] = MigState::PreMig; 
 
-    auto gwss = new GWSnapshotSender;
-    gwss->gw = gw;
-    gwss->sched(random_wait());
+    auto& topo = MyTopology::instance();
+    topo.connect_agents(gw, topo.data[gw].peer);
+    Agent* agent = (Agent*)TclObject::lookup(topo.data[gw].tcp.c_str());
+    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().gw_snapshot_sent(n);}; 
+    int state_size = 10000;
+    topo.send_data(gw, state_size);
 }
 
 
@@ -281,9 +289,12 @@ void StupidOrchestrator::start_gw_diff(Node* gw){
     std::cout << "sending the GW diff for GW: ";
     std::cout << gw->address() << std::endl;
 
-    auto gwds = new GWDiffSender;
-    gwds->gw = gw;
-    gwds->sched(random_wait());
+    auto& topo = MyTopology::instance();
+    topo.connect_agents(gw, topo.data[gw].peer);
+    Agent* agent = (Agent*)TclObject::lookup(topo.data[gw].tcp.c_str());
+    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().gw_diff_sent(n);}; 
+    int state_size = 10000;
+    topo.send_data(gw, state_size);
 }
 
 
@@ -344,34 +355,6 @@ double StupidOrchestrator::random_wait(){
     int r = 80 + std::rand() % 40;
     double wait = (double) r / 100.0; 
     return wait; 
-}
-
-
-
-
-
-
-
-
-
-void GWSnapshotSender::expire(Event* e){  
-    auto& orch = StupidOrchestrator::instance(); 
-    orch.gw_snapshot_sent(gw);  
-}
-
-void GWDiffSender::expire(Event* e){  
-    auto& orch = StupidOrchestrator::instance(); 
-    orch.gw_diff_sent(gw);  
-}
-
-void VMSnapshotSender::expire(Event* e){  
-    auto& orch = StupidOrchestrator::instance(); 
-    orch.vm_migration_finished(vm);  
-}
-
-void VMPrecopySender::expire(Event* e){  
-    auto& orch = StupidOrchestrator::instance(); 
-    orch.vm_precopy_finished(vm);  
 }
 
 void LastPacketSender::expire(Event* e){  

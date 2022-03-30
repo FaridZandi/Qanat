@@ -137,9 +137,7 @@ public:
     
 
 	virtual int command(int argc, const char*const* argv);
-
-    void notify_flow_fin(Node* n);
-
+    void send_data(Node* n1, int n_bytes);
 
 private:
 
@@ -178,7 +176,6 @@ private:
     friend class StupidOrchestrator; 
 
     // Useless functions 
-    void send_data(Node* n1);
     void print_nodes();
     void print_graph();
     

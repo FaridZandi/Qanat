@@ -9,34 +9,6 @@
 
 class Node; 
 
-class VMSnapshotSender: public TimerHandler {
-public:
-    VMSnapshotSender() : TimerHandler() { }
-    inline virtual void expire(Event*); 
-    Node* vm;
-};
-
-class VMPrecopySender: public TimerHandler {
-public:
-    VMPrecopySender() : TimerHandler() { }
-    inline virtual void expire(Event*); 
-    Node* vm;
-};
-
-class GWDiffSender: public TimerHandler {
-public:
-    GWDiffSender() : TimerHandler() { }
-    inline virtual void expire(Event*); 
-    Node* gw;
-};
-
-class GWSnapshotSender: public TimerHandler {
-public:
-    GWSnapshotSender() : TimerHandler() { }
-    inline virtual void expire(Event*); 
-    Node* gw;
-};
-
 class LastPacketSender : public TimerHandler {
 public:
     LastPacketSender() : TimerHandler() { }

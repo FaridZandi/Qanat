@@ -139,7 +139,7 @@ int MyTopology::command(int argc, const char*const* argv){
             Node* n1 = (Node*)TclObject::lookup(argv[2]);
             Node* n2 = (Node*)TclObject::lookup(argv[3]);
             
-            send_data(n1);
+            send_data(n1, 1000);
             
             return TCL_OK; 
         } else if (strcmp(argv[1], "duplicate_tree") == 0) {
@@ -171,8 +171,16 @@ int MyTopology::command(int argc, const char*const* argv){
 
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
+    static int connection_counter = 1;    
+    tcl_command({data[n1].tcp, "reset"}); 
+    tcl_command({data[n2].tcp, "reset"});
+     
     tcl_command({sim_ptr, "connect", 
-                data[n1].tcp, data[n2].tcp_sink});
+                data[n1].tcp, data[n2].tcp});
+    tcl_command({data[n2].tcp, "listen"});
+    tcl_command({data[n1].tcp, "set", "fid_", std::to_string(connection_counter)});
+    tcl_command({data[n2].tcp, "set", "fid_", std::to_string(connection_counter)});
+    connection_counter++;
 }
 
 
@@ -189,10 +197,8 @@ void MyTopology::setup_apps(){
         // set up the agents
         tcl_command({"new Agent/UDP"});
         data[node].udp = Tcl::instance().result();
-        tcl_command({"new Agent/TCP"});
+        tcl_command({"new Agent/TCP/FullTcp"});
         data[node].tcp = Tcl::instance().result();
-        tcl_command({"new Agent/TCPSink"});
-        data[node].tcp_sink = Tcl::instance().result();
 
         // connect the agent to the node 
         tcl_command({sim_ptr, "attach-agent",
@@ -203,9 +209,8 @@ void MyTopology::setup_apps(){
                      data[node].pointer, 
                      data[node].tcp});
 
-        tcl_command({sim_ptr, "attach-agent",
-                     data[node].pointer, 
-                     data[node].tcp_sink});
+        Agent* m_agent = (Agent*)TclObject::lookup(data[node].tcp.c_str());
+        m_agent->node = node;
 
         // set up the application 
         tcl_command({"new Application"});
@@ -217,12 +222,6 @@ void MyTopology::setup_apps(){
 
         tcl_command({data[node].app, "start"});
     }
-}
-
-void MyTopology::notify_flow_fin(Node* n){
-    auto& orch = BaseOrchestrator::instance();    
-    orch.vm_precopy_finished(n);
-    std::cout << "precopy finished";
 }
 
 void MyTopology::add_link(Node* parent, Node* child){
@@ -469,6 +468,7 @@ void MyTopology::print_graph(){
 }
 
 
-void MyTopology::send_data(Node* n1){
-    tcl_command({data[n1].app, "send", "1000"});
+void MyTopology::send_data(Node* n1, int n_bytes){
+    tcl_command({data[n1].app, "send", std::to_string(n_bytes)});
+    // tcl_command({data[n1].app, "advance_bytes", std::to_string(n_bytes)});
 }

@@ -46,6 +46,7 @@
 #define TIME_FORMAT "%.15g"
 // TIME_FORMAT is in basetrace.h, but including that header leads to problems
 
+class Node; // we will keep a pointer to the owner of this agent
 
 #define TIMER_IDLE 0
 #define TIMER_PENDING 1
@@ -76,6 +77,8 @@ class Agent : public Connector {
 	
 	//added for edrop tracing - ratul
 	void recvOnly(Packet *) {};
+	Node* node; // the owner of this agent
+	void (*finish_notify_callback) (Node*);
 
 	void send(Packet* p, Handler* h) { target_->recv(p, h); }
 	virtual void timeout(int tno);

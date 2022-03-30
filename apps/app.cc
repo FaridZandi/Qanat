@@ -107,8 +107,8 @@ void Application::stop()
 
 
 void Application::send(int nbytes)
-{
-	agent_->sendmsg(nbytes);
+{	
+	agent_->sendmsg(nbytes, "DAT_EOF");
 }
 
 
