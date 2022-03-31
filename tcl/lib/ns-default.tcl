@@ -1450,6 +1450,7 @@ if [TclObject is-class Agent/TCP/FullTcp] {
         Agent/TCP/FullTcp set debug_ false;  # Added Sept. 16, 2007.
 	Agent/TCP/FullTcp set flow_remaining_ -1; #Mohammad: added for robust FCT measurement
 	Agent/TCP/FullTcp set dynamic_dupack_ 0; # Mohammad: if non-zero, set dupack threshold to max(3, dynamic_dupack_ * cwnd_)
+	Agent/TCP/FullTcp set traffic_class_ 1; # Farid
 	Agent/TCP/FullTcp set prio_scheme_ 2; #Shuang: priority scheme
 	Agent/TCP/FullTcp set prio_num_ 0; #Shuang: number of priority
 	Agent/TCP/FullTcp set pfc_enable 0; #: pfc
@@ -1726,4 +1727,3 @@ Agent/PBC set payloadSize 200
 Agent/PBC set periodicBroadcastInterval 1
 Agent/PBC set periodicBroadcastVariance 0.1
 Agent/PBC set modulationScheme 0
-

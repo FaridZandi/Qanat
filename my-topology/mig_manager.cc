@@ -2,6 +2,7 @@
 #include "node.h"
 #include "packet.h"
 #include <iostream>
+#include "tcp-full.h"
 
 int MigrationManager::tunnel_uid_counter = 0;
 
@@ -46,6 +47,18 @@ void MigrationManager::deactivate_tunnel(int uid){
 			break;
 		}
 	}
+}
+
+
+bool MigrationManager::should_ignore(Packet* p){
+	hdr_ip* iph = hdr_ip::access(p); 
+	hdr_tcp* tcph = hdr_tcp::access(p); 
+
+	if (iph->traffic_class == 2){
+		return true; 
+	}
+
+	return false; 
 }
 
 
@@ -194,7 +207,7 @@ bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
 		auto td = tunnels[i]; 
 		Tunnel_Point tp = packet_match(td, p, n); 
 		
-		// log_tunnel(td, tp, p);
+		log_tunnel(td, tp, p);
 
 		if (tp == Tunnel_Point::Tunnel_None) {
 			continue; 
@@ -221,10 +234,12 @@ bool MigrationManager::tunnel_packet_in(tunnel_data td,
 	// destination of this packet are recorded in temp
 	// variables in their ip header. 
 
-	hdr_ip* iph = hdr_ip::access(p); 
-	if(iph->traffic_class  == 2){
+	if(should_ignore(p)){
 		return true;
-	}	
+	} 
+
+	hdr_ip* iph = hdr_ip::access(p); 
+
 	iph->dst_orig = iph->dst_;
 	iph->src_orig = iph->src_;
 	iph->dst_.addr_ = td.out->address();
@@ -242,10 +257,13 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// of the original destination, the new destination
 	// will be assigned to the packet. 
 	
-	hdr_ip* iph = hdr_ip::access(p); 	
-	if(iph->traffic_class  == 2){
+	
+	if(should_ignore(p)){
 		return true;
-	}
+	}  
+
+	hdr_ip* iph = hdr_ip::access(p); 	
+
 	auto t_from = td.from->address(); 
 	auto t_to = td.to->address(); 
 	auto t_out = td.out->address(); 
@@ -291,6 +309,10 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	// destination, it should be handed back to the new 
 	// destination to deliver it.   
 
+	if(should_ignore(p)){
+		return true;
+	}  
+
 	hdr_ip* iph = hdr_ip::access(p);
 	Direction dir; 
 
@@ -298,10 +320,6 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	auto p_src = iph->src_.addr_;
 	auto p_dst = iph->dst_.addr_;	
 	auto n_addr = n->address(); 
-
-	if(iph->traffic_class  == 2){
-		return true;
-	}
 
 	if (p_dst == n_addr){
 		dir = Direction::Incoming;
@@ -337,10 +355,11 @@ bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p,
 	// had already passed the gateway when the tunnel 
 	// was established. 
 
-    hdr_ip* iph = hdr_ip::access(p); 	
-	if(iph->traffic_class  == 2){
+	if(should_ignore(p)){
 		return true;
-	}
+	}  
+
+    hdr_ip* iph = hdr_ip::access(p); 	
 
     iph->dst_.addr_ = td.from->address(); 
     iph->agent_tunnel_flag = true;

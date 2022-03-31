@@ -173,13 +173,15 @@ int MyTopology::command(int argc, const char*const* argv){
 void MyTopology::start_tcp_app(Node* n1){
     tcl_command({"new Agent/TCP/FullTcp"});
     data[n1].tcp = Tcl::instance().result();
-    tcl_command({sim_ptr, "attach-agent",
-                    data[n1].pointer, 
-                    data[n1].tcp});
-
+    
     FullTcpAgent* m_agent = (FullTcpAgent*)TclObject::lookup(data[n1].tcp.c_str());
     tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+    std::cout << "address: " << m_agent << std::endl; 
     m_agent->node = n1;
+
+    tcl_command({sim_ptr, "attach-agent",
+                 data[n1].pointer, 
+                 data[n1].tcp});
 
     // set up the application 
     tcl_command({"new Application"});
@@ -193,14 +195,20 @@ void MyTopology::start_tcp_app(Node* n1){
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
     static int connection_counter = 1;    
+    
     start_tcp_app(n1);
     start_tcp_app(n2);
-    
+
     tcl_command({sim_ptr, "connect", 
                 data[n1].tcp, data[n2].tcp});
+    tcl_command({data[n1].tcp, "listen"});
     tcl_command({data[n2].tcp, "listen"});
     tcl_command({data[n1].tcp, "set", "fid_", std::to_string(connection_counter)});
     tcl_command({data[n2].tcp, "set", "fid_", std::to_string(connection_counter)});
+    
+
+    
+
     connection_counter++;
 }
 

@@ -1,6 +1,6 @@
 set ns [new Simulator]
 ns use-scheduler List
-set sim_end 100
+set sim_end 2
 
 #$ns rtproto DV
 #Agent/rtProto/DV set advertInterval [expr 2*$sim_end]

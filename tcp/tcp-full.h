@@ -100,6 +100,7 @@ public:
         virtual int& size() { return maxseg_; } //FullTcp uses maxseg_ for size_
 	virtual int command(int argc, const char*const* argv);
        	virtual void reset();       		// reset to a known point
+
 protected:
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);

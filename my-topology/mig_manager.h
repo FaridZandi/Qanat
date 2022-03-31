@@ -91,9 +91,12 @@ public:
 
 protected: 
 
+    virtual bool should_ignore(Packet* p); 
+
     virtual void add_tunnel(tunnel_data tunnel);    
     
     void log_packet(Packet* p); 
+    
     void log_tunnel(tunnel_data td, Tunnel_Point tp, Packet* p);
     
     Tunnel_Point packet_match(tunnel_data, Packet*, Node*); 

@@ -75,6 +75,10 @@ public:
     
 protected: 
 
+    bool should_ignore(Packet* p); 
+
+    bool log_packet(std::string message, int arg = -1);
+
     void send(Event* e);
 
     TopoNode* toponode_; 

@@ -5,12 +5,14 @@
 #include "mig_manager.h"
 #include <iostream>
 #include <sstream>
+#include "tcp-full.h"
+#include <iomanip>
 
 NF::NF(TopoNode* toponode, 
        int chain_pos) : toponode_(toponode),
                         chain_pos_(chain_pos) {
                             
-    verbose = false;
+    verbose = true;
 }
 
 NF::~NF(){
@@ -40,6 +42,41 @@ void NF::decrement_chain_pos(){
 void NF::print_info(){
     std::cout << get_type() << std::endl; 
 }
+
+bool NF::should_ignore(Packet* p){
+    hdr_ip* iph = hdr_ip::access(p); 
+    hdr_tcp* tcph = hdr_tcp::access(p); 
+
+    if (iph->traffic_class == 2){
+        return true; 
+    }
+
+    return false; 
+}
+
+bool NF::log_packet(std::string message, int arg){
+
+    if(verbose){    
+        std::cout << "[";
+        std::cout << std::setprecision(5);
+        std::cout << std::setw(5);
+        std::cout << Scheduler::instance().clock();
+        std::cout << "] ";
+
+        std::cout << "[" << get_type() << "] ";
+
+        std::cout << "[node " << toponode_->me->address() << "] ";
+
+        std::cout << message; 
+
+        if (arg != -1){
+            std::cout << " " << arg; 
+        }
+        
+        std::cout << std::endl;
+    }
+}
+
 
 
 
@@ -165,11 +202,7 @@ Monitor::~Monitor(){
 bool Monitor::recv(Packet* p, Handler* h){
     StatefulNF::recv(p, h); 
 
-    if(verbose){
-        std::cout << "[monitr] "; 
-        std::cout << toponode_->me->address();  
-        std::cout << " recved packet here" << std::endl;
-    }
+    log_packet("recved packet here");
 
     hdr_ip* iph = hdr_ip::access(p); 
     auto p_src = iph->src_.addr_;
@@ -189,7 +222,7 @@ void Monitor::handle(Event* event){
 }
 
 std::string Monitor::get_type(){
-    return "monitor"; 
+    return "monitr"; 
 }
 
 void Monitor::print_info(){
@@ -219,39 +252,25 @@ Buffer::~Buffer(){
 }
 
 bool Buffer::recv(Packet* p, Handler* h){
-    if(verbose){
-        std::cout << "[buffer] "; 
-        std::cout << toponode_->me->address();   
-    }
-    
     hdr_ip* iph = hdr_ip::access(p);
-    std::cout << "class " << iph->traffic_class << std::endl; 
-    if (iph->traffic_class == 2){
+
+    log_packet("recved packet here with class: ", iph->traffic_class);
+
+    if (should_ignore(p)){
         return true;
     }
-    std::cout << "reached ip condition" << std::endl;
 
     if(buffering){
         if(pq->length() == size_){
             // TODO: drop the packet (free the memory, etc.) 
-            if(verbose){
-                std::cout << " Buffer is full. Dropping packet. ";
-                std::cout << std::endl;
-            }
+            log_packet("Buffer is full. Dropping packet.");
         } else {
             pq->enque(p);
-
-            if(verbose){
-                std::cout << " Buffering the packet. New Q length:"; 
-                std::cout << pq->length() << std::endl;
-            }
+            log_packet("Buffering the packet. New Q length:", pq->length());
         }
         return false;
-    } else {        
-        if(verbose){
-            std::cout << " Letting the packet pass through.";
-            std::cout <<  std::endl;
-        }   
+    } else {     
+        log_packet("Letting the packet pass through.");   
         return true; 
     }
 }
@@ -262,12 +281,7 @@ void Buffer::start_buffering(){
 
 void Buffer::stop_buffering(){
     while (pq->length() > 0){
-        if(verbose){
-            std::cout << "[buffer] "; 
-            std::cout << toponode_->me->address();   
-            std::cout << " releasing a packet here. " << std::endl;
-        }
-
+        log_packet("releasing a packet here.");
         send(pq->deque());
     } 
 
@@ -308,26 +322,15 @@ double RateLimiterNF::get_interval(){
 }
 
 bool RateLimiterNF::recv(Packet* p, Handler* h){
-    if(verbose){
-        std::cout << "[ratlim] ";
-        std::cout << toponode_->me->address();
-    }
 
     if(busy_){
         pq->enque(p);
-
-        if(verbose){
-            std::cout << " Queuing the packet. New Q length:"; 
-            std::cout << pq->length() << std::endl;
-        }
-
+        log_packet("Queuing the packet. New Q length:", pq->length());
         return false; 
     } else {
-        if(verbose){
-            std::cout << " Letting the packet pass through.";
-            std::cout << std::endl; 
-        }
-        
+
+        log_packet("Letting the packet pass through.");
+
         busy_ = true; 
         Event* e = new Event; 
         auto& sched = Scheduler::instance();
@@ -348,12 +351,7 @@ void RateLimiterNF::handle(Event* event){
 }
 
 void RateLimiterNF::send_and_sched(){
-    if(verbose){
-        std::cout << "[ratlim] ";
-        std::cout << toponode_->me->address();
-        std::cout << " DeQ packet. New Q length:"; 
-        std::cout << pq->length() - 1 << std::endl;
-    }
+    log_packet("DeQ packet. New Q length:", pq->length() - 1);
 
     send(pq->deque()); 
 
@@ -363,7 +361,7 @@ void RateLimiterNF::send_and_sched(){
 }
 
 std::string RateLimiterNF::get_type(){
-    return "rate_limiter"; 
+    return "ratlim"; 
 }
 
 void RateLimiterNF::print_info(){
@@ -390,11 +388,7 @@ DelayerNF::~DelayerNF(){
 
 bool DelayerNF::recv(Packet* p, Handler* h){
 
-    if(verbose){
-        std::cout << "[delayr] ";
-        std::cout << toponode_->me->address(); 
-        std::cout << " recved a packet here." << std::endl;
-    }
+    log_packet("recved a packet here.");
     
     Scheduler::instance().schedule(this, p, delay);
 
@@ -406,7 +400,7 @@ void DelayerNF::handle(Event* event){
 }
 
 std::string DelayerNF::get_type(){
-    return "delayer"; 
+    return "delayr"; 
 }
 
 void DelayerNF::print_info(){
@@ -430,12 +424,7 @@ TunnelManagerNF::~TunnelManagerNF(){
 }
 
 bool TunnelManagerNF::recv(Packet* p, Handler* h){
-
-    if(verbose){   
-        std::cout << "[tunnel] ";
-        std::cout << toponode_->me->address(); 
-        std::cout << " recved a packet here." << std::endl;
-    }
+    log_packet("recved a packet here.");
 
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 
@@ -461,7 +450,7 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
 }
 
 std::string TunnelManagerNF::get_type(){
-    return "tunnel_manager"; 
+    return "tnlmng"; 
 }
 
 void TunnelManagerNF::print_info(){

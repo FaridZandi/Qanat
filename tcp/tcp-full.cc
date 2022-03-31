@@ -910,6 +910,11 @@ FullTcpAgent::calPrio(int prio) {
 void
 FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reason, Packet *p)
 {
+	std::cout << "going to send a packet FullTcpAgent::sendpacket" << std::endl; 
+	
+	std::cout << "traffic class of this agent: ";
+	std::cout << this << " is " << traffic_class_ << std::endl; 
+
         if (!p) p = allocpkt();
         hdr_tcp *tcph = hdr_tcp::access(p);
 	hdr_flags *fh = hdr_flags::access(p);
@@ -4565,4 +4570,3 @@ public:
 		return (new CtrTCPAgent());
 	}
 } class_ctrtcp_full;
-
