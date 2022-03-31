@@ -10,7 +10,7 @@ MigrationManager::MigrationManager(){
 	for (int i = 0; i < tunnel_count; i++){
 		tunnels[i].valid = false;
 	}
-	verbose = false;
+	verbose = true;
 }
 
 MigrationManager::~MigrationManager(){
@@ -221,7 +221,10 @@ bool MigrationManager::tunnel_packet_in(tunnel_data td,
 	// destination of this packet are recorded in temp
 	// variables in their ip header. 
 
-	hdr_ip* iph = hdr_ip::access(p); 	
+	hdr_ip* iph = hdr_ip::access(p); 
+	if(iph->traffic_class  == 2){
+		return true;
+	}	
 	iph->dst_orig = iph->dst_;
 	iph->src_orig = iph->src_;
 	iph->dst_.addr_ = td.out->address();
@@ -240,7 +243,9 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// will be assigned to the packet. 
 	
 	hdr_ip* iph = hdr_ip::access(p); 	
-
+	if(iph->traffic_class  == 2){
+		return true;
+	}
 	auto t_from = td.from->address(); 
 	auto t_to = td.to->address(); 
 	auto t_out = td.out->address(); 
@@ -294,6 +299,10 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	auto p_dst = iph->dst_.addr_;	
 	auto n_addr = n->address(); 
 
+	if(iph->traffic_class  == 2){
+		return true;
+	}
+
 	if (p_dst == n_addr){
 		dir = Direction::Incoming;
 	} else if (p_src == n_addr){
@@ -329,6 +338,10 @@ bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p,
 	// was established. 
 
     hdr_ip* iph = hdr_ip::access(p); 	
+	if(iph->traffic_class  == 2){
+		return true;
+	}
+
     iph->dst_.addr_ = td.from->address(); 
     iph->agent_tunnel_flag = true;
     

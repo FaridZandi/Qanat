@@ -106,6 +106,7 @@ struct hdr_ip {
 	ns_addr_t	src_orig; // Farid 
 	ns_addr_t	dst_orig;	// Farid 
 	bool agent_tunnel_flag; 	// Farid 
+	int traffic_class; // Sepehr
 	
 	// For State Migration
 	int32_t state_dst; // Farid 

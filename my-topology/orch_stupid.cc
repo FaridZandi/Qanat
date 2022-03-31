@@ -36,6 +36,16 @@ void StupidOrchestrator::setup_node_types(){
         mig_state[node] = MigState::NoMigState;
     }
 
+
+// setup the connections
+    // for(auto& node: topo.get_leaves(mig_root)){
+    //     topo.connect_agents(node, topo.data[node].peer);   
+    // }
+
+    // for(auto& node: topo.get_internal_nodes(mig_root)){
+    //     topo.connect_agents(node, topo.data[node].peer);
+    // }
+
     // TODO: I should probably move this to another class
     // This both does and does not seem to be right place 
     // for these stuff. 
@@ -107,7 +117,7 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
     topo.connect_agents(vm, topo.data[vm].peer);
     Agent* agent = (Agent*)TclObject::lookup(topo.data[vm].tcp.c_str());
     agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}; 
-    int state_size = 1000000;
+    int state_size = 1000;
     topo.send_data(vm, state_size);
 }
 
@@ -142,7 +152,7 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     topo.connect_agents(vm, topo.data[vm].peer);
     Agent* agent = (Agent*)TclObject::lookup(topo.data[vm].tcp.c_str());
     agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}; 
-    int state_size = 100000;
+    int state_size = 1000;
     topo.send_data(vm, state_size);
 }
 
@@ -209,7 +219,7 @@ void StupidOrchestrator::start_gw_snapshot(Node* gw){
     topo.connect_agents(gw, topo.data[gw].peer);
     Agent* agent = (Agent*)TclObject::lookup(topo.data[gw].tcp.c_str());
     agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().gw_snapshot_sent(n);}; 
-    int state_size = 10000;
+    int state_size = 1000;
     topo.send_data(gw, state_size);
 }
 
@@ -293,7 +303,7 @@ void StupidOrchestrator::start_gw_diff(Node* gw){
     topo.connect_agents(gw, topo.data[gw].peer);
     Agent* agent = (Agent*)TclObject::lookup(topo.data[gw].tcp.c_str());
     agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().gw_diff_sent(n);}; 
-    int state_size = 10000;
+    int state_size = 1000;
     topo.send_data(gw, state_size);
 }
 

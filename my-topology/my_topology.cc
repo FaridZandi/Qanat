@@ -1,6 +1,7 @@
 #include "my_topology.h"
 #include "mig_manager.h"
 #include "orchestrator.h"
+#include "tcp-full.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>    
@@ -18,7 +19,7 @@ MyTopology* MyTopology::instance_ = nullptr;
 
 MyTopology::MyTopology(){
     bind_bool("verbose_", &verbose); // TODO: fix this. Doesn't work. 
-    verbose = false; 
+    verbose = true; 
 
     mig_root = nullptr; 
     mig_manager_ = new MigrationManager(); 
@@ -169,12 +170,32 @@ int MyTopology::command(int argc, const char*const* argv){
     return 0; 
 }
 
+void MyTopology::start_tcp_app(Node* n1){
+    tcl_command({"new Agent/TCP/FullTcp"});
+    data[n1].tcp = Tcl::instance().result();
+    tcl_command({sim_ptr, "attach-agent",
+                    data[n1].pointer, 
+                    data[n1].tcp});
+
+    FullTcpAgent* m_agent = (FullTcpAgent*)TclObject::lookup(data[n1].tcp.c_str());
+    tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+    m_agent->node = n1;
+
+    // set up the application 
+    tcl_command({"new Application"});
+    data[n1].app = Tcl::instance().result();
+
+    // connect the app to the agent 
+    tcl_command({data[n1].app, "attach-agent", data[n1].tcp});
+
+    // tcl_command({data[n1].app, "start"});
+}
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
     static int connection_counter = 1;    
-    tcl_command({data[n1].tcp, "reset"}); 
-    tcl_command({data[n2].tcp, "reset"});
-     
+    start_tcp_app(n1);
+    start_tcp_app(n2);
+    
     tcl_command({sim_ptr, "connect", 
                 data[n1].tcp, data[n2].tcp});
     tcl_command({data[n2].tcp, "listen"});
@@ -193,35 +214,17 @@ void MyTopology::connect_nodes(Node* parent, Node* child){
 
 void MyTopology::setup_apps(){
 
-    for(Node* node: nodes){
+    // for(Node* node: nodes){
         // set up the agents
-        tcl_command({"new Agent/UDP"});
-        data[node].udp = Tcl::instance().result();
-        tcl_command({"new Agent/TCP/FullTcp"});
-        data[node].tcp = Tcl::instance().result();
+        // tcl_command({"new Agent/UDP"});
+        // data[node].udp = Tcl::instance().result();
 
-        // connect the agent to the node 
-        tcl_command({sim_ptr, "attach-agent",
-                     data[node].pointer, 
-                     data[node].udp});
+        // // connect the agent to the node 
+        // tcl_command({sim_ptr, "attach-agent",
+        //              data[node].pointer, 
+        //              data[node].udp});
 
-        tcl_command({sim_ptr, "attach-agent",
-                     data[node].pointer, 
-                     data[node].tcp});
-
-        Agent* m_agent = (Agent*)TclObject::lookup(data[node].tcp.c_str());
-        m_agent->node = node;
-
-        // set up the application 
-        tcl_command({"new Application"});
-        data[node].app = Tcl::instance().result();
-
-        // connect the app to the agent 
-        tcl_command({data[node].app, "attach-agent", 
-                        data[node].tcp});
-
-        tcl_command({data[node].app, "start"});
-    }
+    // }
 }
 
 void MyTopology::add_link(Node* parent, Node* child){

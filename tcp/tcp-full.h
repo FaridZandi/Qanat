@@ -137,6 +137,8 @@ protected:
 	double last_send_time_;	// time of last send
   
 
+	int traffic_class_; // this is to define the class for each packet
+						// to be used by the buffers
 	/* Mohammad: state-variable for robust
 	   FCT measurement. 
 	*/

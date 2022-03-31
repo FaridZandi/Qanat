@@ -146,6 +146,7 @@ private:
     void setup_apps();
 
     void make_peers(Node* n1, Node* n2);
+    void start_tcp_app(Node* n1);
     void connect_agents(Node* n1, Node* n2);
     void connect_nodes(Node* parent, Node* child);
 

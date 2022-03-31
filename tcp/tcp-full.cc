@@ -153,6 +153,7 @@ FullTcpAgent::delay_bind_init_all()
         delay_bind_init_one("spa_thresh_");
 	
 	delay_bind_init_one("flow_remaining_"); //Mohammad
+	delay_bind_init_one("traffic_class_"); // Sepehr
 	delay_bind_init_one("dynamic_dupack_");
 
 	delay_bind_init_one("prio_scheme_"); // Shuang
@@ -199,6 +200,7 @@ FullTcpAgent::delay_bind_dispatch(const char *varName, const char *localName, Tc
         if (delay_bind_bool(varName, localName, "debug_", &debug_, tracer)) return TCL_OK;
 	if (delay_bind(varName, localName, "flow_remaining_", &flow_remaining_, tracer)) return TCL_OK; // Mohammad
 	if (delay_bind(varName, localName, "dynamic_dupack_", &dynamic_dupack_, tracer)) return TCL_OK; // Mohammad
+	if (delay_bind(varName, localName, "traffic_class_", &traffic_class_, tracer)) return TCL_OK; // Sepehr
 	if (delay_bind(varName, localName, "prio_scheme_", &prio_scheme_, tracer)) return TCL_OK; // Shuang
 	if (delay_bind(varName, localName, "prio_num_", &prio_num_, tracer)) return TCL_OK; //Shuang
 	if (delay_bind(varName, localName, "pfc_enable", &m_bPFC, tracer)) return TCL_OK;
@@ -266,6 +268,7 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 		if (strcmp(argv[1], "reset") == 0) {
+			std::cout << "going to reset the connection" << std::endl;
 			reset();
 			return (TCL_OK);
 		}
@@ -455,11 +458,13 @@ FullTcpAgent::listen()
 void
 FullTcpAgent::bufferempty()
 {
-   	signal_on_empty_=FALSE;
 
 	//printf("flow fid= %d is done\n",fid_);
-	Tcl::instance().evalf("%s done_data", this->name());
+    std::cout << Scheduler::instance().clock();
+	std::cout << " Buffer empty called" << std::endl;
 	finish_notify_callback(node);
+   	signal_on_empty_=FALSE;
+	Tcl::instance().evalf("%s done_data", this->name());
 }
 
 
@@ -625,6 +630,7 @@ FullTcpAgent::reset()
 	rtt_init();		// zero rtt, srtt, backoff       
 	last_ack_sent_ = -1;
 	flow_remaining_ = -1; // Mohammad
+	traffic_class_ = 1; // Sepehr
 	rcv_nxt_ = -1;
 	pipe_ = 0;
 	rtxbytes_ = 0;
@@ -908,6 +914,9 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
         hdr_tcp *tcph = hdr_tcp::access(p);
 	hdr_flags *fh = hdr_flags::access(p);
 	hdr_ip* iph = hdr_ip::access(p);
+
+	// change the traffic class for determining whether it should be bufferred or not
+	iph->traffic_class = traffic_class_;
 
 	/* build basic header w/options */
 

@@ -472,6 +472,7 @@ Agent::initpkt(Packet* p) const
 	iph->dport() = dst_.port_;
 	
 	iph->agent_tunnel_flag = false; // Farid 
+	iph->traffic_class = 1; // Sepehr
 	iph->state_dst = -1; // Farid 
 
 	//DEBUG

@@ -223,6 +223,13 @@ bool Buffer::recv(Packet* p, Handler* h){
         std::cout << "[buffer] "; 
         std::cout << toponode_->me->address();   
     }
+    
+    hdr_ip* iph = hdr_ip::access(p);
+    std::cout << "class " << iph->traffic_class << std::endl; 
+    if (iph->traffic_class == 2){
+        return true;
+    }
+    std::cout << "reached ip condition" << std::endl;
 
     if(buffering){
         if(pq->length() == size_){
