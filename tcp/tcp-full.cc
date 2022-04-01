@@ -4570,3 +4570,10 @@ public:
 		return (new CtrTCPAgent());
 	}
 } class_ctrtcp_full;
+
+
+void FullTcpAgent::set_traffic_class(int traffic_class){
+	this->traffic_class_ = traffic_class; 
+}
+
+

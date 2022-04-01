@@ -175,7 +175,9 @@ void MyTopology::start_tcp_app(Node* n1){
     data[n1].tcp = Tcl::instance().result();
     
     FullTcpAgent* m_agent = (FullTcpAgent*)TclObject::lookup(data[n1].tcp.c_str());
-    tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+    // tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+    m_agent->set_traffic_class(2);
+
     std::cout << "address: " << m_agent << std::endl; 
     m_agent->node = n1;
 
@@ -201,7 +203,7 @@ void MyTopology::connect_agents(Node* n1, Node* n2){
 
     tcl_command({sim_ptr, "connect", 
                 data[n1].tcp, data[n2].tcp});
-    tcl_command({data[n1].tcp, "listen"});
+
     tcl_command({data[n2].tcp, "listen"});
     tcl_command({data[n1].tcp, "set", "fid_", std::to_string(connection_counter)});
     tcl_command({data[n2].tcp, "set", "fid_", std::to_string(connection_counter)});

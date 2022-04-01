@@ -101,6 +101,8 @@ public:
 	virtual int command(int argc, const char*const* argv);
        	virtual void reset();       		// reset to a known point
 
+	void set_traffic_class(int traffic_class);
+	
 protected:
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
