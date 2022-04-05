@@ -79,6 +79,7 @@ class Agent : public Connector {
 	void recvOnly(Packet *) {};
 	Node* node; // the owner of this agent
 	void (*finish_notify_callback) (Node*);
+	bool is_finish_callback_set;
 
 	void send(Packet* p, Handler* h) { target_->recv(p, h); }
 	virtual void timeout(int tno);

@@ -33,6 +33,7 @@ void StupidOrchestrator::initiate_data_transfer(
     auto tcp_name = topo.data[node].tcp.c_str();
     Agent* agent = (Agent*)TclObject::lookup(tcp_name);
     agent->finish_notify_callback = callback; 
+    agent->is_finish_callback_set = true;
 
     topo.send_data(node, size);
 }

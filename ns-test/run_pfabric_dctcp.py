@@ -14,12 +14,15 @@ def worker():
 
 q = Queue.Queue()
 
-sim_end = 100000
+DEBUG_VALGRIND = False
+
+sim_end = 10 # simulate for 30 seconds
 link_rate = 10
 mean_link_delay = 0.0000002
 host_delay = 0.000020
 queueSize = 140
-load_arr = [0.9,0.8,0.7,0.6,0.5]
+# load_arr = [0.9,0.8,0.7,0.6,0.5]
+load_arr = [0.5]
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
@@ -39,7 +42,8 @@ prob_cap_ = 5
 switchAlg = 'DropTail'
 DCTCP_K = 65.0
 drop_prio_ = 'true'
-prio_scheme_arr = [2,3]
+# prio_scheme_arr = [2,3]
+prio_scheme_arr = [0]
 deque_prio_ = 'true'
 keep_order_ = 'true'
 prio_num_ = 1
@@ -52,14 +56,22 @@ pias_thresh_4 = 1989*1460
 pias_thresh_5 = 1999*1460
 pias_thresh_6 = 2001*1460
 
-topology_spt = 16
-topology_tors = 9
-topology_spines = 4
+# topology_spt = 16
+# topology_tors = 9
+# topology_spines = 4
+# topology_x = 1
+# smaller topology
+topology_spt = 4
+topology_tors = 2
+topology_spines = 1
 topology_x = 1
 #sets the number of machines needed on the destination (assumed to be on the same rack)
 topology_dest_servers = 4 
 
-ns_path = '/home/sepehr/codes/ns2/ns-allinone-2.34/ns-2.34'
+ns_path = 'ns'
+if DEBUG_VALGRIND:
+	ns_path = 'valgrind -s --track-origins=yes --leak-check=full ns'
+
 sim_script = 'spine_empirical.tcl'
 
 for prio_scheme_ in prio_scheme_arr:

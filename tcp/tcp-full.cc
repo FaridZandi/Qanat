@@ -459,10 +459,15 @@ void
 FullTcpAgent::bufferempty()
 {
 
-	//printf("flow fid= %d is done\n",fid_);
-    std::cout << Scheduler::instance().clock();
-	std::cout << " Buffer empty called" << std::endl;
-	finish_notify_callback(node);
+	printf("flow fid= %d is done\n",fid_);
+	/* if the C++ callback is not set, it is not important for us to 
+	   get the notification. 
+	*/
+	if (is_finish_callback_set){
+		finish_notify_callback(node);
+	} else {
+		std::cout << "[" <<  Scheduler::instance().clock() << "]" << " Buffer empty called" << std::endl;
+	}
    	signal_on_empty_=FALSE;
 	Tcl::instance().evalf("%s done_data", this->name());
 }

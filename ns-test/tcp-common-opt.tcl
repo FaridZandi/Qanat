@@ -40,11 +40,10 @@ TCP_pair instproc init {args} {
     $self instvar pair_id group_id id debug_mode rttimes
     $self instvar tcps tcpr;# Sender TCP,  Receiver TCP
     global myAgent
-    global myAgentSink
     eval $self next $args
 
     $self set tcps [new $myAgent]  ;# Sender TCP
-    $self set tcpr [new $myAgentSink]  ;# Receiver TCP
+    $self set tcpr [new $myAgent]  ;# Receiver TCP
 
 #$tcps set_callback $self
 #$tcpr set_callback $self

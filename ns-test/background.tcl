@@ -59,7 +59,6 @@ set agtagr(0,1) [new Agent_Aggr_pair]
 puts "Setting up connections ..."; flush stdout
 
 set myAgent "Agent/TCP/FullTcp";
-set myAgentSink "Agent/TCP/FullTcp";
 
 $agtagr(0,1) setup $n1 $src "0 1" $connections_per_pair $init_fid "TCP_pair"
 puts "Log attched ..."; flush stdout
