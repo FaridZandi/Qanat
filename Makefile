@@ -38,7 +38,7 @@ CPP	= g++-4.8
 LINK	= $(CPP)
 LINK_SHLIB = gcc -shared
 MKDEP	= ./conf/mkdep
-TCLSH	= /home/faridzandi/ns2/ns-allinone-2.34/bin/tclsh8.4
+TCLSH	= /home/sepehr/ns-allinone-2.34/bin/tclsh8.4
 TCL2C	= ../tclcl-1.19/tcl2c++
 AR	= ar rc $(BLANK)
 
@@ -64,7 +64,7 @@ DEFINE	= -DTCP_DELAY_BIND_ALL -DNO_TK -DTCLCL_CLASSINSTVAR  -DNDEBUG -DLINUX_TCP
 INCLUDES = \
 	-I.  \
 	-I. \
-	-I/home/faridzandi/ns2/ns-allinone-2.34/tclcl-1.19 -I/home/faridzandi/ns2/ns-allinone-2.34/otcl-1.13 -I/home/faridzandi/ns2/ns-allinone-2.34/include -I/home/faridzandi/ns2/ns-allinone-2.34/include -I/home/faridzandi/ns2/ns-allinone-2.34/include -I/usr/include/pcap \
+	-I/home/sepehr/ns-allinone-2.34/tclcl-1.19 -I/home/sepehr/ns-allinone-2.34/otcl-1.13 -I/home/sepehr/ns-allinone-2.34/include -I/home/sepehr/ns-allinone-2.34/include -I/home/sepehr/ns-allinone-2.34/include -I/usr/include/pcap \
 	-I./tcp -I./sctp -I./common -I./link -I./queue \
 	-I./adc -I./apps -I./mac -I./mobile -I./trace \
 	-I./routing -I./tools -I./classifier -I./mcast \
@@ -76,7 +76,7 @@ INCLUDES = \
 
 
 LIB	= \
-	-L/home/faridzandi/ns2/ns-allinone-2.34/tclcl-1.19 -ltclcl -L/home/faridzandi/ns2/ns-allinone-2.34/otcl-1.13 -lotcl -L/home/faridzandi/ns2/ns-allinone-2.34/lib -ltk8.4 -L/home/faridzandi/ns2/ns-allinone-2.34/lib -ltcl8.4 \
+	-L/home/sepehr/ns-allinone-2.34/tclcl-1.19 -ltclcl -L/home/sepehr/ns-allinone-2.34/otcl-1.13 -lotcl -L/home/sepehr/ns-allinone-2.34/lib -ltk8.4 -L/home/sepehr/ns-allinone-2.34/lib -ltcl8.4 \
 	-lXext -lX11 \
 	 -lnsl -ldl \
 	-lm -lm 
