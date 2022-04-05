@@ -72,6 +72,23 @@ void StupidOrchestrator::setup_nodes(){
     std::cout << "--------------------------" << std::endl;
 
     topo.introduce_nodes_to_classifiers(); 
+
+
+    for(auto& node1: topo.used_nodes){
+        for(auto& node2: topo.used_nodes){
+
+            auto path = topo.get_gws_in_path(node1, node2);
+
+            std::cout << topo.data[node1].uid << " to ";
+            std::cout << topo.data[node2].uid << ": ";
+            
+            for (auto p : path){
+                std::cout << topo.data[p].uid << " ";
+            }
+            std::cout << std::endl; 
+
+        }
+    }
 };
 
 

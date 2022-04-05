@@ -314,6 +314,7 @@ int MyTopology::duplicate_tree(int root){
             to_visit.push(n);
         }  
     }
+    return root_peer_uid; 
 }
 
 
@@ -388,6 +389,106 @@ Node* MyTopology::get_peer(Node* n){
     int peer_uid = data[n].peer;
     return node[peer_uid]; 
 }
+
+Node* MyTopology::get_node_by_address(int addr){
+    // the cache for storing the mappings
+    static std::map<int, Node*> address_to_node; 
+
+    if (address_to_node.find(addr) != address_to_node.end()) {
+        return address_to_node[addr];
+    } else {
+        for(auto n : used_nodes){
+            if (n->address() == addr){
+                address_to_node[addr] = n; 
+                return n; 
+            }
+        }
+        address_to_node[addr] = nullptr;
+        return nullptr;
+    }
+}
+
+
+std::vector<Node*> MyTopology::get_gws_in_path(Node* n1, Node* n2){
+
+    static std::map< std::pair<Node*, Node*>, std::vector<Node*> > cache; 
+    if (cache.find(std::make_pair(n1, n2)) != cache.end()) {
+        std::cout << "reading from cache. Yay" << std::endl; 
+        return cache[std::make_pair(n1, n2)]; 
+    }
+
+    std::vector<Node*> all_n1_parents; 
+    std::vector<Node*> all_n2_parents; 
+
+    auto current = data[n1].uid; 
+    while (data[node[current]].first_parent() != -1){
+        int parent = data[node[current]].first_parent(); 
+        all_n1_parents.push_back(node[parent]);
+        current = parent;
+    }
+
+    // std::cout << "all n1 parents: ";
+    // for (auto n: all_n1_parents) {
+    //     std::cout << data[n].uid << " "; 
+    // } std::cout << std::endl; 
+    
+
+    current = data[n2].uid; 
+    while (data[node[current]].first_parent() != -1){
+        int parent = data[node[current]].first_parent(); 
+        all_n2_parents.push_back(node[parent]);
+        current = parent;
+    }
+
+    // finds similar nodes in the path
+    std::list<Node*> similarities;
+    std::set_intersection(all_n1_parents.begin(), 
+                          all_n1_parents.end(), 
+                          all_n2_parents.begin(), 
+                          all_n2_parents.end(),
+                          std::back_inserter(similarities));
+
+    std::vector<Node*> result; 
+
+    Node* first_contact; 
+
+    if (similarities.size() > 0){
+        first_contact = similarities.front(); 
+    } else {
+        first_contact = nullptr; 
+    }
+
+    for (auto n1_parent: all_n1_parents){
+        result.push_back(n1_parent);
+        if (n1_parent == first_contact){
+            break; 
+        } 
+    }
+
+    std::reverse(all_n2_parents.begin(),
+                 all_n2_parents.end());
+
+    if (first_contact == nullptr){
+        for (auto n2_parent: all_n2_parents){
+            result.push_back(n2_parent);
+        }
+    } else {
+        bool reached_first_contact = false; 
+        for (auto n2_parent: all_n2_parents){
+            if (reached_first_contact){
+                result.push_back(n2_parent);
+            } 
+            if (n2_parent == first_contact){
+                reached_first_contact = true; 
+            } 
+        }
+    }
+    
+
+    cache[std::make_pair(n1, n2)] = result; 
+    return result; 
+}
+
 
 
 void MyTopology::make_peers(int n1, int n2){

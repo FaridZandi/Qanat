@@ -94,7 +94,13 @@ public:
      * 
      * @return int: The first parent.  
      */
-    inline int first_parent(){ return parents[0]; }
+    inline int first_parent(){ 
+        if(parents.size() > 0){
+            return parents[0];    
+        } else {
+            return -1; 
+        }
+    }
 
 
     std::vector<NF*> nfs; 
