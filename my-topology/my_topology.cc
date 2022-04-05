@@ -16,14 +16,15 @@ public:
 } my_class_topology;
 
 MyTopology* MyTopology::instance_ = nullptr;
+int MyTopology::toponode_uid_counter = 0;
 
 MyTopology::MyTopology(){
-    bind_bool("verbose_", &verbose); // TODO: fix this. Doesn't work. 
+    bind_bool("verbose_", &verbose); 
+    mig_manager_ = new MigrationManager(); 
     verbose = true; 
+    instance_ = this; 
 
     mig_root = nullptr; 
-    mig_manager_ = new MigrationManager(); 
-    instance_ = this; 
 }
 
 MyTopology::~MyTopology(){
@@ -50,46 +51,45 @@ int MyTopology::command(int argc, const char*const* argv){
     Tcl& tcl = Tcl::instance();
 
     if (strcmp(argv[1], "find_node") == 0) {
-
-        Node* root = (Node*)TclObject::lookup(argv[2]);
+        int root = atoi(argv[2]);
         std::vector<int> branch_ids;
         for(int i = 3; i < argc; i++){
             branch_ids.push_back(atoi(argv[i]) - 1);
         } 
-        Node* node = find_node(root, branch_ids);
-        tcl.resultf("%s", data[node].pointer.c_str());
+        int node_uid = find_node(root, branch_ids);
+        tcl.resultf("%s", data[node[node_uid]].pointer.c_str());
         return TCL_OK;
 
     } else if (strcmp(argv[1], "make_tree") == 0) {
-        Node* root = (Node*)TclObject::lookup(argv[2]);
-        
         std::vector<int> branching_ds;
-        for(int i = 3; i < argc; i++){
+        for(int i = 2; i < argc; i++){
             branching_ds.push_back(atoi(argv[i]));
         } 
-        make_tree(root, branching_ds);
-        
+        int root_uid = make_tree(-1, branching_ds);
+        mig_root = node[root_uid];
+        tcl.resultf("%s", data[mig_root].pointer.c_str());
         return TCL_OK;  
+
     } else if (argc == 2) {
         if (strcmp(argv[1], "start_migration") == 0){
             auto& orch = BaseOrchestrator::instance();
-            orch.setup_node_types();
+            std::cout << "here" << std::endl; 
+            orch.setup_nodes();
             orch.start_migration();
-
             return TCL_OK; 
+
         } else if (strcmp(argv[1], "print_nodes") == 0) {
             print_nodes();
             return TCL_OK; 
+
         } else if (strcmp(argv[1], "print_graph") == 0) {
             print_graph();
             return TCL_OK; 
-        } else if (strcmp(argv[1], "setup_apps") == 0) {
-            setup_apps();
+
+        } else if (strcmp(argv[1], "duplicate_tree") == 0) {
+            int n1 = data[mig_root].uid; 
+            duplicate_tree(n1);
             return TCL_OK; 
-        } else if (strcmp(argv[1], "make_node") == 0) {
-            Node* n = make_node(); 
-            tcl.resultf("%s", data[n].pointer.c_str());
-            return TCL_OK;
         } 
     } else if (argc == 3) {
         if (strcmp(argv[1], "deactivate_tunnel") == 0) { 
@@ -98,72 +98,58 @@ int MyTopology::command(int argc, const char*const* argv){
 			return(TCL_OK);
 
 		} else if (strcmp(argv[1], "add_node") == 0){
-            Node* node = (Node*)TclObject::lookup(argv[2]);
-            
-            nodes.push_back(node);
-            data[node].pointer = std::string(argv[2]);
-
-            tcl.resultf("%s", argv[2]);
+            Node* this_node = make_node(true);
+            tcl.resultf("%s", data[this_node].uid);
             return TCL_OK;
 
-        } else if (strcmp(argv[1], "set_mig_root") == 0){
-            mig_root = (Node*)TclObject::lookup(argv[2]);
-            return TCL_OK; 
-            
-        } else if (strcmp(argv[1], "set_traffic_src") == 0){
-            traffic_src = (Node*)TclObject::lookup(argv[2]);
-            return TCL_OK; 
-            
         } else if (strcmp(argv[1], "set_simulator") == 0){
             sim_ptr = std::string(argv[2]);
             return TCL_OK;
-        }      
 
+        } else if (strcmp(argv[1], "add_node_to_source") == 0){
+            auto new_node = (Node*)TclObject::lookup(argv[2]);
+            source_nodes_ptrs.push(argv[2]);
+            source_nodes.push(new_node);
+            return TCL_OK;
+
+        } else if (strcmp(argv[1], "add_node_to_dest") == 0){
+            auto new_node = (Node*)TclObject::lookup(argv[2]);
+            dest_nodes_ptrs.push(argv[2]);
+            dest_nodes.push(new_node);
+            return TCL_OK;
+        }        
     } else if (argc == 4) {
         if (strcmp(argv[1], "add_child") == 0){
             Node* parent = (Node*)TclObject::lookup(argv[2]);
             Node* child = (Node*)TclObject::lookup(argv[3]);
-            
-            connect_nodes(parent, child);
-
+            connect_nodes(data[parent].uid, data[child].uid);
             return TCL_OK;
 
         } else if (strcmp(argv[1], "connect_agents") == 0) {
             Node* n1 = (Node*)TclObject::lookup(argv[2]);
             Node* n2 = (Node*)TclObject::lookup(argv[3]);
-
             connect_agents(n1, n2); 
-            
             return TCL_OK; 
 
-        } else if (strcmp(argv[1], "send_data") == 0) {
+        }  
+    } else if (argc == 5) { 
+        if (strcmp(argv[1], "send_data") == 0) {
             Node* n1 = (Node*)TclObject::lookup(argv[2]);
             Node* n2 = (Node*)TclObject::lookup(argv[3]);
-            
-            send_data(n1, 1000);
-            
-            return TCL_OK; 
-        } else if (strcmp(argv[1], "duplicate_tree") == 0) {
-            Node* n1 = (Node*)TclObject::lookup(argv[2]);
-            Node* n2 = (Node*)TclObject::lookup(argv[3]);
-            
-            duplicate_tree(n1, n2);
-             
+            int size = atoi(argv[4]);
+            connect_agents(n1, n2);
+            send_data(n1, size);
             return TCL_OK; 
         } 
     } else if (argc == 7){ 
 		if (strcmp(argv[1], "activate_tunnel") == 0){
-            
             auto in = (Node*)TclObject::lookup(argv[2]);
             auto out = (Node*)TclObject::lookup(argv[3]);
             auto from = (Node*)TclObject::lookup(argv[5]);
             auto to = (Node*)TclObject::lookup(argv[6]);
-            
             int uid = mig_manager().activate_tunnel(in, out, 
-                                                    from, to);
-
+                                                  from, to);
             tcl.resultf("%d", uid);
-
 			return TCL_OK;
 		}
 	}
@@ -174,12 +160,13 @@ void MyTopology::start_tcp_app(Node* n1){
     tcl_command({"new Agent/TCP/FullTcp"});
     data[n1].tcp = Tcl::instance().result();
     
-    FullTcpAgent* m_agent = (FullTcpAgent*)TclObject::lookup(data[n1].tcp.c_str());
-    // tcl_command({data[n1].tcp, "set traffic_class_ 2"});
-    m_agent->set_traffic_class(2);
-
-    std::cout << "address: " << m_agent << std::endl; 
-    m_agent->node = n1;
+    auto agent = (FullTcpAgent*)TclObject::lookup(
+        data[n1].tcp.c_str()
+    );
+    tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+    agent->set_traffic_class(2);
+    std::cout << "address: " << agent << std::endl; 
+    agent->node = n1;
 
     tcl_command({sim_ptr, "attach-agent",
                  data[n1].pointer, 
@@ -197,96 +184,96 @@ void MyTopology::start_tcp_app(Node* n1){
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
     static int connection_counter = 1;    
-    
+
+    auto conn_c = std::to_string(connection_counter); 
+
     start_tcp_app(n1);
     start_tcp_app(n2);
 
-    tcl_command({sim_ptr, "connect", 
-                data[n1].tcp, data[n2].tcp});
-
+    tcl_command({sim_ptr, "connect", data[n1].tcp, data[n2].tcp});
     tcl_command({data[n2].tcp, "listen"});
-    tcl_command({data[n1].tcp, "set", "fid_", std::to_string(connection_counter)});
-    tcl_command({data[n2].tcp, "set", "fid_", std::to_string(connection_counter)});
-    
-
-    
+    tcl_command({data[n1].tcp, "set", "fid_", conn_c});
+    tcl_command({data[n2].tcp, "set", "fid_", conn_c});
 
     connection_counter++;
 }
 
 
-void MyTopology::connect_nodes(Node* parent, Node* child){
-    data[parent].add_child(child); 
-    data[child].add_parent(parent); 
-    add_link(parent, child);
+void MyTopology::connect_nodes(int parent, int child){
+    data[node[parent]].add_child(child); 
+    data[node[child]].add_parent(parent); 
 }
 
+Node* MyTopology::make_node(bool is_source){
+    Node* this_node;
+    std::string this_node_ptr; 
 
-void MyTopology::setup_apps(){
+    if (is_source == true){
+        this_node = source_nodes.top();
+        source_nodes.pop(); 
+        this_node_ptr = source_nodes_ptrs.top(); 
+        source_nodes_ptrs.pop();
+    } else {
+        this_node = dest_nodes.top();
+        dest_nodes.pop(); 
+        this_node_ptr = dest_nodes_ptrs.top(); 
+        dest_nodes_ptrs.pop();
+    }
 
-    // for(Node* node: nodes){
-        // set up the agents
-        // tcl_command({"new Agent/UDP"});
-        // data[node].udp = Tcl::instance().result();
+    used_nodes.push_back(this_node);
+    data[this_node].node = this_node; 
+    data[this_node].peer = -1; 
+    data[this_node].pointer = this_node_ptr;
+    data[this_node].uid = toponode_uid_counter;
 
-        // // connect the agent to the node 
-        // tcl_command({sim_ptr, "attach-agent",
-        //              data[node].pointer, 
-        //              data[node].udp});
+    node[toponode_uid_counter] = this_node;
 
-    // }
-}
-
-void MyTopology::add_link(Node* parent, Node* child){
-    tcl_command({sim_ptr, "duplex-link",
-                 data[parent].pointer, 
-                 data[child].pointer,
-                 BW, DELAY, QUEUE_T});
-}
-
-Node* MyTopology::make_node(){
-    tcl_command({sim_ptr, "node"});
-    std::string node_ptr = Tcl::instance().result();
-
-    Node* node = (Node*)TclObject::lookup(node_ptr.c_str());
+    toponode_uid_counter ++; 
     
-    nodes.push_back(node);
-    data[node].pointer = node_ptr;
-    data[node].me = node; 
-    
-    return node; 
+    return this_node; 
 }
 
-void MyTopology::make_tree(Node* root, 
-                           std::vector<int> branching_ds){
-    
-    data[root].layer_from_bottom = branching_ds.size();
+int MyTopology::make_tree(int parent, std::vector<int> branching_ds){
+    // assign a virtual identity to a node.
+    Node* this_node = make_node(true);
+    int this_uid = data[this_node].uid;
+
+    // Setting the depth of this node in the virtual tree. 
+    data[this_node].layer_from_bottom = branching_ds.size();
+
+    // If there is a parent, connect it to this node.
+    if(parent != -1){
+        connect_nodes(data[node[parent]].uid, this_uid);
+    }
+
+    // This was the last level of the tree. nothing more to do. 
+    if (branching_ds.size() == 0){
+        return -1; 
+    }
+
+    // Remove the first element to get the branching degrees
+    // for the bottom layer.
+    std::vector<int> next_branching_ds = branching_ds;
+    next_branching_ds.erase(next_branching_ds.begin());
 
     // The first element shows the branching degree for 
     // this layer. 
     int current_branching = branching_ds[0];
-
-    // remove the first element to get the branching degrees
-    // for the bottom layer.
-    std::vector<int> next_branching_ds = branching_ds;
-    next_branching_ds.erase(next_branching_ds.begin());
-    
-    for(int i = 0; i < current_branching; i++){
-        Node* child = make_node();
-        connect_nodes(root, child); 
-                
-        if(next_branching_ds.size() > 0){
-            make_tree(child, next_branching_ds);
-        }
+    for(int i = 0; i < current_branching; i++){        
+        make_tree(this_uid, next_branching_ds);
     }
+
+    return this_uid;
 }
 
 
-Node* MyTopology::find_node(Node* root, 
-                           std::vector<int> branch_ids){
-    
+int MyTopology::find_node(int root, 
+                          std::vector<int> branch_ids){
+
     int current_id = branch_ids[0]; 
-    Node* child = data[root].children[current_id];
+
+    auto this_node = node[root];
+    int child = data[this_node].children[current_id];
     
     if (branch_ids.size() == 1){
         return child; 
@@ -298,153 +285,84 @@ Node* MyTopology::find_node(Node* root,
 }
 
 
-void MyTopology::duplicate_tree(Node* src, Node* dst){
-    make_peers(src, dst);
-    std::stack<Node*> to_visit; 
-    to_visit.push(src);
+int MyTopology::duplicate_tree(int root){
+    Node* root_peer = make_node(false); 
+    int root_peer_uid = data[root_peer].uid;
+    make_peers(root, root_peer_uid);
+
+    std::stack<int> to_visit; 
+    to_visit.push(root);
 
     while (to_visit.size() > 0){
-        Node* current = to_visit.top();  
+        int current = to_visit.top();  
         to_visit.pop();
 
-        if (current != src){
-            Node* copy = make_node();
-            make_peers(current, copy); 
-            Node* parent = data[current].first_parent();
-            Node* copy_parent = data[parent].peer;
-            connect_nodes(copy_parent, copy);
+        if (current != root){
+            Node* copy = make_node(false);
+            make_peers(current, data[copy].uid); 
+
+            int parent_pid = data[node[current]].first_parent();
+            int parent_peer_uid = data[node[parent_pid]].peer;
+            connect_nodes(parent_peer_uid, data[copy].uid);
         }
 
-        auto children = data[current].children; 
+        auto children = data[node[current]].children; 
         std::reverse(children.begin(),
                      children.end());
 
-        for(Node* n: children){
+        for(auto n: children){
             to_visit.push(n);
         }  
     }
 }
 
 
-std::vector<Node*> MyTopology::get_leaves(Node* root){
-    std::vector<Node*> leaves; 
-    std::stack<Node*> to_visit; 
-    to_visit.push(root);
+std::vector<Node*> MyTopology::get_subtree_nodes( 
+        Node* root, 
+        bool include_leaves, 
+        bool include_internals) {
+
+    std::vector<Node*> subtree_nodes; 
+
+    std::stack<int> to_visit; 
+    to_visit.push(data[root].uid);
 
     while (to_visit.size() > 0){
-        Node* current = to_visit.top();  
+        int current = to_visit.top();  
         to_visit.pop();
 
-        if (data[current].children.size() == 0){
-            leaves.push_back(current);
-        }
-
-        auto children = data[current].children; 
-        std::reverse(children.begin(),
-                     children.end());
-
-        for(Node* n: children){
-            to_visit.push(n);
-        }
-    }
-
-    return leaves; 
-}
-
-
-std::vector<Node*> MyTopology::get_internal_nodes(Node* root){
-    std::vector<Node*> internals; 
-    std::stack<Node*> to_visit; 
-    to_visit.push(root);
-
-    while (to_visit.size() > 0){
-        Node* current = to_visit.top();  
-        to_visit.pop();
-
-        if (data[current].children.size() != 0){
-            internals.push_back(current);
-        }
-
-        auto children = data[current].children; 
-        std::reverse(children.begin(),
-                     children.end());
-
-        for(Node* n: children){
-            to_visit.push(n);
-        }
-    }
-
-    return internals; 
-}
-
-
-
-bool compare_address(Node* n1, Node* n2){
-    return (n1->address() < n2->address());
-}
-
-std::vector<Node*> MyTopology::get_all_siblings(Node* node, 
-                                                Node* root){
-    std::vector<Node*> siblings; 
-
-    if (node == root){
-        siblings.push_back(node); 
-        return siblings; 
-    } else {
-        auto parent = data[node].first_parent(); 
-        auto parent_siblings = get_all_siblings(parent, root);
-
-        for (auto& p : parent_siblings){
-            for (auto& c: data[p].children){
-                siblings.push_back(c); 
+        if (data[node[current]].children.size() == 0){
+            if (include_leaves) {
+                subtree_nodes.push_back(node[current]);
+            }
+        } else {
+            if (include_internals) {
+                subtree_nodes.push_back(node[current]);
             }
         }
 
-        std::sort(siblings.begin(), siblings.end(), compare_address);
+        auto children = data[node[current]].children; 
+        std::reverse(children.begin(),
+                     children.end());
 
-        return siblings;
-    }
-}
-
-Node* MyTopology::get_next_sibling(Node* node, 
-                                   Node* root){
-    bool found_node = false; 
-
-    for (auto& s: get_all_siblings(node, root)){
-        if (found_node){
-            return s; 
-        } 
-        if (s == node){
-            found_node = true; 
+        for(int n: children){
+            to_visit.push(n);
         }
     }
 
-    return nullptr; 
+    return subtree_nodes; 
 }
 
 
-Node* MyTopology::get_nth_parent(Node* node, int n){
-    auto nth_parent = node;
+Node* MyTopology::get_nth_parent(Node* this_node, int n){
+    auto nth_parent = this_node;
 
     for (int i = 0; i < n; i++){
-        nth_parent = data[nth_parent].first_parent(); 
+        int parent_id = data[nth_parent].first_parent(); 
+        nth_parent = node[parent_id];
     } 
 
     return nth_parent; 
-}
-
-
-int MyTopology::get_subtree_depth(Node* root){
-    int depth = 0; 
-
-    Node* current_node = root; 
-
-    while (data[current_node].children.size() > 0){
-        current_node = data[current_node].children[0]; 
-        depth ++; 
-    }
-
-    return depth; 
 }
 
 void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
@@ -452,29 +370,46 @@ void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
 };
 
 void MyTopology::introduce_nodes_to_classifiers(){
-    for (auto& node: nodes){
+    for (auto& node: used_nodes){
         node->introduce_to_classifer();
     }
 }
 
+std::vector<Node*> MyTopology::get_children(Node* n){
+    std::vector<Node*> children; 
 
-void MyTopology::make_peers(Node* n1, Node* n2){
-    data[n1].peer = n2; 
-    data[n2].peer = n1; 
+    for(int child: data[n].children){
+        children.push_back(node[child]);
+    }
+    return children; 
+}; 
+
+Node* MyTopology::get_peer(Node* n){
+    int peer_uid = data[n].peer;
+    return node[peer_uid]; 
+}
+
+
+void MyTopology::make_peers(int n1, int n2){
+    data[node[n1]].peer = n2; 
+    data[node[n2]].peer = n1; 
 }
 
 
 void MyTopology::print_nodes(){
-    for(Node* node: nodes){ 
-        std::cout << node << std::endl;
+    for(Node* this_node: used_nodes){ 
+        std::cout << this_node << std::endl;
     }
 }
 
+
 void MyTopology::print_graph(){
-    for(Node* node: nodes){
-        std::cout << node->address() << ":" << " ";
-        for(Node* child: data[node].children){
-            std::cout << child->address() << " ";
+    for(Node* this_node: used_nodes){
+        std::cout << this_node->address();
+        std::cout << "(" << data[this_node].uid << ") :" << " ";
+        for(int child: data[this_node].children){
+            std::cout << node[child]->address(); 
+            std::cout << "(" << data[node[child]].uid << ")" << " ";
         }
         std::cout << std::endl;
     }

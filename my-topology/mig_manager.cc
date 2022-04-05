@@ -25,7 +25,6 @@ int MigrationManager::activate_tunnel(Node* in, Node* out,
 	tunnel_data td; 
     
 	td.valid = true;
-    
 	td.in = in; 
     td.out = out;   		
 	td.from = from; 
@@ -370,7 +369,7 @@ bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p,
 }
 
 /**********************************************************
- * EfficentMigrationManager Implementation                                 *  
+ * EfficentMigrationManager Implementation                *  
  *********************************************************/
 
 

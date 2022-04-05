@@ -41,7 +41,7 @@ public:
     virtual ~StupidOrchestrator(); 
 
     virtual void start_background_traffic(){};
-    virtual void setup_node_types(); 
+    virtual void setup_nodes(); 
     virtual void start_migration();
 
     virtual void vm_precopy_finished(Node* vm); 
@@ -63,6 +63,9 @@ private:
 
     // utility
     
+    void initiate_data_transfer(Node* node, int size, 
+                                void (*callback) (Node*));
+
     void setup_nth_layer_tunnel(Node* vm, int n); 
     
     void print_time();

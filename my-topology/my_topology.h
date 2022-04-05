@@ -9,6 +9,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <stack>
 #include <list>
 
 #define NOW Scheduler::instance().clock()
@@ -56,46 +57,11 @@ public:
      * @return std::vector<Node*> of the leaves in the 
      * subtree.
      */
-    std::vector<Node*> get_leaves(Node* root); 
+    std::vector<Node*> get_subtree_nodes(
+        Node* root, 
+        bool include_leaves, 
+        bool include_internals ); 
     
-    /**
-     * @brief Get all the internal nodes in the subtree 
-     * of this node. 
-     *  
-     * Any node that does have any children is 
-     * considered an internal node. 
-     *  
-     * @param root The root of the subtree.
-     * @return std::vector<Node*> of the internal nodes 
-     * in the subtree.
-     */
-    std::vector<Node*> get_internal_nodes(Node* root); 
-    
-
-    /**
-     * @brief Get the all siblings of this node in the 
-     * subtree of the root node.
-     * 
-     * This includes the same node as well. 
-     * 
-     * @param node The node to get the siblings of.
-     * @param root The root to compute the subtree.
-     * @return std::vector<Node*> of the siblings of this
-     * node.
-     */
-    std::vector<Node*> get_all_siblings(Node* node, Node* root);
-
-    /**
-     * @brief Get the next sibling of this node in the 
-     * subtree of the root node. 
-     * 
-     * @param node the node to compute the sibling for.
-     * @param root The root to compute the subtree.
-     * @return Node* The next sibling. 
-     * @return nullptr if there is no next sibling. 
-     */
-    Node* get_next_sibling(Node* node, Node* root);
-
     /**
      * @brief 
      * 
@@ -105,6 +71,9 @@ public:
      */
     Node* get_nth_parent(Node* node, int n);
     
+    Node* get_peer(Node* n); 
+    std::vector<Node*> get_children(Node* n); 
+
     /**
      * set the node pointer for all the classfiers 
      * of all the nodes in the topology. This is 
@@ -123,7 +92,6 @@ public:
 		return (*instance_);
 	}
 
-
     /**
      * @brief access the migration manager of this topology
      * 
@@ -131,45 +99,44 @@ public:
      */
     MigrationManager& mig_manager();
 
-
-    int get_subtree_depth(Node* root);
-
-    
-
 	virtual int command(int argc, const char*const* argv);
+
     void send_data(Node* n1, int n_bytes);
 
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
     
-    void setup_apps();
-
-    void make_peers(Node* n1, Node* n2);
+    // higher level management (lvl 4 and 5 of network stack)
     void start_tcp_app(Node* n1);
     void connect_agents(Node* n1, Node* n2);
-    void connect_nodes(Node* parent, Node* child);
 
-    Node* make_node();
-    Node* find_node(Node* root, std::vector<int> branch_ids); 
-    void make_tree(Node* parent, std::vector<int> branching_ds); 
-    void duplicate_tree(Node* src, Node* dst); 
+    // Virtual tree managament
+    Node* make_node(bool is_source);
+    int make_tree(int parent, std::vector<int> branching_ds); 
+    int find_node(int root, std::vector<int> branch_ids); 
+    void make_peers(int n1, int n2);
+    int duplicate_tree(int root); 
+    void connect_nodes(int parent, int child);
     
-    
-    
-    void add_link(Node* parent, Node* child); 
-
     // Migration 
     Node* mig_root; 
-    Node* traffic_src; 
     
     // Core Data
-    std::vector<Node*> nodes;
+    std::stack<Node*> source_nodes;
+    std::stack<std::string> source_nodes_ptrs;
+    std::stack<Node*> dest_nodes;
+    std::stack<std::string> dest_nodes_ptrs;
+
+    std::vector<Node*> used_nodes;
+    std::map<int, Node*> node; 
     std::map<Node*, TopoNode> data; 
+
     std::string sim_ptr; 
 	  
     int verbose;  
     static MyTopology* instance_;
+    static int toponode_uid_counter; 
     MigrationManager* mig_manager_; 
     
     
@@ -179,7 +146,10 @@ private:
     // Useless functions 
     void print_nodes();
     void print_graph();
-    
+
+
+    //New stuff 
+
 };
 
 #endif

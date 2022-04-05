@@ -55,7 +55,6 @@ bool NF::should_ignore(Packet* p){
 }
 
 bool NF::log_packet(std::string message, int arg){
-
     if(verbose){    
         std::cout << "[";
         std::cout << std::setprecision(5);
@@ -65,7 +64,7 @@ bool NF::log_packet(std::string message, int arg){
 
         std::cout << "[" << get_type() << "] ";
 
-        std::cout << "[node " << toponode_->me->address() << "] ";
+        std::cout << "[node " << toponode_->node->address() << "] ";
 
         std::cout << message; 
 
@@ -76,8 +75,6 @@ bool NF::log_packet(std::string message, int arg){
         std::cout << std::endl;
     }
 }
-
-
 
 
 /**********************************************************
@@ -138,12 +135,12 @@ void StatefulNF::load_state(Packet* p){
     if (is_loading){
         hdr_ip* iph = hdr_ip::access(p); 
 
-        // std::cout << iph->state_dst << " " << toponode_->me->address() << std::endl; 
+        // std::cout << iph->state_dst << " " << toponode_->node->address() << std::endl; 
 
-        if (iph->state_dst == toponode_->me->address()){
+        if (iph->state_dst == toponode_->node->address()){
             state[std::string(iph->key)] = std::string(iph->value); 
 
-            std::cout << "Node " << this->toponode_->me->address(); 
+            std::cout << "Node " << this->toponode_->node->address(); 
             std::cout << " loaded " << iph->key << ": " << state[iph->key];
             std::cout << " from packet" << std::endl;
 
@@ -155,11 +152,13 @@ void StatefulNF::load_state(Packet* p){
 }
 
 void StatefulNF::record_state(std::string key, Packet* p){
-
     if (is_recording){
         hdr_ip* iph = hdr_ip::access(p); 
 
-        iph->state_dst = this->toponode_->peer->address();
+        auto& topo = MyTopology::instance();
+        auto peer = topo.get_peer(this->toponode_->node); 
+
+        iph->state_dst = peer->address();
 
         iph->key = new char[key.length() + 1];
         memcpy(iph->key, key.c_str(), key.length() + 1); 
@@ -168,7 +167,7 @@ void StatefulNF::record_state(std::string key, Packet* p){
         iph->value = new char[value.length() + 1];
         memcpy(iph->value, value.c_str(), value.length() + 1);
 
-        std::cout << "Node " << this->toponode_->me->address(); 
+        std::cout << "Node " << this->toponode_->node->address(); 
         std::cout << " stored " << iph->key << ": " << iph->value;
         std::cout << " to packet" << std::endl;
     }
@@ -227,7 +226,7 @@ std::string Monitor::get_type(){
 
 void Monitor::print_info(){
     std::cout << "monitor on node " ;
-    std::cout << toponode_->me->address();
+    std::cout << toponode_->node->address();
     std::cout << ", current count is: "; 
     std::cout << state["packet_count"]; 
     std::cout << std::endl;  
@@ -294,7 +293,7 @@ std::string Buffer::get_type(){
 
 void Buffer::print_info(){
     std::cout << "buffer on node " ;
-    std::cout << this->toponode_->me->address();
+    std::cout << this->toponode_->node->address();
     std::cout << " with size "; 
     std::cout << this->size_;
     std::cout << std::endl;  
@@ -366,7 +365,7 @@ std::string RateLimiterNF::get_type(){
 
 void RateLimiterNF::print_info(){
     std::cout << "rate_limiter on node " ;
-    std::cout << this->toponode_->me->address();
+    std::cout << this->toponode_->node->address();
     std::cout << ", rate is: "; 
     std::cout << this->rate_;
     std::cout << std::endl;  
@@ -405,7 +404,7 @@ std::string DelayerNF::get_type(){
 
 void DelayerNF::print_info(){
     std::cout << "delayer on node " ;
-    std::cout << this->toponode_->me->address();
+    std::cout << this->toponode_->node->address();
     std::cout << ", delay is: "; 
     std::cout << this->delay;
     std::cout << std::endl;  
@@ -430,11 +429,11 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
     auto& mig_manager = topo.mig_manager(); 
     
     bool bypass_processing = mig_manager.bypass_processing(
-        p, h, toponode_->me
+        p, h, toponode_->node
     );
 
     bool ret =  mig_manager.pre_classify(
-        p, h, toponode_->me
+        p, h, toponode_->node
     );
 
     if (not ret){
@@ -442,7 +441,7 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
     }
 
     if (bypass_processing){
-        toponode_->me->get_classifier()->recv2(p, h); 
+        toponode_->node->get_classifier()->recv2(p, h); 
         return false; 
     }
 
@@ -455,6 +454,6 @@ std::string TunnelManagerNF::get_type(){
 
 void TunnelManagerNF::print_info(){
     std::cout << "tunnel_manager on node " ;
-    std::cout << this->toponode_->me->address();
+    std::cout << this->toponode_->node->address();
     std::cout << std::endl;  
 }

@@ -2,11 +2,13 @@
 
 
 TopoNode::TopoNode(){
-        peer = nullptr;
-        me = nullptr;
-        bypass_processing = false; 
+        uid = 0; 
+        peer = 0;
+        node = nullptr;
         mode = OpMode::NoneMode;  
         layer_from_bottom = 0; 
+        
+        bypass_processing = false; 
 }
 
 TopoNode::~TopoNode(){}
@@ -23,7 +25,7 @@ void TopoNode::process_packet(Packet* p, Handler* h,
         } 
     }
 
-    me->get_classifier()->recv2(p, h);
+    node->get_classifier()->recv2(p, h);
 }
 
 NF* TopoNode::add_nf(std::string type, double param){

@@ -24,7 +24,7 @@ public:
     virtual void gw_diff_sent(Node* node){}; 
     virtual void gw_sent_last_packet(Node* node1, Node* node2){}; 
     virtual void gw_received_last_packet(Node* node){}; 
-    virtual void setup_node_types(){}; 
+    virtual void setup_nodes(){}; 
     virtual void start_background_traffic(){};
 
 };
@@ -49,7 +49,7 @@ public:
     virtual void gw_diff_sent(Node* node){}; 
     virtual void gw_sent_last_packet(Node* node1, Node* node2){}; 
     virtual void gw_received_last_packet(Node* node){}; 
-    virtual void setup_node_types(){}; 
+    virtual void setup_nodes(){}; 
     virtual void start_background_traffic(){};
 };
 

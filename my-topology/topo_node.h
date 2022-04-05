@@ -75,16 +75,16 @@ public:
     /**
      * @brief add a node to the list of children.
      * 
-     * @param n The node to be added. 
+     * @param n int: The node to be added. 
      */
-    inline void add_child(Node* n) { children.push_back(n); }; 
+    inline void add_child(int n) { children.push_back(n); }; 
 
     /**
      * @brief add a node to the list of parents. 
      * 
-     * @param n The node to be added.
+     * @param n int: The node to be added. 
      */
-    inline void add_parent(Node* n) { parents.push_back(n); }
+    inline void add_parent(int n) { parents.push_back(n); }
 
     /**
      * @brief Get the first parent of this node. 
@@ -92,30 +92,30 @@ public:
      * For tree-like structures this is supposed to be only
      * parent this node has. 
      * 
-     * @return Node* The node to find the parent for.  
+     * @return int: The first parent.  
      */
-    inline Node* first_parent(){ return parents[0]; }
+    inline int first_parent(){ return parents[0]; }
 
 
     std::vector<NF*> nfs; 
 
-    std::string pointer; 
     std::string udp;
     std::string tcp;  
     std::string tcp_sink;  
     std::string app; 
 
-    std::vector<Node*> children; 
-    std::vector<Node*> parents;
-    Node* peer; 
-    Node* me; 
+    int uid; 
+    int peer; 
+    Node* node; 
+    std::string pointer; 
 
+    std::vector<int> children; 
+    std::vector<int> parents;
+    
     int layer_from_bottom; 
     
     bool bypass_processing; 
     OpMode mode; 
-
-
 
 private:
     void rm_nf_at_index(int index);

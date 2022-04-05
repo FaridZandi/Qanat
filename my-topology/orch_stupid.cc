@@ -22,36 +22,34 @@ StupidOrchestrator::~StupidOrchestrator(){
 
 }
 
-void StupidOrchestrator::setup_node_types(){
+
+void StupidOrchestrator::initiate_data_transfer(
+                            Node* node, int size, 
+                            void (*callback) (Node*)){
+    auto& topo = MyTopology::instance();
+
+    topo.connect_agents(node, topo.get_peer(node));
+
+    auto tcp_name = topo.data[node].tcp.c_str();
+    Agent* agent = (Agent*)TclObject::lookup(tcp_name);
+    agent->finish_notify_callback = callback; 
+
+    topo.send_data(node, size);
+}
+
+
+
+void StupidOrchestrator::setup_nodes(){
     auto& topo = MyTopology::instance(); 
     auto mig_root = topo.mig_root;
-    auto mig_root_peer = topo.data[mig_root].peer;
+    auto mig_root_peer = topo.get_peer(mig_root);
 
-
-    for(auto& node: topo.get_leaves(mig_root)){
+    for(auto& node: topo.get_subtree_nodes(mig_root, true, true)){
         mig_state[node] = MigState::NoMigState;
     }
-
-    for(auto& node: topo.get_internal_nodes(mig_root)){
-        mig_state[node] = MigState::NoMigState;
-    }
-
-
-// setup the connections
-    // for(auto& node: topo.get_leaves(mig_root)){
-    //     topo.connect_agents(node, topo.data[node].peer);   
-    // }
-
-    // for(auto& node: topo.get_internal_nodes(mig_root)){
-    //     topo.connect_agents(node, topo.data[node].peer);
-    // }
-
-    // TODO: I should probably move this to another class
-    // This both does and does not seem to be right place 
-    // for these stuff. 
 
     for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
-        for(auto& node: topo.get_leaves(root)){        
+        for(auto& node: topo.get_subtree_nodes(root, true, false)){        
             topo.data[node].mode = OpMode::VM;
             topo.data[node].add_nf("buffer", 100);
             topo.data[node].add_nf("rate_limiter", 100);
@@ -59,18 +57,10 @@ void StupidOrchestrator::setup_node_types(){
             topo.data[node].add_nf("tunnel_manager");
             topo.data[node].print_nfs(); 
         }
-        for(auto& node: topo.get_internal_nodes(root)){        
-            topo.data[node].mode = OpMode::GW;
-            auto m = (Monitor*)topo.data[node].add_nf("monitor");
 
-            ////////////////////////////////
-            // if (root == mig_root){
-            //     m->is_recording = true; 
-            // } else {
-            //     m->is_loading = true; 
-            // }
-            ////////////////////////////////
-            
+        for(auto& node: topo.get_subtree_nodes(root, false, true)){        
+            topo.data[node].mode = OpMode::GW;
+            topo.data[node].add_nf("monitor");
             topo.data[node].add_nf("delayer", 0.01);
             topo.data[node].add_nf("tunnel_manager");
             topo.data[node].print_nfs(); 
@@ -84,15 +74,19 @@ void StupidOrchestrator::setup_node_types(){
     topo.introduce_nodes_to_classifiers(); 
 };
 
+
 void StupidOrchestrator::start_migration(){
     std::srand(123);
 
     auto& topo = MyTopology::instance(); 
 
     std::cout << "VM migration Queue: ";
-    for (auto& leave : topo.get_leaves(topo.mig_root)){
-        vm_migration_queue.push(leave);
-        std::cout << leave->address() << " ";
+
+    auto leaves  = topo.get_subtree_nodes(topo.mig_root, true, false);
+
+    for (auto& leaf: leaves){
+        vm_migration_queue.push(leaf);
+        std::cout << leaf->address() << " ";
     }
     std::cout << std::endl;
 
@@ -113,12 +107,10 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
 
     mig_state[vm] = MigState::PreMig; 
 
-    auto& topo = MyTopology::instance();
-    topo.connect_agents(vm, topo.data[vm].peer);
-    Agent* agent = (Agent*)TclObject::lookup(topo.data[vm].tcp.c_str());
-    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}; 
-    int state_size = 1000;
-    topo.send_data(vm, state_size);
+    initiate_data_transfer(
+        vm, 1000, 
+        [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}
+    );
 }
 
 void StupidOrchestrator::vm_precopy_finished(Node* vm){
@@ -134,7 +126,7 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     mig_state[vm] = MigState::InMig; 
 
     auto& topo = MyTopology::instance();
-    auto peer = topo.data[vm].peer;
+    auto peer = topo.get_peer(vm);
     auto peer_data = topo.data[peer];
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
     
@@ -143,19 +135,17 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     print_time(); 
     std::cout << "start buffering for ";
     std::cout << peer->address() << std::endl; 
-    peer_buffer->start_buffering();
+    // peer_buffer->start_buffering();
 
     print_time(); 
     std::cout << "sending the VM snapshot for node: ";
     std::cout << vm->address() << std::endl;
 
-    topo.connect_agents(vm, topo.data[vm].peer);
-    Agent* agent = (Agent*)TclObject::lookup(topo.data[vm].tcp.c_str());
-    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}; 
-    int state_size = 1000;
-    topo.send_data(vm, state_size);
+    initiate_data_transfer(
+        vm, 1000, 
+        [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}
+    );
 }
-
 
 
 void StupidOrchestrator::vm_migration_finished(Node* vm){
@@ -167,7 +157,7 @@ void StupidOrchestrator::vm_migration_finished(Node* vm){
 
     auto& topo = MyTopology::instance();
 
-    auto peer = topo.data[vm].peer;
+    auto peer = topo.get_peer(vm);
     auto peer_data = topo.data[peer];
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
@@ -194,7 +184,7 @@ void StupidOrchestrator::start_gw_migration_if_possible(
     auto& topo = MyTopology::instance();
 
     // check if all the children of this node has migrated.
-    for(auto& child: topo.data[gw].children){
+    for(auto& child: topo.get_children(gw)){
         if(mig_state[child] != MigState::Migrated){
             return; 
         }
@@ -215,12 +205,10 @@ void StupidOrchestrator::start_gw_snapshot(Node* gw){
 
     mig_state[gw] = MigState::PreMig; 
 
-    auto& topo = MyTopology::instance();
-    topo.connect_agents(gw, topo.data[gw].peer);
-    Agent* agent = (Agent*)TclObject::lookup(topo.data[gw].tcp.c_str());
-    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().gw_snapshot_sent(n);}; 
-    int state_size = 1000;
-    topo.send_data(gw, state_size);
+    initiate_data_transfer(
+        gw, 1000, 
+        [](Node* n){BaseOrchestrator::instance().gw_snapshot_sent(n);}
+    );
 }
 
 
@@ -236,7 +224,6 @@ void StupidOrchestrator::gw_snapshot_sent(Node* gw){
     } else {
         mark_last_packet(topo.get_nth_parent(gw, 1), gw);
     }
-    
 }; 
 
 
@@ -269,9 +256,9 @@ void StupidOrchestrator::gw_sent_last_packet(Node* gw){
 
     // setup tunnels for all the nodes in one layer up. 
     int gw_layer = topo.data[gw].layer_from_bottom;
-    auto parent = topo.data[gw].first_parent(); 
+    auto parent = topo.get_nth_parent(gw, 1); 
 
-    for(auto vm: topo.get_leaves(gw)){
+    for(auto vm: topo.get_subtree_nodes(gw, true, false)){
         setup_nth_layer_tunnel(vm, gw_layer + 1);
     }
 
@@ -299,12 +286,10 @@ void StupidOrchestrator::start_gw_diff(Node* gw){
     std::cout << "sending the GW diff for GW: ";
     std::cout << gw->address() << std::endl;
 
-    auto& topo = MyTopology::instance();
-    topo.connect_agents(gw, topo.data[gw].peer);
-    Agent* agent = (Agent*)TclObject::lookup(topo.data[gw].tcp.c_str());
-    agent->finish_notify_callback = [](Node* n){BaseOrchestrator::instance().gw_diff_sent(n);}; 
-    int state_size = 1000;
-    topo.send_data(gw, state_size);
+    initiate_data_transfer(
+        gw, 1000, 
+        [](Node* n){BaseOrchestrator::instance().gw_diff_sent(n);}
+    );
 }
 
 
@@ -316,28 +301,20 @@ void StupidOrchestrator::gw_diff_sent(Node* gw){
     mig_state[gw] = MigState::Migrated; 
 
     auto& topo = MyTopology::instance();
-    auto parent = topo.get_nth_parent(gw, 1); 
-
+    
     if (gw != topo.mig_root){
+        auto parent = topo.get_nth_parent(gw, 1); 
         start_gw_migration_if_possible(parent);
     }
-    
 }; 
-
-
-  
-
-
-
-
 
 void StupidOrchestrator::setup_nth_layer_tunnel(Node* node, int layer){
     auto& topo = MyTopology::instance(); 
 
-    auto peer = topo.data[node].peer; 
+    auto peer = topo.get_peer(node); 
 
     auto nth_parent = topo.get_nth_parent(node, layer); 
-    auto nth_parent_peer = topo.data[nth_parent].peer; 
+    auto nth_parent_peer = topo.get_peer(nth_parent); 
 
     print_time(); 
     std::cout << "node " << node->address() << " ";                           
