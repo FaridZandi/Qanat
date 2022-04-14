@@ -126,7 +126,7 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
     mig_state[vm] = MigState::PreMig; 
 
     initiate_data_transfer(
-        vm, 1000, 
+        vm, 100000, 
         [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}
     );
 }
@@ -153,14 +153,14 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     print_time(); 
     std::cout << "start buffering for ";
     std::cout << peer->address() << std::endl; 
-    // peer_buffer->start_buffering();
+    peer_buffer->start_buffering();
 
     print_time(); 
     std::cout << "sending the VM snapshot for node: ";
     std::cout << vm->address() << std::endl;
 
     initiate_data_transfer(
-        vm, 1000, 
+        vm, 100000, 
         [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}
     );
 }

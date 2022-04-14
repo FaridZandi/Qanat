@@ -163,9 +163,9 @@ void MyTopology::start_tcp_app(Node* n1){
     auto agent = (FullTcpAgent*)TclObject::lookup(
         data[n1].tcp.c_str()
     );
-    tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+    // tcl_command({data[n1].tcp, "set traffic_class_ 2"});
     agent->set_traffic_class(2);
-    std::cout << "address: " << agent << std::endl; 
+    std::cout << "address: " << agent << "    class:" << agent->get_traffic_class() << std::endl; 
     agent->node = n1;
 
     tcl_command({sim_ptr, "attach-agent",

@@ -8,6 +8,10 @@ if {$argc != 40} {
     exit 0
 }
 
+
+set tf [open out.tr w]
+$ns trace-all $tf
+
 set sim_end [lindex $argv 0]
 set link_rate [lindex $argv 1]
 set mean_link_delay [lindex $argv 2]
@@ -233,7 +237,7 @@ $t make_tree 1 1
 $t duplicate_tree
 
 $t set_traffic_src $src
-$ns at 1 "$t start_migration"
+$ns at 2 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -246,27 +250,37 @@ puts "Setting up connections ..."; flush stdout
 set flow_gen 0
 set flow_fin 0
 
-set init_fid 0
-for {set j 0} {$j < $S } {incr j} {
-    for {set i 0} {$i < $S } {incr i} {
-        if {$i != $j} {
-                set agtagr($i,$j) [new Agent_Aggr_pair]
-                $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
-                $agtagr($i,$j) attach-logfile $flowlog
+# set init_fid 0
+# for {set j 0} {$j < $S } {incr j} {
+#     for {set i 0} {$i < $S } {incr i} {
+#         if {$i != $j} {
+#                 set agtagr($i,$j) [new Agent_Aggr_pair]
+#                 $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
+#                 $agtagr($i,$j) attach-logfile $flowlog
 
-                puts -nonewline "($i,$j) "
-                #For Poisson/Pareto
-                $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+#                 puts -nonewline "($i,$j) "
+#                 #For Poisson/Pareto
+#                 $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
 
-                $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
-                $ns at 1 "$agtagr($i,$j) init_schedule"
+#                 $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
+#                 $ns at 1 "$agtagr($i,$j) init_schedule"
 
-                set init_fid [expr $init_fid + $connections_per_pair];
-            }
-        }
-}
+#                 set init_fid [expr $init_fid + $connections_per_pair];
+#             }
+#         }
+# }
 
 puts "Initial agent creation done";flush stdout
 puts "Simulation started!"
+
+proc finish {} {
+        puts "simulation finished"
+        global ns tf
+        $ns flush-trace
+        close $tf
+        exit 0
+}
+
+$ns at $sim_end "finish"
 
 $ns run
