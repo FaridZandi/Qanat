@@ -207,6 +207,22 @@ private:
     double delay; 
 };
 
+class RouterNF : public NF {
+public: 
+    RouterNF(TopoNode* toponode, int chain_pos); 
+    
+    virtual ~RouterNF(); 
+
+    virtual bool recv(Packet* p, Handler* h);
+
+    virtual void handle(Event* event){};
+
+    virtual std::string get_type(); 
+
+    virtual void print_info(); 
+};
+
+
 class TunnelManagerNF : public NF {
 public: 
     TunnelManagerNF(TopoNode* toponode, int chain_pos); 

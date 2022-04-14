@@ -62,19 +62,15 @@ public:
         bool include_leaves, 
         bool include_internals ); 
     
-    /**
-     * @brief 
-     * 
-     * @param node 
-     * @param n 
-     * @return Node* 
-     */
-    Node* get_nth_parent(Node* node, int n);
     
+    Node* get_nth_parent(Node* node, int n);
+    TopoNode& get_data(Node* node); 
+    int uid(Node* node); 
     Node* get_peer(Node* n); 
     std::vector<Node*> get_children(Node* n); 
     Node* get_node_by_address(int addr);
     std::vector<Node*> get_gws_in_path(Node* n1, Node* n2);
+
     /**
      * set the node pointer for all the classfiers 
      * of all the nodes in the topology. This is 

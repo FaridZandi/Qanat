@@ -914,8 +914,8 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 {
 	std::cout << "going to send a packet FullTcpAgent::sendpacket" << std::endl; 
 	
-	// std::cout << "traffic class of this agent: ";
-	// std::cout << this << " is " << this->traffic_class_ << std::endl; 
+	std::cout << "traffic class of this agent: ";
+	std::cout << this << " is " << this->traffic_class_ << std::endl; 
 
         if (!p) p = allocpkt();
         hdr_tcp *tcph = hdr_tcp::access(p);
@@ -924,6 +924,55 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 
 	// change the traffic class for determining whether it should be bufferred or not
 	iph->traffic_class = this->traffic_class_;
+
+	auto& topo = MyTopology::instance(); 
+
+	auto src_node = topo.get_node_by_address(this->here_.addr_);
+	auto dst_node = topo.get_node_by_address(this->dst_.addr_);
+
+	// if(src_node != nullptr){
+	// 	std::cout << "src: " << topo.uid(src_node) << " "; 
+	// } else {
+	// 	std::cout << "src: " << "N/A" << " "; 
+	// }
+	// if(dst_node != nullptr){
+	// 	std::cout << "dst: " << topo.uid(dst_node) << " "; 
+	// } else {
+	// 	std::cout << "dst: " << "N/A" << " "; 
+	// }
+	// std::cout << std::endl; 
+
+	auto gw_path = topo.get_gws_in_path(src_node, dst_node);
+	gw_path.push_back(dst_node); 
+
+	// std::cout << "path: "; 
+	// for (auto gw: gw_path){
+	// 	std::cout << topo.uid(gw) << " "; 
+	// }
+	// std::cout << std::endl; 
+
+	int pointer = gw_path.size() - 1; 
+	for (auto gw: gw_path){
+		iph->gw_path[pointer] = gw->address();
+		pointer --; 
+	}
+	iph->gw_path_pointer = gw_path.size() - 1;
+
+	std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
+	// iph->dst_.addr_ = src_node->address(); 
+	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
+
+	std::cout << "packet path: "; 
+	for (int i = 0; i <= iph->gw_path_pointer; i++){
+		std::cout << iph->gw_path[i] << " "; 
+	}
+	std::cout << std::endl; 
+
+
+
+
+	
+
 
 	/* build basic header w/options */
 

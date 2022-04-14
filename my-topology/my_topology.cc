@@ -367,7 +367,17 @@ Node* MyTopology::get_nth_parent(Node* this_node, int n){
 }
 
 void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
-    data[node].process_packet(p, h);
+
+    hdr_ip* iph = hdr_ip::access(p);
+
+    std::cout << "iph->dst_.addr_: " << iph->dst_.addr_ << " "; 
+    std::cout << "node->address() " << node->address();
+    std::cout << std::endl;  
+
+    if(iph->dst_.addr_ == node->address() or
+       iph->src_.addr_ == node->address()){
+        data[node].process_packet(p, h);
+    }
 };
 
 void MyTopology::introduce_nodes_to_classifiers(){
@@ -409,22 +419,33 @@ Node* MyTopology::get_node_by_address(int addr){
 }
 
 
+TopoNode& MyTopology::get_data(Node* node){
+    return data[node];
+}; 
+
+int MyTopology::uid(Node* node){
+    return data[node].uid; 
+} 
+
+
+
 std::vector<Node*> MyTopology::get_gws_in_path(Node* n1, Node* n2){
 
     static std::map< std::pair<Node*, Node*>, std::vector<Node*> > cache; 
     if (cache.find(std::make_pair(n1, n2)) != cache.end()) {
-        std::cout << "reading from cache. Yay" << std::endl; 
         return cache[std::make_pair(n1, n2)]; 
     }
 
     std::vector<Node*> all_n1_parents; 
     std::vector<Node*> all_n2_parents; 
 
-    auto current = data[n1].uid; 
-    while (data[node[current]].first_parent() != -1){
-        int parent = data[node[current]].first_parent(); 
-        all_n1_parents.push_back(node[parent]);
-        current = parent;
+    if (n1 != nullptr){
+        auto current = data[n1].uid; 
+        while (data[node[current]].first_parent() != -1){
+            int parent = data[node[current]].first_parent(); 
+            all_n1_parents.push_back(node[parent]);
+            current = parent;
+        }
     }
 
     // std::cout << "all n1 parents: ";
@@ -432,12 +453,13 @@ std::vector<Node*> MyTopology::get_gws_in_path(Node* n1, Node* n2){
     //     std::cout << data[n].uid << " "; 
     // } std::cout << std::endl; 
     
-
-    current = data[n2].uid; 
-    while (data[node[current]].first_parent() != -1){
-        int parent = data[node[current]].first_parent(); 
-        all_n2_parents.push_back(node[parent]);
-        current = parent;
+    if (n2 != nullptr){
+        auto current = data[n2].uid; 
+        while (data[node[current]].first_parent() != -1){
+            int parent = data[node[current]].first_parent(); 
+            all_n2_parents.push_back(node[parent]);
+            current = parent;
+        }
     }
 
     // finds similar nodes in the path
@@ -484,7 +506,6 @@ std::vector<Node*> MyTopology::get_gws_in_path(Node* n1, Node* n2){
         }
     }
     
-
     cache[std::make_pair(n1, n2)] = result; 
     return result; 
 }

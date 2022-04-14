@@ -18,7 +18,8 @@ void TopoNode::process_packet(Packet* p, Handler* h,
                               int start_pos){
                                   
     for(uint current = start_pos; 
-        current < nfs.size(); current++){
+             current < nfs.size(); 
+             current ++) {
 
         if (not nfs[current]->recv(p, h)){
             return;
@@ -61,6 +62,12 @@ NF* TopoNode::add_nf(std::string type, double param){
             this, current_length); 
         nfs.push_back(tm); 
         return tm; 
+        
+    } else if (type == "router"){
+        RouterNF* r = new RouterNF(
+            this, current_length); 
+        nfs.push_back(r); 
+        return r; 
     }
 
     return nullptr;

@@ -101,9 +101,9 @@ $t add_node_to_dest $n09
 $t add_node_to_dest $n10
 $t add_node_to_dest $n11
 $t add_node_to_dest $n12
+$t add_node_to_dest $n15
 $t add_node_to_dest $n13
 $t add_node_to_dest $n14
-$t add_node_to_dest $n15
 
 $t add_node_to_source $n16
 $t add_node_to_source $n17
@@ -122,7 +122,7 @@ $t add_node_to_source $n29
 $t add_node_to_source $n30
 
 
-$t make_tree 2 2 2
+$t make_tree 1
 $t duplicate_tree
 
 $t print_graph

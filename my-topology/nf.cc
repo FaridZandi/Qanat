@@ -62,9 +62,15 @@ bool NF::log_packet(std::string message, int arg){
         std::cout << Scheduler::instance().clock();
         std::cout << "] ";
 
-        std::cout << "[" << get_type() << "] ";
+        std::cout << "[";
+        std::cout << get_type();
+        std::cout << "] ";
 
-        std::cout << "[node " << toponode_->node->address() << "] ";
+
+        std::cout << "["; 
+        std::cout << "node " << toponode_->node->address();
+        std::cout << "(" << toponode_->uid << ")";
+        std::cout << "] "; 
 
         std::cout << message; 
 
@@ -294,6 +300,7 @@ std::string Buffer::get_type(){
 void Buffer::print_info(){
     std::cout << "buffer on node " ;
     std::cout << this->toponode_->node->address();
+    std::cout << "(" << this->toponode_->uid << ")";
     std::cout << " with size "; 
     std::cout << this->size_;
     std::cout << std::endl;  
@@ -428,9 +435,9 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 
     
-    bool bypass_processing = mig_manager.bypass_processing(
-        p, h, toponode_->node
-    );
+    // bool bypass_processing = mig_manager.bypass_processing(
+        // p, h, toponode_->node
+    // );
 
     bool ret =  mig_manager.pre_classify(
         p, h, toponode_->node
@@ -440,10 +447,10 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
         return false;
     }
 
-    if (bypass_processing){
-        toponode_->node->get_classifier()->recv2(p, h); 
-        return false; 
-    }
+    // if (bypass_processing){
+        // toponode_->node->get_classifier()->recv2(p, h); 
+        // return false; 
+    // }
 
     return true;
 }
@@ -457,3 +464,55 @@ void TunnelManagerNF::print_info(){
     std::cout << this->toponode_->node->address();
     std::cout << std::endl;  
 }
+
+
+
+/**********************************************************
+ * RouterNF's Implementation                                 *  
+ *********************************************************/
+
+RouterNF::RouterNF(TopoNode* toponode, int chain_pos) 
+    : NF(toponode, chain_pos) {
+}
+
+RouterNF::~RouterNF(){
+
+}
+
+bool RouterNF::recv(Packet* p, Handler* h){
+    log_packet("recved a packet here.");
+
+    hdr_ip* iph = hdr_ip::access(p);
+    
+
+    std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
+	
+    if (iph->gw_path_pointer != -1){
+        auto ptr = iph->gw_path_pointer;
+        iph->dst_.addr_ = iph->gw_path[ptr]; 
+        iph->gw_path_pointer --; 
+    }
+
+	std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
+
+	std::cout << "packet path: "; 
+	for (int i = 0; i <= iph->gw_path_pointer; i++){
+		std::cout << iph->gw_path[i] << " "; 
+	}
+	std::cout << std::endl; 
+
+    
+
+    return true;
+}
+
+std::string RouterNF::get_type(){
+    return "router"; 
+}
+
+void RouterNF::print_info(){
+    std::cout << "router on node " ;
+    std::cout << this->toponode_->node->address();
+    std::cout << std::endl;  
+}
+

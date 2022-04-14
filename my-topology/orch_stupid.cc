@@ -55,7 +55,9 @@ void StupidOrchestrator::setup_nodes(){
             topo.data[node].add_nf("buffer", 100);
             topo.data[node].add_nf("rate_limiter", 100);
             topo.data[node].add_nf("delayer", 0.01);
+            
             topo.data[node].add_nf("tunnel_manager");
+            topo.data[node].add_nf("router");
             topo.data[node].print_nfs(); 
         }
 
@@ -63,7 +65,9 @@ void StupidOrchestrator::setup_nodes(){
             topo.data[node].mode = OpMode::GW;
             topo.data[node].add_nf("monitor");
             topo.data[node].add_nf("delayer", 0.01);
+
             topo.data[node].add_nf("tunnel_manager");
+            topo.data[node].add_nf("router");
             topo.data[node].print_nfs(); 
         }
     }
@@ -126,7 +130,7 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
     mig_state[vm] = MigState::PreMig; 
 
     initiate_data_transfer(
-        vm, 100000, 
+        vm, 1000, 
         [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}
     );
 }
@@ -160,7 +164,7 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     std::cout << vm->address() << std::endl;
 
     initiate_data_transfer(
-        vm, 100000, 
+        vm, 1000, 
         [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}
     );
 }
