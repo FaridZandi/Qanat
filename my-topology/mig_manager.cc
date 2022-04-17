@@ -1,4 +1,5 @@
 #include "mig_manager.h"
+#include "my_topology.h"
 #include "node.h"
 #include "packet.h"
 #include <iostream>
@@ -11,7 +12,7 @@ MigrationManager::MigrationManager(){
 	for (int i = 0; i < tunnel_count; i++){
 		tunnels[i].valid = false;
 	}
-	verbose = true;
+	verbose = false;
 }
 
 MigrationManager::~MigrationManager(){
@@ -34,6 +35,7 @@ int MigrationManager::activate_tunnel(Node* in, Node* out,
 
     add_tunnel(td);                             
 
+	std::cout << "tunnel uid: " << td.uid << std::endl;
 	return td.uid; 
 }
 
@@ -124,8 +126,13 @@ Tunnel_Point MigrationManager::packet_match(tunnel_data td,
 	auto t_to = td.to->address(); 
 
 	auto p_src = iph->src_.addr_;
-	auto p_dst = iph->dst_.addr_;	
+	auto p_dst = get_packet_dst(p); 
 	
+	// std::cout << "packet=> "; 
+	// std::cout << "src: " << p_src << " "; 
+	// std::cout << "dst: " << p_dst; 
+	// std::cout << std::endl; 
+
 	auto p_src_orig = iph->src_orig.addr_;
 	auto p_dst_orig = iph->dst_orig.addr_;
 
@@ -133,16 +140,11 @@ Tunnel_Point MigrationManager::packet_match(tunnel_data td,
 
 
 	if (n_addr == t_in){ 										// this is the TUNNEL_IN node 
-		if (p_dst == t_from){									// the packet is going to DST
+		if (p_dst == t_from or p_src == t_to){									// the packet is going to DST
 			return Tunnel_Point::Tunnel_In; 				
 		}
 	} else if (n_addr == t_out){								// this is the TUNNEL_OUT node
-		if (p_src == t_in and p_dst == t_out){					// this is sent through the tunnel
-			if (p_dst_orig == t_from) {							// the packet was destined to DST
-				return Tunnel_Point::Tunnel_Out; 
-			}
-		}	
-		if (p_dst == t_from){									// the packet is going to DST
+		if (p_src == t_to or p_dst == t_to){									    // the packet is going to DST
 			return Tunnel_Point::Tunnel_Out; 					// used for early redirectin of packets
 		}	
 	} else if (n_addr == t_from){								// this is the DST node
@@ -199,7 +201,11 @@ bool MigrationManager::bypass_processing(Packet* p, Handler* h, Node* n){
 
 
 bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
-    
+	
+	if (should_ignore(p)){
+		return true; 
+	}
+
 	log_packet(p);
 
     for(int i = 0; i < MigrationManager::tunnel_count; i++){ 
@@ -225,6 +231,62 @@ bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
 }
 
 
+void MigrationManager::convert_path(Packet* p){
+	auto& topo = MyTopology::instance();
+	hdr_ip* iph = hdr_ip::access(p); 
+
+	for (int i = iph->gw_path_pointer; i >= 0; i --){
+		int addr = iph->gw_path[i]; 
+		auto node = topo.get_node_by_address(addr); 
+
+		if (node != nullptr){
+			iph->gw_path[i] = topo.get_peer(node)->address(); 
+		} 	
+	}
+}
+
+void MigrationManager::add_to_path(Packet* p, int addr){
+
+	auto& topo = MyTopology::instance();
+	hdr_ip* iph = hdr_ip::access(p); 
+
+	iph->gw_path_pointer += 1; 
+	iph->gw_path[iph->gw_path_pointer] = addr;
+}
+
+
+void MigrationManager::set_prio(Packet* p, int prio){
+	hdr_ip* iph = hdr_ip::access(p); 
+	iph->prio_ = prio; 
+}
+
+
+int MigrationManager::get_prio(Packet* p){
+	hdr_ip* iph = hdr_ip::access(p); 
+	return iph->prio_;
+}
+
+
+
+int MigrationManager::get_packet_dst(Packet* p){
+	hdr_ip* iph = hdr_ip::access(p); 
+
+	auto p_dst = iph->dst_.addr_;
+
+	if (iph->gw_path_pointer != -1){
+		p_dst = iph->gw_path[0];	
+	}
+
+	return p_dst; 	
+}
+
+void MigrationManager::set_packet_src(Packet* p, int src){
+	hdr_ip* iph = hdr_ip::access(p); 
+	iph->src_.addr_ = src; 
+}
+
+
+
 bool MigrationManager::tunnel_packet_in(tunnel_data td, 
 								  Packet*p, Node* n){			  
 
@@ -233,17 +295,15 @@ bool MigrationManager::tunnel_packet_in(tunnel_data td,
 	// destination of this packet are recorded in temp
 	// variables in their ip header. 
 
-	if(should_ignore(p)){
-		return true;
+	if(get_prio(p) == 0){
+		convert_path(p);
+		add_to_path(p, td.out->address());
+		set_prio(p, 15); 
+	} else {
+		// std::cout << "lowering the prio" << std::endl;
+		set_packet_src(p, td.from->address()); 
+		set_prio(p, 0); 
 	} 
-
-	hdr_ip* iph = hdr_ip::access(p); 
-
-	iph->dst_orig = iph->dst_;
-	iph->src_orig = iph->src_;
-	iph->dst_.addr_ = td.out->address();
-	iph->src_.addr_ = n->address();
-	iph->prio_ = 15;
 
     return true; 	 
 }
@@ -257,29 +317,14 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// will be assigned to the packet. 
 	
 	
-	if(should_ignore(p)){
-		return true;
-	}  
-
-	hdr_ip* iph = hdr_ip::access(p); 	
-
-	auto t_from = td.from->address(); 
-	auto t_to = td.to->address(); 
-	auto t_out = td.out->address(); 
-
-	auto p_dst = iph->dst_.addr_;	
-
-	if (p_dst == t_out) {							
-		iph->src_ = iph->src_orig;
-		iph->dst_.addr_ = t_to;
-		iph->prio_ = 0;	
+	if(get_prio(p) == 0){
+		convert_path(p);
+		add_to_path(p, td.in->address());
+		set_prio(p, 15); 
+	} else {
+		// std::cout << "lowering the prio" << std::endl; 
+		set_prio(p, 0); 
 	}
-	if (p_dst == t_from){	
-		// check if the state migration is done. 
-		// if the it is done, do the redirection here. 								
-		// iph->dst_.addr_ = t_to; 
-	}	
-	
 	
 
     return true; 
@@ -308,16 +353,13 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	// destination, it should be handed back to the new 
 	// destination to deliver it.   
 
-	if(should_ignore(p)){
-		return true;
-	}  
-
 	hdr_ip* iph = hdr_ip::access(p);
 	Direction dir; 
 
 	auto t_from = td.from->address(); 
 	auto p_src = iph->src_.addr_;
-	auto p_dst = iph->dst_.addr_;	
+
+	auto p_dst = get_packet_dst(p);
 	auto n_addr = n->address(); 
 
 	if (p_dst == n_addr){
@@ -325,15 +367,15 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	} else if (p_src == n_addr){
 		dir = Direction::Outgoing;
 	}
+	// std::cout << "Here" << std::endl; 
 
     if(iph->agent_tunnel_flag){
         return true; // don't do anything 
     } else {
         if (dir == Direction::Outgoing){ 
             iph->src_.addr_ = td.to->address(); 
-            iph->agent_tunnel_flag = false;
-            auto cls = td.to->get_classifier();
-            cls->recv(p, h);
+			convert_path(p); 
+            td.to->get_classifier()->recv(p, h);
             return false;  
 
         } else if (dir == Direction::Incoming){ 
@@ -353,10 +395,6 @@ bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p,
 	// tunneled in the gateway level, since the packet
 	// had already passed the gateway when the tunnel 
 	// was established. 
-
-	if(should_ignore(p)){
-		return true;
-	}  
 
     hdr_ip* iph = hdr_ip::access(p); 	
 

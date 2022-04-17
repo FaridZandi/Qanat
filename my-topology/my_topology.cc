@@ -21,7 +21,7 @@ int MyTopology::toponode_uid_counter = 0;
 MyTopology::MyTopology(){
     bind_bool("verbose_", &verbose); 
     mig_manager_ = new MigrationManager(); 
-    verbose = true; 
+    verbose = false; 
     instance_ = this; 
 
     mig_root = nullptr; 
@@ -71,10 +71,13 @@ int MyTopology::command(int argc, const char*const* argv){
         return TCL_OK;  
 
     } else if (argc == 2) {
-        if (strcmp(argv[1], "start_migration") == 0){
+        if (strcmp(argv[1], "setup_nodes") == 0){
             auto& orch = BaseOrchestrator::instance();
-            std::cout << "here" << std::endl; 
             orch.setup_nodes();
+            return TCL_OK; 
+
+        } else if (strcmp(argv[1], "start_migration") == 0){
+            auto& orch = BaseOrchestrator::instance();
             orch.start_migration();
             return TCL_OK; 
 
@@ -141,14 +144,16 @@ int MyTopology::command(int argc, const char*const* argv){
             send_data(n1, size);
             return TCL_OK; 
         } 
-    } else if (argc == 7){ 
+    } else if (argc == 6){ 
 		if (strcmp(argv[1], "activate_tunnel") == 0){
             auto in = (Node*)TclObject::lookup(argv[2]);
             auto out = (Node*)TclObject::lookup(argv[3]);
-            auto from = (Node*)TclObject::lookup(argv[5]);
-            auto to = (Node*)TclObject::lookup(argv[6]);
+            auto from = (Node*)TclObject::lookup(argv[4]);
+            auto to = (Node*)TclObject::lookup(argv[5]);
             int uid = mig_manager().activate_tunnel(in, out, 
-                                                  from, to);
+                                                from, to);
+
+            std::cout << "activating tunnel" << std::endl; 
             tcl.resultf("%d", uid);
 			return TCL_OK;
 		}
@@ -165,7 +170,7 @@ void MyTopology::start_tcp_app(Node* n1){
     );
     // tcl_command({data[n1].tcp, "set traffic_class_ 2"});
     agent->set_traffic_class(2);
-    std::cout << "address: " << agent << "    class:" << agent->get_traffic_class() << std::endl; 
+    // std::cout << "address: " << agent << "    class:" << agent->get_traffic_class() << std::endl; 
     agent->node = n1;
 
     tcl_command({sim_ptr, "attach-agent",
@@ -183,7 +188,7 @@ void MyTopology::start_tcp_app(Node* n1){
 }
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
-    static int connection_counter = 1;    
+    static int connection_counter = 10000;    
 
     auto conn_c = std::to_string(connection_counter); 
 
@@ -370,9 +375,9 @@ void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
 
     hdr_ip* iph = hdr_ip::access(p);
 
-    std::cout << "iph->dst_.addr_: " << iph->dst_.addr_ << " "; 
-    std::cout << "node->address() " << node->address();
-    std::cout << std::endl;  
+    // std::cout << "iph->dst_.addr_: " << iph->dst_.addr_ << " "; 
+    // std::cout << "node->address() " << node->address();
+    // std::cout << std::endl;  
 
     if(iph->dst_.addr_ == node->address() or
        iph->src_.addr_ == node->address()){
@@ -421,95 +426,45 @@ Node* MyTopology::get_node_by_address(int addr){
 
 TopoNode& MyTopology::get_data(Node* node){
     return data[node];
-}; 
-
-int MyTopology::uid(Node* node){
-    return data[node].uid; 
 } 
 
+int MyTopology::uid(Node* node){
+    if (node == nullptr){
+        return -1; 
+    } else {
+        return data[node].uid; 
+    }
+} 
 
+std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
+    static std::map<std::pair<Node*, path_mode>, 
+                    std::vector<int> > cache;
 
-std::vector<Node*> MyTopology::get_gws_in_path(Node* n1, Node* n2){
-
-    static std::map< std::pair<Node*, Node*>, std::vector<Node*> > cache; 
-    if (cache.find(std::make_pair(n1, n2)) != cache.end()) {
-        return cache[std::make_pair(n1, n2)]; 
+    if (cache.find(std::make_pair(n1, pm)) != cache.end()) {
+        return cache[std::make_pair(n1, pm)]; 
     }
 
-    std::vector<Node*> all_n1_parents; 
-    std::vector<Node*> all_n2_parents; 
+    std::vector<int> result; 
 
     if (n1 != nullptr){
-        auto current = data[n1].uid; 
-        while (data[node[current]].first_parent() != -1){
-            int parent = data[node[current]].first_parent(); 
-            all_n1_parents.push_back(node[parent]);
-            current = parent;
+        auto current = n1; 
+        result.push_back(current->address());
+
+        while (data[current].first_parent() != -1){
+            int parent = data[current].first_parent(); 
+            current = node[parent];
+            result.push_back(current->address());
         }
     }
 
-    // std::cout << "all n1 parents: ";
-    // for (auto n: all_n1_parents) {
-    //     std::cout << data[n].uid << " "; 
-    // } std::cout << std::endl; 
-    
-    if (n2 != nullptr){
-        auto current = data[n2].uid; 
-        while (data[node[current]].first_parent() != -1){
-            int parent = data[node[current]].first_parent(); 
-            all_n2_parents.push_back(node[parent]);
-            current = parent;
-        }
+    if(pm == PATH_MODE_RECEIVER) { 
+        std::reverse(result.begin(),
+                     result.end());
     }
 
-    // finds similar nodes in the path
-    std::list<Node*> similarities;
-    std::set_intersection(all_n1_parents.begin(), 
-                          all_n1_parents.end(), 
-                          all_n2_parents.begin(), 
-                          all_n2_parents.end(),
-                          std::back_inserter(similarities));
-
-    std::vector<Node*> result; 
-
-    Node* first_contact; 
-
-    if (similarities.size() > 0){
-        first_contact = similarities.front(); 
-    } else {
-        first_contact = nullptr; 
-    }
-
-    for (auto n1_parent: all_n1_parents){
-        result.push_back(n1_parent);
-        if (n1_parent == first_contact){
-            break; 
-        } 
-    }
-
-    std::reverse(all_n2_parents.begin(),
-                 all_n2_parents.end());
-
-    if (first_contact == nullptr){
-        for (auto n2_parent: all_n2_parents){
-            result.push_back(n2_parent);
-        }
-    } else {
-        bool reached_first_contact = false; 
-        for (auto n2_parent: all_n2_parents){
-            if (reached_first_contact){
-                result.push_back(n2_parent);
-            } 
-            if (n2_parent == first_contact){
-                reached_first_contact = true; 
-            } 
-        }
-    }
-    
-    cache[std::make_pair(n1, n2)] = result; 
+    cache[std::make_pair(n1, pm)] = result; 
     return result; 
 }
-
 
 
 void MyTopology::make_peers(int n1, int n2){

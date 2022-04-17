@@ -54,7 +54,7 @@ void StupidOrchestrator::setup_nodes(){
             topo.data[node].mode = OpMode::VM;
             topo.data[node].add_nf("buffer", 100);
             topo.data[node].add_nf("rate_limiter", 100);
-            topo.data[node].add_nf("delayer", 0.01);
+            // topo.data[node].add_nf("delayer", 0.01);
             
             topo.data[node].add_nf("tunnel_manager");
             topo.data[node].add_nf("router");
@@ -79,20 +79,23 @@ void StupidOrchestrator::setup_nodes(){
     topo.introduce_nodes_to_classifiers(); 
 
 
-    for(auto& node1: topo.used_nodes){
-        for(auto& node2: topo.used_nodes){
+    for(auto& node: topo.used_nodes){
 
-            auto path = topo.get_gws_in_path(node1, node2);
-
-            std::cout << topo.data[node1].uid << " to ";
-            std::cout << topo.data[node2].uid << ": ";
-            
-            for (auto p : path){
-                std::cout << topo.data[p].uid << " ";
-            }
-            std::cout << std::endl; 
-
+        auto path = topo.get_path(node, PATH_MODE_RECEIVER);
+        std::cout << "to " << topo.data[node].uid << ": ";
+        for (auto p : path){
+            std::cout << p << " ";
         }
+        std::cout << std::endl; 
+
+
+
+        path = topo.get_path(node, PATH_MODE_SENDER);
+        std::cout << "from " << topo.data[node].uid << ": ";
+        for (auto p : path){
+            std::cout << p << " ";
+        }
+        std::cout << std::endl; 
     }
 };
 
@@ -130,7 +133,7 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
     mig_state[vm] = MigState::PreMig; 
 
     initiate_data_transfer(
-        vm, 1000, 
+        vm, 100000, 
         [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}
     );
 }
@@ -164,7 +167,7 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     std::cout << vm->address() << std::endl;
 
     initiate_data_transfer(
-        vm, 1000, 
+        vm, 100000, 
         [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}
     );
 }
@@ -228,7 +231,7 @@ void StupidOrchestrator::start_gw_snapshot(Node* gw){
     mig_state[gw] = MigState::PreMig; 
 
     initiate_data_transfer(
-        gw, 1000, 
+        gw, 100000, 
         [](Node* n){BaseOrchestrator::instance().gw_snapshot_sent(n);}
     );
 }
@@ -309,7 +312,7 @@ void StupidOrchestrator::start_gw_diff(Node* gw){
     std::cout << gw->address() << std::endl;
 
     initiate_data_transfer(
-        gw, 1000, 
+        gw, 100000, 
         [](Node* n){BaseOrchestrator::instance().gw_diff_sent(n);}
     );
 }

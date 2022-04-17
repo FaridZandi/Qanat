@@ -23,6 +23,11 @@ class TclObject;
 class MigrationManager; 
 
 
+enum path_mode{
+    PATH_MODE_SENDER,
+    PATH_MODE_RECEIVER,
+};
+
 class MyTopology: public TclObject {
 
 public:
@@ -69,7 +74,7 @@ public:
     Node* get_peer(Node* n); 
     std::vector<Node*> get_children(Node* n); 
     Node* get_node_by_address(int addr);
-    std::vector<Node*> get_gws_in_path(Node* n1, Node* n2);
+    std::vector<int> get_path(Node* n1, path_mode pm);
 
     /**
      * set the node pointer for all the classfiers 

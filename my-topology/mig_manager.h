@@ -98,7 +98,14 @@ protected:
     void log_packet(Packet* p); 
     
     void log_tunnel(tunnel_data td, Tunnel_Point tp, Packet* p);
-    
+
+    void convert_path(Packet* p);
+    void add_to_path(Packet* p, int addr);
+    void set_prio(Packet* p, int prio);
+    int get_prio(Packet* p);
+    int get_packet_dst(Packet* p);
+    void set_packet_src(Packet* p, int src);
+
     Tunnel_Point packet_match(tunnel_data, Packet*, Node*); 
     Direction packet_dir(tunnel_data, Packet*);
     
@@ -110,7 +117,7 @@ protected:
     tunnel_data* tunnels; 
 
     static int tunnel_uid_counter;
-	static const int tunnel_count = 10; 
+	static const int tunnel_count = 100; 
 
     bool verbose;
 };

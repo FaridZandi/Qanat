@@ -12,7 +12,7 @@ NF::NF(TopoNode* toponode,
        int chain_pos) : toponode_(toponode),
                         chain_pos_(chain_pos) {
                             
-    verbose = true;
+    verbose = false;
 }
 
 NF::~NF(){
@@ -435,24 +435,7 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 
     
-    // bool bypass_processing = mig_manager.bypass_processing(
-        // p, h, toponode_->node
-    // );
-
-    bool ret =  mig_manager.pre_classify(
-        p, h, toponode_->node
-    );
-
-    if (not ret){
-        return false;
-    }
-
-    // if (bypass_processing){
-        // toponode_->node->get_classifier()->recv2(p, h); 
-        // return false; 
-    // }
-
-    return true;
+    return mig_manager.pre_classify(p, h, toponode_->node);
 }
 
 std::string TunnelManagerNF::get_type(){
@@ -485,7 +468,7 @@ bool RouterNF::recv(Packet* p, Handler* h){
     hdr_ip* iph = hdr_ip::access(p);
     
 
-    std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
+    // std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
 	
     if (iph->gw_path_pointer != -1){
         auto ptr = iph->gw_path_pointer;
@@ -493,13 +476,13 @@ bool RouterNF::recv(Packet* p, Handler* h){
         iph->gw_path_pointer --; 
     }
 
-	std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
+	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
 
-	std::cout << "packet path: "; 
-	for (int i = 0; i <= iph->gw_path_pointer; i++){
-		std::cout << iph->gw_path[i] << " "; 
-	}
-	std::cout << std::endl; 
+	// std::cout << "packet path: "; 
+	// for (int i = 0; i <= iph->gw_path_pointer; i++){
+	// 	std::cout << iph->gw_path[i] << " "; 
+	// }
+	// std::cout << std::endl; 
 
     
 
