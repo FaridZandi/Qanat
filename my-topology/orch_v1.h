@@ -1,5 +1,5 @@
-#ifndef orch_stupid_h
-#define orch_stupid_h
+#ifndef orch_v1_h
+#define orch_v1_h
 
 #include "orchestrator.h"
 #include "timer-handler.h"
@@ -25,20 +25,17 @@ public:
 
 
 
-enum MigState { NoMigState, PreMig, InMig, Migrated};
-
-
 // Test version of Orchestrator
-class StupidOrchestrator : public BaseOrchestrator {
+class OrchestratorV1 : public BaseOrchestrator {
 public: 
     // Singleton access to the orchestrator
-	static StupidOrchestrator& instance() {
-        static StupidOrchestrator instance; 
+	static OrchestratorV1& instance() {
+        static OrchestratorV1 instance; 
         return instance; 
 	}
     
-    StupidOrchestrator(); 
-    virtual ~StupidOrchestrator(); 
+    OrchestratorV1(); 
+    virtual ~OrchestratorV1(); 
 
     virtual void start_background_traffic(){};
     virtual void setup_nodes(); 
@@ -63,12 +60,6 @@ private:
 
     // utility
     
-    void initiate_data_transfer(Node* node, int size, 
-                                void (*callback) (Node*));
-
-    void setup_nth_layer_tunnel(Node* vm, int n); 
-    
-    void print_time();
     double random_wait(); 
 
     // data 
@@ -76,7 +67,7 @@ private:
     std::queue<Node*> vm_migration_queue;
     std::map<Node*, MigState> mig_state; 
 
-    static const int parallel_migrations = 2; 
+    static const int parallel_migrations = 100; 
 };
 
 

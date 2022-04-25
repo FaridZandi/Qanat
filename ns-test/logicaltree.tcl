@@ -7,14 +7,14 @@ Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
 Node set multiPath_ 1
 Agent/TCP/FullTcp set segsize_ 1400
 
-set tf [open out.tr w]
-$ns trace-all $tf
+# set tf [open out.tr w]
+# $ns trace-all $tf
 
 proc finish {} {
         puts "simulation finished"
-        global ns tf
-        $ns flush-trace
-        close $tf
+        # global ns tf
+        # $ns flush-trace
+        # close $tf
         exit 0
 }
 
@@ -51,38 +51,41 @@ set n27 [$ns node]
 set n28 [$ns node]
 set n29 [$ns node]
 
+set BW 10Gb 
+set LAT 10us
+set QTYPE DropTail 
 
-$ns duplex-link $n14 $n00 2Mb 10ms DropTail
-$ns duplex-link $n14 $n01 2Mb 10ms DropTail
-$ns duplex-link $n14 $n02 2Mb 10ms DropTail
-$ns duplex-link $n14 $n03 2Mb 10ms DropTail
-$ns duplex-link $n14 $n04 2Mb 10ms DropTail
-$ns duplex-link $n14 $n05 2Mb 10ms DropTail
-$ns duplex-link $n14 $n06 2Mb 10ms DropTail
-$ns duplex-link $n14 $n07 2Mb 10ms DropTail
-$ns duplex-link $n14 $n08 2Mb 10ms DropTail
-$ns duplex-link $n14 $n09 2Mb 10ms DropTail
-$ns duplex-link $n14 $n10 2Mb 10ms DropTail
-$ns duplex-link $n14 $n11 2Mb 10ms DropTail
-$ns duplex-link $n14 $n12 2Mb 10ms DropTail
-$ns duplex-link $n14 $n13 2Mb 10ms DropTail
+$ns duplex-link $n14 $n00 $BW $LAT $QTYPE 
+$ns duplex-link $n14 $n01 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n02 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n03 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n04 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n05 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n06 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n07 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n08 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n09 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n10 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n11 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n12 $BW $LAT $QTYPE
+$ns duplex-link $n14 $n13 $BW $LAT $QTYPE
 
-$ns duplex-link $n14 $n15 2Mb 10ms DropTail
+$ns duplex-link $n14 $n15 $BW $LAT $QTYPE
 
-$ns duplex-link $n15 $n16 2Mb 10ms DropTail
-$ns duplex-link $n15 $n17 2Mb 10ms DropTail
-$ns duplex-link $n15 $n18 2Mb 10ms DropTail
-$ns duplex-link $n15 $n19 2Mb 10ms DropTail
-$ns duplex-link $n15 $n20 2Mb 10ms DropTail
-$ns duplex-link $n15 $n21 2Mb 10ms DropTail
-$ns duplex-link $n15 $n22 2Mb 10ms DropTail
-$ns duplex-link $n15 $n23 2Mb 10ms DropTail
-$ns duplex-link $n15 $n24 2Mb 10ms DropTail
-$ns duplex-link $n15 $n25 2Mb 10ms DropTail
-$ns duplex-link $n15 $n26 2Mb 10ms DropTail
-$ns duplex-link $n15 $n27 2Mb 10ms DropTail
-$ns duplex-link $n15 $n28 2Mb 10ms DropTail
-$ns duplex-link $n15 $n29 2Mb 10ms DropTail
+$ns duplex-link $n15 $n16 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n17 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n18 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n19 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n20 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n21 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n22 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n23 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n24 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n25 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n26 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n27 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n28 $BW $LAT $QTYPE
+$ns duplex-link $n15 $n29 $BW $LAT $QTYPE
 
 
 set t [new MyTopology]
@@ -139,8 +142,8 @@ set src_app [new Application]
 set sink_app [new Application]
 
 # attach agents to nodes
-$ns attach-agent $n26 $src
-$ns attach-agent $n16 $sink
+$ns attach-agent $n16 $src
+$ns attach-agent $n26 $sink
 
 # attach the apps
 $src_app attach-agent $src
@@ -160,10 +163,10 @@ $t duplicate_tree
 $t print_graph
 
 $ns at 1 "$t setup_nodes"
-# $ns at 1.5 "$t activate_tunnel $n27 $n11 $n25 $n09"
+# $ns at 1.5 "$t activate_tunnel $n28 $n12 $n26 $n10 "
 $ns at 2 "$t start_migration"
 
-$ns at 5 "$src_app send 10"
+$ns at 1.9 "$src_app send 200000000"
 
 $ns at $sim_end "finish"
 $ns run

@@ -162,10 +162,12 @@ NS_TCL_LIB_STL = tcl/lib/ns-diffusion.tcl \
 # !include <conf/makefile.win>
 
 OBJ_CC = \
+	my-topology/utility.o \
 	my-topology/nf.o \
 	my-topology/mig_manager.o \
 	my-topology/topo_node.o \
-	my-topology/orch_stupid.o \
+	my-topology/orch_v1.o \
+	my-topology/orch_v2.o \
 	my-topology/orchestrator.o \
 	my-topology/my_topology.o \
 	my-queue/my-queue.o \

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <algorithm>    
 #include <stack> 
+#include "utility.h"
 
 static class MyTopologyClass : public TclClass {
 public:
@@ -168,9 +169,8 @@ void MyTopology::start_tcp_app(Node* n1){
     auto agent = (FullTcpAgent*)TclObject::lookup(
         data[n1].tcp.c_str()
     );
-    // tcl_command({data[n1].tcp, "set traffic_class_ 2"});
+
     agent->set_traffic_class(2);
-    // std::cout << "address: " << agent << "    class:" << agent->get_traffic_class() << std::endl; 
     agent->node = n1;
 
     tcl_command({sim_ptr, "attach-agent",
@@ -183,8 +183,6 @@ void MyTopology::start_tcp_app(Node* n1){
 
     // connect the app to the agent 
     tcl_command({data[n1].app, "attach-agent", data[n1].tcp});
-
-    // tcl_command({data[n1].app, "start"});
 }
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
@@ -436,6 +434,15 @@ int MyTopology::uid(Node* node){
     }
 } 
 
+Node* MyTopology::get_mig_root(){
+    return mig_root; 
+}
+
+std::vector<Node*>& MyTopology::get_used_nodes(){
+    return used_nodes; 
+}
+
+
 std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
     static std::map<std::pair<Node*, path_mode>, 
                     std::vector<int> > cache;
@@ -497,3 +504,36 @@ void MyTopology::send_data(Node* n1, int n_bytes){
     tcl_command({data[n1].app, "send", std::to_string(n_bytes)});
     // tcl_command({data[n1].app, "advance_bytes", std::to_string(n_bytes)});
 }
+
+
+std::vector<Node*> MyTopology::get_leaves(Node* root){
+    return get_subtree_nodes(root, true, false);
+}
+
+std::vector<Node*> MyTopology::get_internals(Node* root){
+    return get_subtree_nodes(root, false, true);
+}
+
+std::vector<Node*> MyTopology::get_all_nodes(Node* root){
+    return get_subtree_nodes(root, true, true);
+}
+
+
+void MyTopology::setup_nth_layer_tunnel(Node* node, int layer){
+    auto peer = get_peer(node); 
+
+    auto nth_parent = get_nth_parent(node, layer); 
+    auto nth_parent_peer = get_peer(nth_parent); 
+
+    print_time(); 
+    std::cout << "node " << node->address() << " ";                           
+    std::cout << "migrated to " << peer->address() << " ";                           
+    std::cout << "tunnelled from " << nth_parent->address() << " ";
+    std::cout << "to " << nth_parent_peer->address() << " ";
+    std::cout << std::endl;
+
+    mig_manager().activate_tunnel(
+        nth_parent, nth_parent_peer,  
+        node, peer
+    );
+};

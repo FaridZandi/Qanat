@@ -1,4 +1,4 @@
-#include "orch_stupid.h"
+#include "orch_v1.h"
 #include "orchestrator.h"
 #include "my_topology.h"
 #include "mig_manager.h"
@@ -12,63 +12,48 @@
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
+#include "utility.h"
 
 
-StupidOrchestrator::StupidOrchestrator() {
-
-}
-
-StupidOrchestrator::~StupidOrchestrator(){
+OrchestratorV1::OrchestratorV1() {
 
 }
 
+OrchestratorV1::~OrchestratorV1(){
 
-void StupidOrchestrator::initiate_data_transfer(
-                            Node* node, int size, 
-                            void (*callback) (Node*)){
-    auto& topo = MyTopology::instance();
-
-    topo.connect_agents(node, topo.get_peer(node));
-
-    auto tcp_name = topo.data[node].tcp.c_str();
-    Agent* agent = (Agent*)TclObject::lookup(tcp_name);
-    agent->finish_notify_callback = callback; 
-    agent->is_finish_callback_set = true;
-
-    topo.send_data(node, size);
 }
 
 
 
-void StupidOrchestrator::setup_nodes(){
+void OrchestratorV1::setup_nodes(){
     auto& topo = MyTopology::instance(); 
-    auto mig_root = topo.mig_root;
+    auto mig_root = topo.get_mig_root();
     auto mig_root_peer = topo.get_peer(mig_root);
 
-    for(auto& node: topo.get_subtree_nodes(mig_root, true, true)){
+    for(auto& node: topo.get_all_nodes(mig_root)){
         mig_state[node] = MigState::NoMigState;
     }
 
     for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
-        for(auto& node: topo.get_subtree_nodes(root, true, false)){        
-            topo.data[node].mode = OpMode::VM;
-            topo.data[node].add_nf("buffer", 100);
-            topo.data[node].add_nf("rate_limiter", 100);
-            // topo.data[node].add_nf("delayer", 0.01);
-            
-            topo.data[node].add_nf("tunnel_manager");
-            topo.data[node].add_nf("router");
-            topo.data[node].print_nfs(); 
+        for(auto& node: topo.get_leaves(root)){    
+
+            topo.get_data(node).mode = OpMode::VM;
+            topo.get_data(node).add_nf("buffer", 100);
+            // topo.get_data(node).add_nf("rate_limiter", 100);
+            // topo.get_data(node).add_nf("delayer", 0.01);
+            topo.get_data(node).add_nf("tunnel_manager");
+            topo.get_data(node).add_nf("router");
+            topo.get_data(node).print_nfs(); 
         }
 
-        for(auto& node: topo.get_subtree_nodes(root, false, true)){        
-            topo.data[node].mode = OpMode::GW;
-            topo.data[node].add_nf("monitor");
-            topo.data[node].add_nf("delayer", 0.01);
-
-            topo.data[node].add_nf("tunnel_manager");
-            topo.data[node].add_nf("router");
-            topo.data[node].print_nfs(); 
+        for(auto& node: topo.get_internals(root)){     
+               
+            topo.get_data(node).mode = OpMode::GW;
+            topo.get_data(node).add_nf("monitor");
+            // topo.get_data(node).add_nf("delayer", 0.01);
+            topo.get_data(node).add_nf("tunnel_manager");
+            topo.get_data(node).add_nf("router");
+            topo.get_data(node).print_nfs(); 
         }
     }
 
@@ -78,20 +63,16 @@ void StupidOrchestrator::setup_nodes(){
 
     topo.introduce_nodes_to_classifiers(); 
 
-
-    for(auto& node: topo.used_nodes){
-
+    for(auto& node: topo.get_used_nodes()){
         auto path = topo.get_path(node, PATH_MODE_RECEIVER);
-        std::cout << "to " << topo.data[node].uid << ": ";
+        std::cout << "to " << topo.uid(node) << ": ";
         for (auto p : path){
             std::cout << p << " ";
         }
         std::cout << std::endl; 
 
-
-
         path = topo.get_path(node, PATH_MODE_SENDER);
-        std::cout << "from " << topo.data[node].uid << ": ";
+        std::cout << "from " << topo.uid(node) << ": ";
         for (auto p : path){
             std::cout << p << " ";
         }
@@ -100,16 +81,15 @@ void StupidOrchestrator::setup_nodes(){
 };
 
 
-void StupidOrchestrator::start_migration(){
+void OrchestratorV1::start_migration(){
     std::srand(123);
 
     auto& topo = MyTopology::instance(); 
+    auto mig_root = topo.get_mig_root(); 
 
     std::cout << "VM migration Queue: ";
 
-    auto leaves  = topo.get_subtree_nodes(topo.mig_root, true, false);
-
-    for (auto& leaf: leaves){
+    for (auto& leaf: topo.get_leaves(mig_root)){
         vm_migration_queue.push(leaf);
         std::cout << leaf->address() << " ";
     }
@@ -117,6 +97,7 @@ void StupidOrchestrator::start_migration(){
 
     for(int i = 0; i < parallel_migrations; i++){
         if(vm_migration_queue.size() > 0){
+
             auto node = vm_migration_queue.front(); 
             vm_migration_queue.pop();
             start_vm_precopy(node);
@@ -125,7 +106,7 @@ void StupidOrchestrator::start_migration(){
 };
     
   
-void StupidOrchestrator::start_vm_precopy(Node* vm){
+void OrchestratorV1::start_vm_precopy(Node* vm){
     print_time(); 
     std::cout << "sending the VM precopy for node: ";
     std::cout << vm->address() << std::endl;
@@ -133,12 +114,12 @@ void StupidOrchestrator::start_vm_precopy(Node* vm){
     mig_state[vm] = MigState::PreMig; 
 
     initiate_data_transfer(
-        vm, 100000, 
+        vm, 100000000, 
         [](Node* n){BaseOrchestrator::instance().vm_precopy_finished(n);}
     );
 }
 
-void StupidOrchestrator::vm_precopy_finished(Node* vm){
+void OrchestratorV1::vm_precopy_finished(Node* vm){
     print_time(); 
     std::cout << "finished sending the VM precopy for node: ";
     std::cout << vm->address() << std::endl;
@@ -147,15 +128,15 @@ void StupidOrchestrator::vm_precopy_finished(Node* vm){
 }; 
 
 
-void StupidOrchestrator::start_vm_migration(Node* vm){
+void OrchestratorV1::start_vm_migration(Node* vm){
     mig_state[vm] = MigState::InMig; 
 
     auto& topo = MyTopology::instance();
     auto peer = topo.get_peer(vm);
-    auto peer_data = topo.data[peer];
+    auto peer_data = topo.get_data(peer);
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
     
-    setup_nth_layer_tunnel(vm, 1); 
+    topo.setup_nth_layer_tunnel(vm, 1); 
 
     print_time(); 
     std::cout << "start buffering for ";
@@ -167,13 +148,13 @@ void StupidOrchestrator::start_vm_migration(Node* vm){
     std::cout << vm->address() << std::endl;
 
     initiate_data_transfer(
-        vm, 100000, 
+        vm, 10000000, 
         [](Node* n){BaseOrchestrator::instance().vm_migration_finished(n);}
     );
 }
 
 
-void StupidOrchestrator::vm_migration_finished(Node* vm){
+void OrchestratorV1::vm_migration_finished(Node* vm){
     print_time(); 
     std::cout << "VM migration finished for: ";
     std::cout << vm->address() << std::endl;
@@ -183,7 +164,7 @@ void StupidOrchestrator::vm_migration_finished(Node* vm){
     auto& topo = MyTopology::instance();
 
     auto peer = topo.get_peer(vm);
-    auto peer_data = topo.data[peer];
+    auto peer_data = topo.get_data(peer);
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
     print_time(); 
@@ -204,7 +185,7 @@ void StupidOrchestrator::vm_migration_finished(Node* vm){
 }
 
 
-void StupidOrchestrator::start_gw_migration_if_possible(
+void OrchestratorV1::start_gw_migration_if_possible(
                                                Node* gw){
     auto& topo = MyTopology::instance();
 
@@ -223,7 +204,7 @@ void StupidOrchestrator::start_gw_migration_if_possible(
 }
 
 
-void StupidOrchestrator::start_gw_snapshot(Node* gw){
+void OrchestratorV1::start_gw_snapshot(Node* gw){
     print_time(); 
     std::cout << "sending the GW snapshot for GW: ";
     std::cout << gw->address() << std::endl;
@@ -231,20 +212,20 @@ void StupidOrchestrator::start_gw_snapshot(Node* gw){
     mig_state[gw] = MigState::PreMig; 
 
     initiate_data_transfer(
-        gw, 100000, 
+        gw, 1000000, 
         [](Node* n){BaseOrchestrator::instance().gw_snapshot_sent(n);}
     );
 }
 
 
-void StupidOrchestrator::gw_snapshot_sent(Node* gw){
+void OrchestratorV1::gw_snapshot_sent(Node* gw){
     print_time(); 
     std::cout << "finished sending the GW snapshot for GW: ";
     std::cout << gw->address() << std::endl;
 
     auto& topo = MyTopology::instance();
 
-    if (gw == topo.mig_root){
+    if (gw == topo.get_mig_root()){
         start_gw_diff(gw);
     } else {
         mark_last_packet(topo.get_nth_parent(gw, 1), gw);
@@ -253,7 +234,7 @@ void StupidOrchestrator::gw_snapshot_sent(Node* gw){
 
 
 
-void StupidOrchestrator::mark_last_packet(Node* parent, 
+void OrchestratorV1::mark_last_packet(Node* parent, 
                                           Node* child){
                                             
     print_time(); 
@@ -271,7 +252,7 @@ void StupidOrchestrator::mark_last_packet(Node* parent,
     lps->sched(random_wait()); 
 }
 
-void StupidOrchestrator::gw_sent_last_packet(Node* gw){
+void OrchestratorV1::gw_sent_last_packet(Node* gw){
     
     print_time(); 
     std::cout << "last packet has been sent to GW: "; 
@@ -280,11 +261,11 @@ void StupidOrchestrator::gw_sent_last_packet(Node* gw){
     auto& topo = MyTopology::instance();
 
     // setup tunnels for all the nodes in one layer up. 
-    int gw_layer = topo.data[gw].layer_from_bottom;
+    int gw_layer = topo.get_data(gw).layer_from_bottom;
     auto parent = topo.get_nth_parent(gw, 1); 
 
-    for(auto vm: topo.get_subtree_nodes(gw, true, false)){
-        setup_nth_layer_tunnel(vm, gw_layer + 1);
+    for(auto vm: topo.get_leaves(gw)){
+        topo.setup_nth_layer_tunnel(vm, gw_layer + 1);
     }
 
     auto lpr = new LastPacketReceiver; 
@@ -293,7 +274,7 @@ void StupidOrchestrator::gw_sent_last_packet(Node* gw){
 }
 
 
-void StupidOrchestrator::gw_received_last_packet(Node* gw){
+void OrchestratorV1::gw_received_last_packet(Node* gw){
     print_time(); 
     std::cout << "last packet has been received by GW: "; 
     std::cout << gw->address() << std::endl;
@@ -306,19 +287,19 @@ void StupidOrchestrator::gw_received_last_packet(Node* gw){
 }
 
 
-void StupidOrchestrator::start_gw_diff(Node* gw){
+void OrchestratorV1::start_gw_diff(Node* gw){
     print_time(); 
     std::cout << "sending the GW diff for GW: ";
     std::cout << gw->address() << std::endl;
 
     initiate_data_transfer(
-        gw, 100000, 
+        gw, 1000000, 
         [](Node* n){BaseOrchestrator::instance().gw_diff_sent(n);}
     );
 }
 
 
-void StupidOrchestrator::gw_diff_sent(Node* gw){
+void OrchestratorV1::gw_diff_sent(Node* gw){
     print_time(); 
     std::cout << "GW migration finished for GW: ";
     std::cout << gw->address() << std::endl;
@@ -327,55 +308,25 @@ void StupidOrchestrator::gw_diff_sent(Node* gw){
 
     auto& topo = MyTopology::instance();
     
-    if (gw != topo.mig_root){
+    if (gw != topo.get_mig_root()){
         auto parent = topo.get_nth_parent(gw, 1); 
         start_gw_migration_if_possible(parent);
     }
 }; 
 
-void StupidOrchestrator::setup_nth_layer_tunnel(Node* node, int layer){
-    auto& topo = MyTopology::instance(); 
-
-    auto peer = topo.get_peer(node); 
-
-    auto nth_parent = topo.get_nth_parent(node, layer); 
-    auto nth_parent_peer = topo.get_peer(nth_parent); 
-
-    print_time(); 
-    std::cout << "node " << node->address() << " ";                           
-    std::cout << "migrated to " << peer->address() << " ";                           
-    std::cout << "tunnelled from " << nth_parent->address() << " ";
-    std::cout << "to " << nth_parent_peer->address() << " ";
-    std::cout << std::endl;
-
-    topo.mig_manager().activate_tunnel(
-        nth_parent, nth_parent_peer,  
-        node, peer
-    );
-}; 
-
-
-void StupidOrchestrator::print_time(){
-    std::cout << "[";
-    std::cout << std::setprecision(5);
-    std::cout << std::setw(5);
-    std::cout << Scheduler::instance().clock();
-    std::cout << "] ";
-}
-
-double StupidOrchestrator::random_wait(){
+double OrchestratorV1::random_wait(){
     int r = 80 + std::rand() % 40;
     double wait = (double) r / 100.0; 
-    return wait; 
+    return 0; 
 }
 
 void LastPacketSender::expire(Event* e){  
-    auto& orch = StupidOrchestrator::instance(); 
+    auto& orch = OrchestratorV1::instance(); 
     orch.gw_sent_last_packet(gw);  
 }
 
 void LastPacketReceiver::expire(Event* e){  
-    auto& orch = StupidOrchestrator::instance(); 
+    auto& orch = OrchestratorV1::instance(); 
     orch.gw_received_last_packet(gw);  
 }
 

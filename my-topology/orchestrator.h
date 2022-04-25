@@ -3,6 +3,9 @@
 
 class Node; 
 
+
+enum MigState { NoMigState, PreMig, InMig, Migrated};
+
 /*
 The abstract BaseOrchestrator class. Provides the interface
 for an orchestrator. Mainly inherited by the Orchestrator
@@ -26,6 +29,11 @@ public:
     virtual void gw_received_last_packet(Node* node){}; 
     virtual void setup_nodes(){}; 
     virtual void start_background_traffic(){};
+    
+protected: 
+
+    void initiate_data_transfer(Node* node, int size, 
+                                void (*callback) (Node*));
 
 };
 

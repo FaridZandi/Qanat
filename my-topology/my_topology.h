@@ -5,7 +5,7 @@
 #include "simulator.h"
 #include "timer-handler.h"
 #include "topo_node.h"
-#include "orch_stupid.h"
+#include "orch_v1.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -51,23 +51,9 @@ public:
      */
     void process_packet(Packet* p, Handler*h, Node* node);
 
-    /**
-     * @brief Get all the leaves in the subtree of this 
-     * node. 
-     *  
-     * Any node that does not have any children is 
-     * considered a leaf node. 
-     *  
-     * @param root The root of the subtree.
-     * @return std::vector<Node*> of the leaves in the 
-     * subtree.
-     */
-    std::vector<Node*> get_subtree_nodes(
-        Node* root, 
-        bool include_leaves, 
-        bool include_internals ); 
     
     
+    void setup_nth_layer_tunnel(Node* vm, int n); 
     Node* get_nth_parent(Node* node, int n);
     TopoNode& get_data(Node* node); 
     int uid(Node* node); 
@@ -75,6 +61,12 @@ public:
     std::vector<Node*> get_children(Node* n); 
     Node* get_node_by_address(int addr);
     std::vector<int> get_path(Node* n1, path_mode pm);
+    Node* get_mig_root(); 
+    std::vector<Node*>& get_used_nodes();
+
+    std::vector<Node*> get_leaves(Node* root); 
+    std::vector<Node*> get_internals(Node* root); 
+    std::vector<Node*> get_all_nodes(Node* root); 
 
     /**
      * set the node pointer for all the classfiers 
@@ -105,13 +97,14 @@ public:
 
     void send_data(Node* n1, int n_bytes);
 
+    void connect_agents(Node* n1, Node* n2);
+
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
     
     // higher level management (lvl 4 and 5 of network stack)
     void start_tcp_app(Node* n1);
-    void connect_agents(Node* n1, Node* n2);
 
     // Virtual tree managament
     Node* make_node(bool is_source);
@@ -120,7 +113,12 @@ private:
     void make_peers(int n1, int n2);
     int duplicate_tree(int root); 
     void connect_nodes(int parent, int child);
-    
+
+    std::vector<Node*> get_subtree_nodes(Node* root, 
+                                         bool include_leaves, 
+                                         bool include_internals ); 
+
+
     // Migration 
     Node* mig_root; 
     
@@ -142,8 +140,6 @@ private:
     MigrationManager* mig_manager_; 
     
     
-    friend class Orchestrator; 
-    friend class StupidOrchestrator; 
 
     // Useless functions 
     void print_nodes();
