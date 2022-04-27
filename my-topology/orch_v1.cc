@@ -8,7 +8,7 @@
 #include <sstream>
 #include <algorithm>    
 #include <stack> 
-#include "nf.h"
+#include "network_func.h"
 #include <iomanip>
 #include <cstdlib>
 #include <ctime>
@@ -22,63 +22,6 @@ OrchestratorV1::OrchestratorV1() {
 OrchestratorV1::~OrchestratorV1(){
 
 }
-
-
-
-void OrchestratorV1::setup_nodes(){
-    auto& topo = MyTopology::instance(); 
-    auto mig_root = topo.get_mig_root();
-    auto mig_root_peer = topo.get_peer(mig_root);
-
-    for(auto& node: topo.get_all_nodes(mig_root)){
-        mig_state[node] = MigState::NoMigState;
-    }
-
-    for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
-        for(auto& node: topo.get_leaves(root)){    
-
-            topo.get_data(node).mode = OpMode::VM;
-            topo.get_data(node).add_nf("buffer", 100);
-            // topo.get_data(node).add_nf("rate_limiter", 100);
-            // topo.get_data(node).add_nf("delayer", 0.01);
-            topo.get_data(node).add_nf("tunnel_manager");
-            topo.get_data(node).add_nf("router");
-            topo.get_data(node).print_nfs(); 
-        }
-
-        for(auto& node: topo.get_internals(root)){     
-               
-            topo.get_data(node).mode = OpMode::GW;
-            topo.get_data(node).add_nf("monitor");
-            // topo.get_data(node).add_nf("delayer", 0.01);
-            topo.get_data(node).add_nf("tunnel_manager");
-            topo.get_data(node).add_nf("router");
-            topo.get_data(node).print_nfs(); 
-        }
-    }
-
-    std::cout << "--------------------------" << std::endl;
-    std::cout << "--------------------------" << std::endl;
-    std::cout << "--------------------------" << std::endl;
-
-    topo.introduce_nodes_to_classifiers(); 
-
-    for(auto& node: topo.get_used_nodes()){
-        auto path = topo.get_path(node, PATH_MODE_RECEIVER);
-        std::cout << "to " << topo.uid(node) << ": ";
-        for (auto p : path){
-            std::cout << p << " ";
-        }
-        std::cout << std::endl; 
-
-        path = topo.get_path(node, PATH_MODE_SENDER);
-        std::cout << "from " << topo.uid(node) << ": ";
-        for (auto p : path){
-            std::cout << p << " ";
-        }
-        std::cout << std::endl; 
-    }
-};
 
 
 void OrchestratorV1::start_migration(){
@@ -96,20 +39,17 @@ void OrchestratorV1::start_migration(){
     std::cout << std::endl;
 
     for(int i = 0; i < parallel_migrations; i++){
-        if(vm_migration_queue.size() > 0){
-
-            auto node = vm_migration_queue.front(); 
+        if (vm_migration_queue.size() > 0){
+            auto next_vm = vm_migration_queue.front();
             vm_migration_queue.pop();
-            start_vm_precopy(node);
-        }
+            start_vm_precopy(next_vm);
+        } 
     }
 };
     
   
 void OrchestratorV1::start_vm_precopy(Node* vm){
-    print_time(); 
-    std::cout << "sending the VM precopy for node: ";
-    std::cout << vm->address() << std::endl;
+    log_event("sending the VM precopy for node: ", vm->address());
 
     mig_state[vm] = MigState::PreMig; 
 
@@ -120,9 +60,7 @@ void OrchestratorV1::start_vm_precopy(Node* vm){
 }
 
 void OrchestratorV1::vm_precopy_finished(Node* vm){
-    print_time(); 
-    std::cout << "finished sending the VM precopy for node: ";
-    std::cout << vm->address() << std::endl;
+    log_event("finished sending the VM precopy for node: ", vm->address());
 
     start_vm_migration(vm); 
 }; 
@@ -138,14 +76,11 @@ void OrchestratorV1::start_vm_migration(Node* vm){
     
     topo.setup_nth_layer_tunnel(vm, 1); 
 
-    print_time(); 
-    std::cout << "start buffering for ";
-    std::cout << peer->address() << std::endl; 
+    log_event("start buffering for ", peer->address());
+
     peer_buffer->start_buffering();
 
-    print_time(); 
-    std::cout << "sending the VM snapshot for node: ";
-    std::cout << vm->address() << std::endl;
+    log_event("sending the VM snapshot for node: ", vm->address());
 
     initiate_data_transfer(
         vm, 10000000, 
@@ -155,10 +90,8 @@ void OrchestratorV1::start_vm_migration(Node* vm){
 
 
 void OrchestratorV1::vm_migration_finished(Node* vm){
-    print_time(); 
-    std::cout << "VM migration finished for: ";
-    std::cout << vm->address() << std::endl;
-    
+    log_event("VM migration finished for: ", vm->address());
+
     mig_state[vm] = MigState::Migrated; 
 
     auto& topo = MyTopology::instance();
@@ -167,9 +100,7 @@ void OrchestratorV1::vm_migration_finished(Node* vm){
     auto peer_data = topo.get_data(peer);
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
-    print_time(); 
-    std::cout << "stopped buffering for ";
-    std::cout << peer->address() << std::endl; 
+    log_event("stopped buffering for ", peer->address());
     peer_buffer->stop_buffering();
 
     // signal parent migration
@@ -196,18 +127,14 @@ void OrchestratorV1::start_gw_migration_if_possible(
         }
     }
 
-    print_time(); 
-    std::cout << "all conditions ok to start migrating GW: ";
-    std::cout << gw->address() << std::endl;
+    log_event("all conditions ok to start migrating GW: ", gw->address()); 
 
     start_gw_snapshot(gw); 
 }
 
 
 void OrchestratorV1::start_gw_snapshot(Node* gw){
-    print_time(); 
-    std::cout << "sending the GW snapshot for GW: ";
-    std::cout << gw->address() << std::endl;
+    log_event("sending the GW snapshot for GW: ", gw->address());
 
     mig_state[gw] = MigState::PreMig; 
 
@@ -219,9 +146,7 @@ void OrchestratorV1::start_gw_snapshot(Node* gw){
 
 
 void OrchestratorV1::gw_snapshot_sent(Node* gw){
-    print_time(); 
-    std::cout << "finished sending the GW snapshot for GW: ";
-    std::cout << gw->address() << std::endl;
+    log_event("finished sending the GW snapshot for GW: ", gw->address());
 
     auto& topo = MyTopology::instance();
 
@@ -254,19 +179,9 @@ void OrchestratorV1::mark_last_packet(Node* parent,
 
 void OrchestratorV1::gw_sent_last_packet(Node* gw){
     
-    print_time(); 
-    std::cout << "last packet has been sent to GW: "; 
-    std::cout << gw->address() << std::endl;
+    log_event("last packet has been sent to GW: ", gw->address());
 
-    auto& topo = MyTopology::instance();
-
-    // setup tunnels for all the nodes in one layer up. 
-    int gw_layer = topo.get_data(gw).layer_from_bottom;
-    auto parent = topo.get_nth_parent(gw, 1); 
-
-    for(auto vm: topo.get_leaves(gw)){
-        topo.setup_nth_layer_tunnel(vm, gw_layer + 1);
-    }
+    tunnel_subtree_tru_parent(gw);
 
     auto lpr = new LastPacketReceiver; 
     lpr->gw = gw; 
@@ -275,9 +190,7 @@ void OrchestratorV1::gw_sent_last_packet(Node* gw){
 
 
 void OrchestratorV1::gw_received_last_packet(Node* gw){
-    print_time(); 
-    std::cout << "last packet has been received by GW: "; 
-    std::cout << gw->address() << std::endl;
+    log_event("last packet has been received by GW: ", gw->address());
 
     auto& topo = MyTopology::instance();
 
@@ -288,9 +201,7 @@ void OrchestratorV1::gw_received_last_packet(Node* gw){
 
 
 void OrchestratorV1::start_gw_diff(Node* gw){
-    print_time(); 
-    std::cout << "sending the GW diff for GW: ";
-    std::cout << gw->address() << std::endl;
+    log_event("sending the GW diff for GW: ", gw->address());
 
     initiate_data_transfer(
         gw, 1000000, 
@@ -300,9 +211,7 @@ void OrchestratorV1::start_gw_diff(Node* gw){
 
 
 void OrchestratorV1::gw_diff_sent(Node* gw){
-    print_time(); 
-    std::cout << "GW migration finished for GW: ";
-    std::cout << gw->address() << std::endl;
+    log_event("GW migration finished for GW: ", gw->address());
 
     mig_state[gw] = MigState::Migrated; 
 
@@ -314,12 +223,6 @@ void OrchestratorV1::gw_diff_sent(Node* gw){
     }
 }; 
 
-double OrchestratorV1::random_wait(){
-    int r = 80 + std::rand() % 40;
-    double wait = (double) r / 100.0; 
-    return 0; 
-}
-
 void LastPacketSender::expire(Event* e){  
     auto& orch = OrchestratorV1::instance(); 
     orch.gw_sent_last_packet(gw);  
@@ -330,3 +233,23 @@ void LastPacketReceiver::expire(Event* e){
     orch.gw_received_last_packet(gw);  
 }
 
+std::list<nf_spec> OrchestratorV1::get_vm_nf_list(){
+    return {
+        {"buffer", 100},
+        {"rate_limiter", 100},
+        {"delayer", 0.01},
+        {"tunnel_manager", 0},
+        {"router", 0}
+    };
+}
+
+std::list<nf_spec> OrchestratorV1::get_gw_nf_list(){
+    return {
+        {"buffer", 100},
+        {"rate_limiter", 100},
+        {"monitor", 0},
+        {"delayer", 0.01},
+        {"tunnel_manager", 0},
+        {"router", 0}
+    };
+}

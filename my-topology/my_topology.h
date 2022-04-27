@@ -99,6 +99,7 @@ public:
 
     void connect_agents(Node* n1, Node* n2);
 
+    void print_graph(bool print_state = false);
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
@@ -142,8 +143,10 @@ private:
     
 
     // Useless functions 
+
+    void print_tree_node(std::string prefix, Node* this_node, bool isLast, bool print_state);
+
     void print_nodes();
-    void print_graph();
 
 
     //New stuff 

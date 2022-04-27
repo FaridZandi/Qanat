@@ -35,7 +35,7 @@ int MigrationManager::activate_tunnel(Node* in, Node* out,
 
     add_tunnel(td);                             
 
-	std::cout << "tunnel uid: " << td.uid << std::endl;
+	// std::cout << "tunnel uid: " << td.uid << std::endl;
 	return td.uid; 
 }
 
@@ -56,10 +56,13 @@ bool MigrationManager::should_ignore(Packet* p){
 	hdr_tcp* tcph = hdr_tcp::access(p); 
 
 	if (iph->traffic_class == 2){
+		// std::cout << "background traffic detected" << std::endl; 
 		return true; 
+	} else {
+		// std::cout << "migration traffic detected" << std::endl; 
+		return false; 
 	}
 
-	return false; 
 }
 
 

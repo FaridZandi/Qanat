@@ -152,9 +152,12 @@ public:
 
     void stop_buffering();
 
+    int get_buffer_size(); 
+    
     virtual std::string get_type(); 
 
     virtual void print_info(); 
+
 
 private:
     int size_; 

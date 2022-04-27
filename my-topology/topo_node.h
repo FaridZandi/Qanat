@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include "node.h"
-#include "nf.h"
+#include "network_func.h"
 
 enum OpMode { NoneMode, VM, GW };
 

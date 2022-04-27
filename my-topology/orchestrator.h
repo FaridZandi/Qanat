@@ -1,10 +1,27 @@
 #ifndef orchestrator_h
 #define orchestrator_h
 
+#include <string>
+#include <list>
+#include <map>
+#include <queue>
+
 class Node; 
 
+struct nf_spec{
+    std::string type; 
+    double parameter; 
+};
 
-enum MigState { NoMigState, PreMig, InMig, Migrated};
+
+enum MigState { 
+    Normal, 
+    PreMig, 
+    InMig, 
+    Buffering, 
+    Migrated, 
+    OutOfService
+};
 
 /*
 The abstract BaseOrchestrator class. Provides the interface
@@ -27,14 +44,39 @@ public:
     virtual void gw_diff_sent(Node* node){}; 
     virtual void gw_sent_last_packet(Node* node1, Node* node2){}; 
     virtual void gw_received_last_packet(Node* node){}; 
-    virtual void setup_nodes(){}; 
+    virtual void setup_nodes(); 
     virtual void start_background_traffic(){};
     
+    MigState get_mig_state(Node* node);  
+    std::string get_mig_state_string(Node* node);  
 protected: 
 
     void initiate_data_transfer(Node* node, int size, 
                                 void (*callback) (Node*));
 
+    void tunnel_subtree_tru_parent(Node* node);
+
+    void log_event(std::string message, int arg = -1);
+
+    void buffer_on_peer(Node* node); 
+
+    void process_on_peer(Node* node); 
+
+    virtual std::list<nf_spec> get_vm_nf_list(){};
+
+    virtual std::list<nf_spec> get_gw_nf_list(){};
+
+    double random_wait();
+
+    void set_node_state(Node* node, MigState state);
+
+    void set_peer_state(Node* node, MigState state);
+
+    std::queue<Node*> vm_migration_queue;
+
+    std::map<Node*, MigState> mig_state; 
+
+    static const int parallel_migrations = 1; 
 };
 
 

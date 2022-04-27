@@ -1,4 +1,4 @@
-#include "nf.h"
+#include "network_func.h"
 #include "node.h"
 #include "topo_node.h"
 #include "my_topology.h"
@@ -7,6 +7,7 @@
 #include <sstream>
 #include "tcp-full.h"
 #include <iomanip>
+#include "utility.h"
 
 NF::NF(TopoNode* toponode, 
        int chain_pos) : toponode_(toponode),
@@ -56,11 +57,7 @@ bool NF::should_ignore(Packet* p){
 
 bool NF::log_packet(std::string message, int arg){
     if(verbose){    
-        std::cout << "[";
-        std::cout << std::setprecision(5);
-        std::cout << std::setw(5);
-        std::cout << Scheduler::instance().clock();
-        std::cout << "] ";
+        print_time();
 
         std::cout << "[";
         std::cout << get_type();
@@ -284,13 +281,18 @@ void Buffer::start_buffering(){
     buffering = true;
 }
 
+int Buffer::get_buffer_size(){
+    return pq->length(); 
+}
+
 void Buffer::stop_buffering(){
+    buffering = false; 
+
     while (pq->length() > 0){
         log_packet("releasing a packet here.");
         send(pq->deque());
     } 
 
-    buffering = false; 
 }
 
 std::string Buffer::get_type(){

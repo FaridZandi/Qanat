@@ -955,38 +955,39 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 			std::cout << "sent between two logical nodes"; 
 			std::cout << std::endl; 
 
-		} else if (src_node == nullptr or dst_node == nullptr) {
+		} else if (dst_node != nullptr) {
 			// either of src and dst are logical nodes
 
 			std::vector<int> path; 
 
-			if (src_node != nullptr) {
-				path = topo.get_path(src_node, PATH_MODE_SENDER);
-				path.push_back(dst_.addr_); 
+			path = topo.get_path(dst_node, PATH_MODE_RECEIVER);
 
-				iph->dst_.addr_ = path[0];
-				iph->gw_path_pointer = path.size() - 2;
-
-			} else if (dst_node != nullptr) {
-
-				path = topo.get_path(dst_node, PATH_MODE_RECEIVER);
-
-				iph->dst_.addr_ = path[0];
-				iph->gw_path_pointer = path.size() - 2;
-			}
+			iph->dst_.addr_ = path[0];
+			iph->gw_path_pointer = path.size() - 2;
 
 			int ptr = path.size() - 1; 
 			for (auto elem: path){
 				iph->gw_path[ptr --] = elem;
 			}
-
-			// std::cout << "packet dst: " << iph->dst_.addr_ << std::endl; 
-			// std::cout << "packet path: "; 
-			// for (int i = 0; i <= iph->gw_path_pointer; i++){
-			// 	std::cout << iph->gw_path[i] << " "; 
-			// }
-			// std::cout << std::endl; 
 			
+		} else if (src_node != nullptr) {
+			
+			// Turning this off for now, until we think of 
+			// something that makes sense. 
+
+			// std::vector<int> path; 
+
+			// path = topo.get_path(src_node, PATH_MODE_SENDER);
+			// path.push_back(dst_.addr_); 
+
+			// iph->dst_.addr_ = path[0];
+			// iph->gw_path_pointer = path.size() - 2;
+
+			// int ptr = path.size() - 1; 
+			// for (auto elem: path){
+			// 	iph->gw_path[ptr --] = elem;
+			// }
+
 		} else if (src_node == nullptr or dst_node == nullptr) {
 			// neither of src and dst are logical nodes 
 

@@ -38,7 +38,6 @@ public:
     virtual ~OrchestratorV1(); 
 
     virtual void start_background_traffic(){};
-    virtual void setup_nodes(); 
     virtual void start_migration();
 
     virtual void vm_precopy_finished(Node* vm); 
@@ -58,16 +57,8 @@ private:
     void mark_last_packet(Node* parent, Node* child); 
     void start_gw_migration_if_possible(Node* gw);     
 
-    // utility
-    
-    double random_wait(); 
-
-    // data 
-
-    std::queue<Node*> vm_migration_queue;
-    std::map<Node*, MigState> mig_state; 
-
-    static const int parallel_migrations = 100; 
+    virtual std::list<nf_spec> get_vm_nf_list();
+    virtual std::list<nf_spec> get_gw_nf_list();
 };
 
 

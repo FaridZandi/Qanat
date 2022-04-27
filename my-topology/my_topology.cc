@@ -3,6 +3,7 @@
 #include "orchestrator.h"
 #include "tcp-full.h"
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <algorithm>    
 #include <stack> 
@@ -377,8 +378,18 @@ void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
     // std::cout << "node->address() " << node->address();
     // std::cout << std::endl;  
 
+    
+
+
     if(iph->dst_.addr_ == node->address() or
        iph->src_.addr_ == node->address()){
+
+        auto& orch = BaseOrchestrator::instance();
+
+        if (orch.get_mig_state(node) == MigState::InMig) {
+            // std::cout << "interesting stuff happenning here: " << node->address() << std::endl; 
+        }
+
         data[node].process_packet(p, h);
     }
 };
@@ -487,16 +498,56 @@ void MyTopology::print_nodes(){
 }
 
 
-void MyTopology::print_graph(){
-    for(Node* this_node: used_nodes){
-        std::cout << this_node->address();
-        std::cout << "(" << data[this_node].uid << ") :" << " ";
-        for(int child: data[this_node].children){
-            std::cout << node[child]->address(); 
-            std::cout << "(" << data[node[child]].uid << ")" << " ";
+void MyTopology::print_tree_node(std::string prefix, 
+                                 Node* this_node, 
+                                 bool isLast, 
+                                 bool print_state)  {
+
+    auto& orch = BaseOrchestrator::instance();
+
+    if(this_node != nullptr){
+        std::cout << prefix;
+        std::cout << (isLast ? "└──────" : "├──────");
+        std::cout << setw(2) << this_node->address(); 
+        if (print_state){
+            std::cout << "(";
+            std::cout << orch.get_mig_state_string(this_node);
+            std::cout << ")";
+        } else {
+            std::cout << "(" << setw(2);
+            std::cout << data[this_node].uid << ")" << " ";
         }
-        std::cout << std::endl;
+        std::cout << std::endl; 
+        
+        int child_count = data[this_node].children.size(); 
+
+        for(int i = 0; i < child_count; i++){
+
+            Node* child = node[data[this_node].children[i]];
+
+            if (i == child_count - 1){
+                print_tree_node(
+                    prefix + (isLast ? "        " : "│       "), 
+                    child, true, print_state
+                );
+            } else {
+                print_tree_node(
+                    prefix + (isLast ? "        " : "│       "), 
+                    child, false, print_state
+                );
+            }
+        }
     }
+}
+
+void MyTopology::print_graph(bool print_state){
+    std::cout << "main tree: " << std::endl; 
+
+    print_tree_node("", mig_root, true, print_state); 
+
+    std::cout << "other tree: " << std::endl; 
+
+    print_tree_node("", node[data[mig_root].peer], true, print_state); 
 }
 
 

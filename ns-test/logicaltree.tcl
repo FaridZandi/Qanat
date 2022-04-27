@@ -2,132 +2,48 @@ set ns [new Simulator]
 set sim_end 100
 
 
-$ns rtproto DV
-Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
+# $ns rtproto DV
+# Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
 Node set multiPath_ 1
 Agent/TCP/FullTcp set segsize_ 1400
 
-# set tf [open out.tr w]
+set tf [open out.tr w]
 # $ns trace-all $tf
 
 proc finish {} {
         puts "simulation finished"
-        # global ns tf
+        global ns tf
         # $ns flush-trace
-        # close $tf
+        close $tf
         exit 0
 }
-
-
-set n00 [$ns node]
-set n01 [$ns node]
-set n02 [$ns node]
-set n03 [$ns node]
-set n04 [$ns node]
-set n05 [$ns node]
-set n06 [$ns node]
-set n07 [$ns node]
-set n08 [$ns node]
-set n09 [$ns node]
-set n10 [$ns node]
-set n11 [$ns node]
-set n12 [$ns node]
-set n13 [$ns node]
-set n14 [$ns node]
-
-set n15 [$ns node]
-set n16 [$ns node]
-set n17 [$ns node]
-set n18 [$ns node]
-set n19 [$ns node]
-set n20 [$ns node]
-set n21 [$ns node]
-set n22 [$ns node]
-set n23 [$ns node]
-set n24 [$ns node]
-set n25 [$ns node]
-set n26 [$ns node]
-set n27 [$ns node]
-set n28 [$ns node]
-set n29 [$ns node]
-
-set BW 10Gb 
-set LAT 10us
-set QTYPE DropTail 
-
-$ns duplex-link $n14 $n00 $BW $LAT $QTYPE 
-$ns duplex-link $n14 $n01 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n02 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n03 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n04 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n05 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n06 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n07 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n08 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n09 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n10 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n11 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n12 $BW $LAT $QTYPE
-$ns duplex-link $n14 $n13 $BW $LAT $QTYPE
-
-$ns duplex-link $n14 $n15 $BW $LAT $QTYPE
-
-$ns duplex-link $n15 $n16 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n17 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n18 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n19 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n20 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n21 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n22 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n23 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n24 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n25 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n26 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n27 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n28 $BW $LAT $QTYPE
-$ns duplex-link $n15 $n29 $BW $LAT $QTYPE
 
 
 set t [new MyTopology]
 $t set_simulator $ns
 
+set BW 10Gb 
+set LAT 5us
+set QTYPE DropTail 
+set child_count 100
+
+set n_mid_left [$ns node]
+set n_mid_right [$ns node]
+$ns duplex-link $n_mid_left $n_mid_right $BW $LAT $QTYPE
 
 
-$t add_node_to_dest $n14
-
-$t add_node_to_dest $n00
-$t add_node_to_dest $n01
-$t add_node_to_dest $n02
-$t add_node_to_dest $n03
-$t add_node_to_dest $n04
-$t add_node_to_dest $n05
-$t add_node_to_dest $n06
-$t add_node_to_dest $n07
-$t add_node_to_dest $n08
-$t add_node_to_dest $n09
-$t add_node_to_dest $n10
-$t add_node_to_dest $n11
-$t add_node_to_dest $n12
-$t add_node_to_dest $n13
+for { set x 0} { $x < $child_count} { incr x } {
+    set n($x) [$ns node]
+    $ns duplex-link $n_mid_left $n($x) $BW $LAT $QTYPE 
+    $t add_node_to_dest $n($x)
+}
 
 
-$t add_node_to_source $n15
-
-$t add_node_to_source $n16
-$t add_node_to_source $n17
-$t add_node_to_source $n18
-$t add_node_to_source $n19
-$t add_node_to_source $n20
-$t add_node_to_source $n21
-$t add_node_to_source $n22
-$t add_node_to_source $n23
-$t add_node_to_source $n24
-$t add_node_to_source $n25
-$t add_node_to_source $n26
-$t add_node_to_source $n27
-$t add_node_to_source $n28
-$t add_node_to_source $n29
-
+for { set x $child_count} { $x < 2 * $child_count} { incr x } {
+    set n($x) [$ns node]
+    $ns duplex-link $n_mid_right $n($x) $BW $LAT $QTYPE
+    $t add_node_to_source $n($x)
+}
 
 
 
@@ -142,8 +58,8 @@ set src_app [new Application]
 set sink_app [new Application]
 
 # attach agents to nodes
-$ns attach-agent $n16 $src
-$ns attach-agent $n26 $sink
+$ns attach-agent $n(16) $src
+$ns attach-agent $n(26) $sink
 
 # attach the apps
 $src_app attach-agent $src
@@ -157,8 +73,8 @@ $sink listen
 
 
 
-
-$t make_tree 2 2 1
+ 
+$t make_tree 2 1 1 3
 $t duplicate_tree
 $t print_graph
 
