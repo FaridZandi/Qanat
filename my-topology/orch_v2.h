@@ -33,6 +33,7 @@ public:
     virtual std::list<nf_spec> get_vm_nf_list();
     virtual std::list<nf_spec> get_gw_nf_list();
 
+    
 
 
 private: 
@@ -46,6 +47,8 @@ private:
     void copy_gw_state(Node* gw){}; 
     void try_parent_migration(Node* gw);
 
+    // std::map<Node*, bool> gw_snap_shot_sent; 
+    // std::map<Node*, bool> gw_peer_timeout; 
 
     static const int VM_PRECOPY_SIZE = 10000000; 
     static const int VM_SNAPSHOT_SIZE = 10000000;      

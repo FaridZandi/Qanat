@@ -136,9 +136,6 @@ Tunnel_Point MigrationManager::packet_match(tunnel_data td,
 	// std::cout << "dst: " << p_dst; 
 	// std::cout << std::endl; 
 
-	auto p_src_orig = iph->src_orig.addr_;
-	auto p_dst_orig = iph->dst_orig.addr_;
-
 	auto n_addr = n->address(); 
 
 
@@ -431,10 +428,6 @@ bool EfficentMigrationManager::pre_classify(
 	auto p_src = iph->src_.addr_;
 	auto p_dst = iph->dst_.addr_;	
 	
-	auto p_src_orig = iph->src_orig.addr_;
-	auto p_dst_orig = iph->dst_orig.addr_;
-
-
 	auto n_addr = n->address(); 
 
 	Tunnel_Point tp = rules[n_addr][p_dst];

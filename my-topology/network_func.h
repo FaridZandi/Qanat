@@ -9,6 +9,7 @@ class Packet;
 class Handler; 
 class TopoNode; 
 class PacketQueue; 
+class Node; 
 
 class NF : public Handler {
 public: 
@@ -159,11 +160,26 @@ public:
     virtual void print_info(); 
 
 
-private:
+protected:
     int size_; 
 
     bool buffering; 
     PacketQueue* pq;
+};
+
+class SelectiveBuffer: public Buffer {
+public:
+    SelectiveBuffer(TopoNode* toponode, int chain_pos, int size); 
+    
+    virtual ~SelectiveBuffer();
+
+    virtual bool recv(Packet* p, Handler* h);
+
+    virtual std::string get_type(); 
+
+    virtual void print_info(); 
+
+    int buffer_packets_from; 
 };
 
 
@@ -223,6 +239,25 @@ public:
     virtual std::string get_type(); 
 
     virtual void print_info(); 
+};
+
+
+
+class LastPacketNotifNF : public NF {
+public: 
+    LastPacketNotifNF(TopoNode* toponode, int chain_pos); 
+    
+    virtual ~LastPacketNotifNF(); 
+
+    virtual bool recv(Packet* p, Handler* h);
+
+    virtual void handle(Event* event){};
+
+    virtual std::string get_type(); 
+
+    virtual void print_info(); 
+
+    void (*finish_notify_callback) (Node*);
 };
 
 

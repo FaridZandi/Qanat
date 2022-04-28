@@ -104,9 +104,8 @@ struct hdr_ip {
 
 	// TODO: comment these extensively 
 	// For Tunneling
-	ns_addr_t	src_orig; // Farid 
-	ns_addr_t	dst_orig;	// Farid 
 	bool agent_tunnel_flag; // Farid
+	int prev_hop;   // Farid
 	int gw_path[10];   // Farid
 	int gw_path_pointer; // Farid
 	int traffic_class; // Sepehr

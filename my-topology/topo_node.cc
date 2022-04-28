@@ -44,6 +44,12 @@ NF* TopoNode::add_nf(std::string type, double param){
         nfs.push_back(b); 
         return b;
 
+    } else if (type == "selective_buffer"){
+        int size = int(param); 
+        SelectiveBuffer* sb = new SelectiveBuffer(this, current_length, size);
+        nfs.push_back(sb); 
+        return sb;
+
     } else if (type == "rate_limiter"){
         int rate = int(param); 
         RateLimiterNF* rl = new RateLimiterNF(

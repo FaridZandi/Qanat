@@ -475,6 +475,7 @@ Agent::initpkt(Packet* p) const
 	iph->gw_path_pointer = -1; // Farid 
 	iph->traffic_class = 1; // Sepehr
 	iph->state_dst = -1; // Farid 
+	iph->prev_hop = -1; // Farid 
 
 	//DEBUG
 	//if (dst_ != -1)

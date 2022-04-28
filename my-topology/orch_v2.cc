@@ -107,7 +107,20 @@ void OrchestratorV2::try_parent_migration(Node* node){
 
         log_event("all conditions ok to start migrating GW: ", gw->address()); 
 
-        tunnel_subtree_tru_parent(gw);        
+        if (gw != topo.get_mig_root()){
+            tunnel_subtree_tru_parent(gw);   
+
+            auto peer = topo.get_peer(gw);
+            auto peer_data = topo.get_data(peer);
+            auto peer_buffer = (SelectiveBuffer*)peer_data.get_nf("selbuf");
+            auto parent = topo.get_nth_parent(peer, 1)->address();
+            peer_buffer->buffer_packets_from = parent; 
+            peer_buffer->start_buffering();
+            set_peer_state(gw, MigState::Buffering);
+            log_event("starting a selective buffer for ", peer->address());
+        }
+
+
         start_gw_snapshot(gw); 
 
     }
@@ -115,9 +128,7 @@ void OrchestratorV2::try_parent_migration(Node* node){
 
 
 void OrchestratorV2::start_gw_snapshot(Node* gw){
-
     set_node_state(gw, MigState::InMig);
-    set_peer_state(gw, MigState::InMig);
     
     log_event("sending the GW snapshot for GW: ", gw->address());
 
@@ -132,16 +143,27 @@ void OrchestratorV2::start_gw_snapshot(Node* gw){
 
 void OrchestratorV2::gw_snapshot_sent(Node* gw){
 
-    set_node_state(gw, MigState::Migrated);
-    set_peer_state(gw, MigState::Normal);
-    
     log_event("finished sending the GW snapshot for GW: ", gw->address());
 
-    // if (gw == topo.get_mig_root()){
-        // start_gw_diff(gw);
-    // } else {
-        // mark_last_packet(topo.get_nth_parent(gw, 1), gw);
-    // }
+    auto& topo = MyTopology::instance();
+
+    auto peer = topo.get_peer(gw);
+    auto peer_data = topo.get_data(peer);
+    auto peer_buffer = (SelectiveBuffer*)peer_data.get_nf("selbuf");
+
+    auto queue_depth = peer_buffer->get_buffer_size();
+    peer_buffer->stop_buffering();
+
+    set_node_state(gw, MigState::Migrated);
+    set_peer_state(gw, MigState::Normal);
+
+    log_event("releasing a buffer of size ", queue_depth);
+
+    if (gw == topo.get_mig_root()){
+        log_event("migration finished");
+    } else {
+        try_parent_migration(gw); 
+    }
 }; 
 
 
@@ -178,7 +200,7 @@ std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
 
 std::list<nf_spec> OrchestratorV2::get_gw_nf_list(){
     return {
-        {"buffer", 100000},
+        {"selective_buffer", 100000},
         {"rate_limiter", 100000},
         {"monitor", 0},
         {"delayer", 0.00005},

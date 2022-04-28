@@ -308,8 +308,62 @@ void Buffer::print_info(){
     std::cout << std::endl;  
 }
 
+
 /**********************************************************
- * RateLimiterNF's Implementation                                 *  
+ * SelectiveBuffer's Implementation                       *  
+ *********************************************************/
+
+
+SelectiveBuffer::SelectiveBuffer(TopoNode* toponode, int chain_pos, int size) 
+    : Buffer(toponode, chain_pos, size) {
+        buffer_packets_from = -1; 
+}
+
+SelectiveBuffer::~SelectiveBuffer(){
+
+}
+
+
+
+bool SelectiveBuffer::recv(Packet* p, Handler* h){
+    hdr_ip* iph = hdr_ip::access(p);
+
+    log_packet("recved packet here with class: ", iph->traffic_class);
+
+    if (should_ignore(p)){
+        return true;
+    }
+
+    if (not buffering){
+        return true; 
+    }
+
+    // only care about packets from a certain prev hop
+    if (iph->prev_hop != buffer_packets_from){
+        return true; 
+    }
+    
+    return Buffer::recv(p, h); 
+}
+
+
+std::string SelectiveBuffer::get_type(){
+    return "selbuf"; 
+}
+
+void SelectiveBuffer::print_info(){
+    std::cout << "selective buffer on node " ;
+    std::cout << this->toponode_->node->address();
+    std::cout << "(" << this->toponode_->uid << ")";
+    std::cout << " with size "; 
+    std::cout << this->size_;
+    std::cout << std::endl;  
+}
+
+
+
+/**********************************************************
+ * RateLimiterNF's Implementation                         *  
  *********************************************************/
 
 RateLimiterNF::RateLimiterNF(TopoNode* toponode, int chain_pos, int rate) 
@@ -473,7 +527,9 @@ bool RouterNF::recv(Packet* p, Handler* h){
     // std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
 	
     if (iph->gw_path_pointer != -1){
+        
         auto ptr = iph->gw_path_pointer;
+        iph->prev_hop = iph->dst_.addr_; 
         iph->dst_.addr_ = iph->gw_path[ptr]; 
         iph->gw_path_pointer --; 
     }
@@ -501,3 +557,30 @@ void RouterNF::print_info(){
     std::cout << std::endl;  
 }
 
+
+/**********************************************************
+ * LastPacketNotifNF's Implementation                                 *  
+ *********************************************************/
+
+LastPacketNotifNF::LastPacketNotifNF(TopoNode* toponode, int chain_pos) 
+    : NF(toponode, chain_pos) {
+}
+
+LastPacketNotifNF::~LastPacketNotifNF(){
+
+}
+
+bool LastPacketNotifNF::recv(Packet* p, Handler* h){
+    log_packet("recved a packet here.");
+    return true; 
+}
+
+std::string LastPacketNotifNF::get_type(){
+    return "lastpk"; 
+}
+
+void LastPacketNotifNF::print_info(){
+    std::cout << "Last Packet Notifier on node " ;
+    std::cout << this->toponode_->node->address();
+    std::cout << std::endl;  
+}
