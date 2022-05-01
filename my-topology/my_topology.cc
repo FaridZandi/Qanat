@@ -122,7 +122,16 @@ int MyTopology::command(int argc, const char*const* argv){
             dest_nodes_ptrs.push(argv[2]);
             dest_nodes.push(new_node);
             return TCL_OK;
-        }        
+        } else if (strcmp(argv[1], "get_logical_leaf") == 0){
+			int leaf_id = atoi(argv[2]);
+            auto children = get_leaves(mig_root);
+            if(leaf_id >= children.size()){
+                tcl.resultf("%d", -1);
+            } else {
+                tcl.resultf("%s", data[children[leaf_id]].pointer.c_str());
+            }
+            return TCL_OK;
+        }       
     } else if (argc == 4) {
         if (strcmp(argv[1], "add_child") == 0){
             Node* parent = (Node*)TclObject::lookup(argv[2]);

@@ -87,7 +87,7 @@ public:
         	delack_timer_(this), flags_(0),
         	state_(TCPS_CLOSED), recent_ce_(FALSE),
 		  last_state_(TCPS_CLOSED), rq_(rcv_nxt_), last_ack_sent_(-1),
-		  informpacer(0),m_bPFC(0),traffic_class_(1) {}
+		  informpacer(0),m_bPFC(0), traffic_class_(1) { }
 		// Mohammad: added informpacer
 
 	~FullTcpAgent() { cancel_timers(); rq_.clear(); }
@@ -101,9 +101,11 @@ public:
 	virtual int command(int argc, const char*const* argv);
        	virtual void reset();       		// reset to a known point
 
+
 	virtual void set_traffic_class(int);
 	virtual int get_traffic_class(void);
-	
+
+
 protected:
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
@@ -140,6 +142,7 @@ protected:
 	int data_on_syn_;   // send data on initial SYN?
 	double last_send_time_;	// time of last send
   
+
 	/* Mohammad: state-variable for robust
 	   FCT measurement. 
 	*/
@@ -182,7 +185,7 @@ protected:
 	double delack_interval_;
         int debug_;                     // Turn on/off debug output
 	int traffic_class_; /* this is to define the class for each packet
-					       to be used by the buffers */
+						to be used by the buffers */
 
 	int headersize();   // a tcp header w/opts
 	int outflags();     // state-specific tcp header flags

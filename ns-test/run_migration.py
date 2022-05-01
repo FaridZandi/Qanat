@@ -9,7 +9,7 @@ def worker():
 		except Queue.Empty:
 			return
 		#Make directory to save results
-		os.system('mkdir '+j[1])
+		os.system('mkdir -p '+j[1])
 		os.system(j[0])
 
 q = Queue.Queue()

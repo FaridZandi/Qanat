@@ -3,14 +3,10 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 40} {
+if {$argc != 39} {
     puts "wrong number of arguments $argc"
     exit 0
 }
-
-
-set tf [open out.tr w]
-$ns trace-all $tf
 
 set sim_end [lindex $argv 0]
 set link_rate [lindex $argv 1]
@@ -58,10 +54,9 @@ set topology_spt [lindex $argv 34]
 set topology_tors [lindex $argv 35]
 set topology_spines [lindex $argv 36]
 set topology_x [lindex $argv 37]
-set topology_dest_servers [lindex $argv 38]
 
 ### result file
-set flowlog [open [lindex $argv 39] w]
+set flowlog [open [lindex $argv 38] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -130,12 +125,48 @@ if {[string compare $sourceAlg "DCTCP-Sack"] == 0} {
 }
 
 #Shuang
+Agent/TCP/FullTcp set prio_scheme_ $prio_scheme_;
 Agent/TCP/FullTcp set dynamic_dupack_ 1000000; #disable dupack
 Agent/TCP set window_ 1000000
 Agent/TCP set windowInit_ $initWindow
 Agent/TCP set rtxcur_init_ $min_rto;
+Agent/TCP/FullTcp/Sack set clear_on_timeout_ false;
+Agent/TCP/FullTcp/Sack set sack_rtx_threshmode_ 2;
+Agent/TCP/FullTcp set prob_cap_ $prob_cap_;
+
+Agent/TCP/FullTcp set enable_pias_ false
+Agent/TCP/FullTcp set pias_prio_num_ 0
+Agent/TCP/FullTcp set pias_debug_ false
+Agent/TCP/FullTcp set pias_thresh_0 0
+Agent/TCP/FullTcp set pias_thresh_1 0
+Agent/TCP/FullTcp set pias_thresh_2 0
+Agent/TCP/FullTcp set pias_thresh_3 0
+Agent/TCP/FullTcp set pias_thresh_4 0
+Agent/TCP/FullTcp set pias_thresh_5 0
+Agent/TCP/FullTcp set pias_thresh_6 0
+
+#Whether we enable PIAS
+if {[string compare $switchAlg "Priority"] == 0 } {
+    Agent/TCP/FullTcp set enable_pias_ true
+    Agent/TCP/FullTcp set pias_prio_num_ $prio_num_
+    Agent/TCP/FullTcp set pias_debug_ false
+    Agent/TCP/FullTcp set pias_thresh_0 $pias_thresh_0
+    Agent/TCP/FullTcp set pias_thresh_1 $pias_thresh_1
+    Agent/TCP/FullTcp set pias_thresh_2 $pias_thresh_2
+    Agent/TCP/FullTcp set pias_thresh_3 $pias_thresh_3
+    Agent/TCP/FullTcp set pias_thresh_4 $pias_thresh_4
+    Agent/TCP/FullTcp set pias_thresh_5 $pias_thresh_5
+    Agent/TCP/FullTcp set pias_thresh_6 $pias_thresh_6
+}
+
+if {$queueSize > $initWindow } {
+    Agent/TCP set maxcwnd_ [expr $queueSize - 1];
+} else {
+    Agent/TCP set maxcwnd_ $initWindow
+}
 
 set myAgent "Agent/TCP/FullTcp";
+set myAgentSink "Agent/TCP/FullTcp";
 
 ################# Switch Options ######################
 Queue set limit_ $queueSize
@@ -178,28 +209,61 @@ if {$enableMultiPath == 1} {
 set S [expr $topology_spt * $topology_tors] ; #number of servers
 set UCap [expr $link_rate * $topology_spt / $topology_spines / $topology_x] ; #uplink rate
 
-puts "UCap: $UCap"
+set topo_level_1 2 
+set topo_level_2 2 
+set topo_level_3 2 
 
+set logical_nodes_count [expr {1 + $topo_level_1 + $topo_level_1 * $topo_level_2 + $topo_level_1 * $topo_level_2 * $topo_level_3}] 
+set t [new MyTopology] 
+$t set_simulator $ns
+set logical_leaves {}
+set traffic_generators {}
+
+puts "UCap: $UCap"
+puts $S
 for {set i 0} {$i < $S} {incr i} {
     set s($i) [$ns node]
+    if {$i < $logical_nodes_count} {
+        puts "bye"
+        $t add_node_to_source $s($i)
+    } else {
+        puts "hello"
+        lappend traffic_generators $s($i)
+    }
 }
 
-## destination servers
-for {set i 0} {$i < $topology_dest_servers} {incr i} {
-    set ds($i) [$ns node]
-}
-
-## one additional ToR switch at the destination zone
-for {set i 0} {$i < [expr $topology_tors + 1]} {incr i} {
+for {set i 0} {$i < $topology_tors} {incr i} {
     set n($i) [$ns node]
 }
 
-## one additional spine switch at the destination zone
-for {set i 0} {$i < [expr $topology_spines + 1]} {incr i} {
+for {set i 0} {$i < $topology_spines} {incr i} {
     set a($i) [$ns node]
 }
 
-$ns duplex-link $a($topology_spines) $a([expr $topology_spines-1]) [set UCap]Gb $mean_link_delay $switchAlg
+$t make_tree $topo_level_1 $topo_level_2 $topo_level_3
+$t print_graph
+
+
+puts $logical_leaves
+set i 0; 
+while {1} {
+    set this_leaf [$t get_logical_leaf $i]
+    if {$this_leaf == -1} {
+        break 
+    } 
+    lappend logical_leaves $this_leaf;
+
+    set i [expr {$i + 1}];
+}
+
+foreach  leaf  $logical_leaves {
+    puts "traffic dst $leaf"
+}
+
+foreach  gen  $traffic_generators {
+    puts "traffic src $gen"
+}
+
 
 ############ Edge links ##############
 for {set i 0} {$i < $S} {incr i} {
@@ -207,37 +271,12 @@ for {set i 0} {$i < $S} {incr i} {
     $ns duplex-link $s($i) $n($j) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
 }
 
-## destination-side links between the ToR and servers
-for {set i 0} {$i < $topology_dest_servers} {incr i} {
-    $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-}
-
 ############ Core links ##############
-for {set i 0} {$i < [expr $topology_tors + 1]} {incr i} {
-    for {set j 0} {$j < [expr $topology_spines + 1]} {incr j} {
+for {set i 0} {$i < $topology_tors} {incr i} {
+    for {set j 0} {$j < $topology_spines} {incr j} {
         $ns duplex-link $n($i) $a($j) [set UCap]Gb $mean_link_delay $switchAlg
     }
 }
-
-############# Tree Structure ##############
-set t [new MyTopology]
-$t set_simulator $ns
-
-$t add_node_to_source $s(0)
-$t add_node_to_source $s(1)
-$t add_node_to_source $s(2)
-
-$t add_node_to_dest $ds(0)
-$t add_node_to_dest $ds(1)
-$t add_node_to_dest $ds(2)
-
-set src [$t make_node]
-
-$t make_tree 1 1
-$t duplicate_tree
-
-$t set_traffic_src $src
-$ns at 2 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -250,7 +289,32 @@ puts "Setting up connections ..."; flush stdout
 set flow_gen 0
 set flow_fin 0
 
-# set init_fid 0
+set init_fid 0
+
+set i 0 
+foreach  leaf  $logical_leaves {
+    set j 0
+    foreach  gen  $traffic_generators {
+
+        set agtagr($gen,$leaf) [new Agent_Aggr_pair]
+        $agtagr($gen,$leaf) setup $gen $leaf "$gen $leaf" $connections_per_pair $init_fid "TCP_pair"
+        $agtagr($gen,$leaf) attach-logfile $flowlog
+
+        puts -nonewline "($gen,$leaf) "
+        #For Poisson/Pareto
+        $agtagr($gen,$leaf) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+
+        $ns at 0.1 "$agtagr($gen,$leaf) warmup 0.5 5"
+        $ns at 1 "$agtagr($gen,$leaf) init_schedule"
+
+        set init_fid [expr $init_fid + $connections_per_pair];
+
+        set j [expr {$j + 1}];
+    }
+    set i [expr {$i + 1}];
+}
+
+
 # for {set j 0} {$j < $S } {incr j} {
 #     for {set i 0} {$i < $S } {incr i} {
 #         if {$i != $j} {
@@ -272,15 +336,5 @@ set flow_fin 0
 
 puts "Initial agent creation done";flush stdout
 puts "Simulation started!"
-
-proc finish {} {
-        puts "simulation finished"
-        global ns tf
-        $ns flush-trace
-        close $tf
-        exit 0
-}
-
-$ns at $sim_end "finish"
 
 $ns run

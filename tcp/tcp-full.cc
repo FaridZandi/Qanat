@@ -48,9 +48,6 @@ static const char rcsid[] =
 #include "template.h"
 #include "math.h"
 #include "common/common.h"
-#include "my-topology/my_topology.h"
-#include <iostream>
-
 #define DBGTCP 0
 #define DBGCOST 0
 //(curseq_>1000000)?4:0
@@ -266,11 +263,6 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			usrclosed();
 			return (TCL_OK);
 		}
-		if (strcmp(argv[1], "reset") == 0) {
-			std::cout << "going to reset the connection" << std::endl;
-			reset();
-			return (TCL_OK);
-		}
 	}
 	if (argc == 3) {
 		if (strcmp(argv[1], "advance") == 0) {
@@ -410,12 +402,12 @@ FullTcpAgent::sendmsg(int nbytes, const char *flags)
 {
 	if (flags && strcmp(flags, "MSG_EOF") == 0){ 
 		close_on_empty_ = TRUE;	
-		// printf("setting 2 closeonempty to true for fid= %d\n",fid_);
-	}
+printf("setting 2 closeonempty to true for fid= %d\n",fid_);
+        }
 
 	if (flags && strcmp(flags, "DAT_EOF") == 0){ 
 		signal_on_empty_ = TRUE;	
-		// printf("setting signalonempty to true for fid= %d\n",fid_);
+		printf("setting signalonempty to true for fid= %d\n",fid_);
 	}
 	if (nbytes == -1) {
 		infinite_send_ = TRUE;
@@ -457,17 +449,9 @@ FullTcpAgent::listen()
 void
 FullTcpAgent::bufferempty()
 {
-
-	printf("flow fid= %d is done\n",fid_);
-	/* if the C++ callback is not set, it is not important for us to 
-	   get the notification. 
-	*/
-	if (is_finish_callback_set){
-		finish_notify_callback(node);
-	} else {
-		std::cout << "[" <<  Scheduler::instance().clock() << "]" << " Buffer empty called" << std::endl;
-	}
    	signal_on_empty_=FALSE;
+
+	//printf("flow fid= %d is done\n",fid_);
 	Tcl::instance().evalf("%s done_data", this->name());
 }
 
@@ -913,89 +897,10 @@ FullTcpAgent::calPrio(int prio) {
 void
 FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reason, Packet *p)
 {
-	// std::cout << "going to send a packet FullTcpAgent::sendpacket" << std::endl; 
-	
-	// std::cout << "traffic class of this agent: ";
-	// std::cout << this << " is " << this->traffic_class_ << std::endl; 
-
-	if (!p) p = allocpkt();
-	hdr_tcp *tcph = hdr_tcp::access(p);
+        if (!p) p = allocpkt();
+        hdr_tcp *tcph = hdr_tcp::access(p);
 	hdr_flags *fh = hdr_flags::access(p);
 	hdr_ip* iph = hdr_ip::access(p);
-
-	// change the traffic class for determining whether 
-	// it should be bufferred or not
-	iph->traffic_class = this->traffic_class_;
-
-	if (this->traffic_class_ == 1){
-		auto& topo = MyTopology::instance(); 
-
-		auto src_node = topo.get_node_by_address(this->here_.addr_);
-		auto dst_node = topo.get_node_by_address(this->dst_.addr_);
-
-		// if(src_node != nullptr){
-		// 	std::cout << "src: " << topo.uid(src_node) << " "; 
-		// } else {
-		// 	std::cout << "src: " << "N/A" << " "; 
-		// }
-		// if(dst_node != nullptr){
-		// 	std::cout << "dst: " << topo.uid(dst_node) << " "; 
-		// } else {
-		// 	std::cout << "dst: " << "N/A" << " "; 
-		// }
-		// std::cout << std::endl; 
-
-
-
-		if (src_node != nullptr and dst_node != nullptr) {
-			// both src and dst are logical nodes 
-			// currently not supported 
-
-			std::cout << "class 1 traffic should not be ";
-			std::cout << "sent between two logical nodes"; 
-			std::cout << std::endl; 
-
-		} else if (dst_node != nullptr) {
-			// either of src and dst are logical nodes
-
-			std::vector<int> path; 
-
-			path = topo.get_path(dst_node, PATH_MODE_RECEIVER);
-
-			iph->dst_.addr_ = path[0];
-			iph->gw_path_pointer = path.size() - 2;
-
-			int ptr = path.size() - 1; 
-			for (auto elem: path){
-				iph->gw_path[ptr --] = elem;
-			}
-			
-		} else if (src_node != nullptr) {
-			
-			// Turning this off for now, until we think of 
-			// something that makes sense. 
-
-			// std::vector<int> path; 
-
-			// path = topo.get_path(src_node, PATH_MODE_SENDER);
-			// path.push_back(dst_.addr_); 
-
-			// iph->dst_.addr_ = path[0];
-			// iph->gw_path_pointer = path.size() - 2;
-
-			// int ptr = path.size() - 1; 
-			// for (auto elem: path){
-			// 	iph->gw_path[ptr --] = elem;
-			// }
-
-		} else if (src_node == nullptr or dst_node == nullptr) {
-			// neither of src and dst are logical nodes 
-
-			// nothing to be done. 
-		}
-	}
-	
-
 
 	/* build basic header w/options */
 
