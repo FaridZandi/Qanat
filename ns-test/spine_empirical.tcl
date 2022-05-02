@@ -184,22 +184,22 @@ for {set i 0} {$i < $S} {incr i} {
     set s($i) [$ns node]
 }
 
-## destination servers
-for {set i 0} {$i < $topology_dest_servers} {incr i} {
-    set ds($i) [$ns node]
-}
+# ## destination servers
+# for {set i 0} {$i < $topology_dest_servers} {incr i} {
+#     set ds($i) [$ns node]
+# }
 
 ## one additional ToR switch at the destination zone
-for {set i 0} {$i < [expr $topology_tors + 1]} {incr i} {
+for {set i 0} {$i < [expr $topology_tors]} {incr i} {
     set n($i) [$ns node]
 }
 
 ## one additional spine switch at the destination zone
-for {set i 0} {$i < [expr $topology_spines + 1]} {incr i} {
+for {set i 0} {$i < [expr $topology_spines]} {incr i} {
     set a($i) [$ns node]
 }
 
-$ns duplex-link $a($topology_spines) $a([expr $topology_spines-1]) [set UCap]Gb $mean_link_delay $switchAlg
+# $ns duplex-link $a($topology_spines) $a([expr $topology_spines-1]) [set UCap]Gb $mean_link_delay $switchAlg
 
 ############ Edge links ##############
 for {set i 0} {$i < $S} {incr i} {
@@ -207,14 +207,14 @@ for {set i 0} {$i < $S} {incr i} {
     $ns duplex-link $s($i) $n($j) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
 }
 
-## destination-side links between the ToR and servers
-for {set i 0} {$i < $topology_dest_servers} {incr i} {
-    $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-}
+# ## destination-side links between the ToR and servers
+# for {set i 0} {$i < $topology_dest_servers} {incr i} {
+#     $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+# }
 
 ############ Core links ##############
-for {set i 0} {$i < [expr $topology_tors + 1]} {incr i} {
-    for {set j 0} {$j < [expr $topology_spines + 1]} {incr j} {
+for {set i 0} {$i < [expr $topology_tors]} {incr i} {
+    for {set j 0} {$j < [expr $topology_spines]} {incr j} {
         $ns duplex-link $n($i) $a($j) [set UCap]Gb $mean_link_delay $switchAlg
     }
 }
@@ -227,9 +227,9 @@ $t add_node_to_source $s(0)
 $t add_node_to_source $s(1)
 $t add_node_to_source $s(2)
 
-$t add_node_to_dest $ds(0)
-$t add_node_to_dest $ds(1)
-$t add_node_to_dest $ds(2)
+# $t add_node_to_dest $ds(0)
+# $t add_node_to_dest $ds(1)
+# $t add_node_to_dest $ds(2)
 
 # set src [$t make_node]
 
