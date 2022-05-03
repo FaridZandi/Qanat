@@ -164,7 +164,8 @@ protected:
     int size_; 
 
     bool buffering; 
-    PacketQueue* pq;
+    PacketQueue* pq1;
+    PacketQueue* pq2;
 };
 
 class SelectiveBuffer: public Buffer {

@@ -50,9 +50,9 @@ private:
     // std::map<Node*, bool> gw_snap_shot_sent; 
     // std::map<Node*, bool> gw_peer_timeout; 
 
-    static const int VM_PRECOPY_SIZE = 10000000; 
-    static const int VM_SNAPSHOT_SIZE = 10000000;      
-    static const int GW_SNAPSHOT_SIZE = 10000000;      
+    static const int VM_PRECOPY_SIZE = 10000; 
+    static const int VM_SNAPSHOT_SIZE = 10000;      
+    static const int GW_SNAPSHOT_SIZE = 10000;      
 };
 
 

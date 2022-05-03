@@ -281,6 +281,7 @@ proc finish {} {
         exit 0
 }
 
+$ns at 1 "$t setup_nodes"
 $ns at $sim_end "finish"
 
 $ns run

@@ -68,6 +68,10 @@ topology_x = 1
 #sets the number of machines needed on the destination (assumed to be on the same rack)
 topology_dest_servers = 4 
 
+## sample debug method:
+# run: gdb ns
+# command to run inside gdb:
+# run spine_empirical.tcl 120 10 2e-07 2e-05 140 0.5 1 1661480 1.05 CDF_dctcp.tcl 1 0 DCTCP-Sack 70 1 true 0.0625 0.00025 5 DropTail 65.0 true 0 true true 1 2 67160 1582640 2506820 2836780 2903940 2918540 2921460 4 2 1 1 4 ./websearch_unknown_50/flow.tr
 ns_path = 'ns'
 if DEBUG_VALGRIND:
 	ns_path = 'valgrind -s --track-origins=yes --leak-check=full ns'

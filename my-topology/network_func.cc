@@ -3,6 +3,9 @@
 #include "topo_node.h"
 #include "my_topology.h"
 #include "mig_manager.h"
+#include "orchestrator.h"
+#include <vector>
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include "tcp-full.h"
@@ -13,7 +16,7 @@ NF::NF(TopoNode* toponode,
        int chain_pos) : toponode_(toponode),
                         chain_pos_(chain_pos) {
                             
-    verbose = false;
+    verbose = true;
 }
 
 NF::~NF(){
@@ -244,17 +247,22 @@ void Monitor::print_info(){
 Buffer::Buffer(TopoNode* toponode, int chain_pos, int size) 
     : NF(toponode, chain_pos) {
 
-    pq = new PacketQueue;
+    pq1 = new PacketQueue;
+    pq2 = new PacketQueue;
     buffering = false; 
     this->size_ = size; 
 }
 
 Buffer::~Buffer(){
-    delete pq; 
+    delete pq1;
+    delete pq2; 
 }
 
 bool Buffer::recv(Packet* p, Handler* h){
     hdr_ip* iph = hdr_ip::access(p);
+    int prev_hop, prev_addr, prev_uid;
+    int queue_number;
+    PacketQueue* pq;
 
     log_packet("recved packet here with class: ", iph->traffic_class);
 
@@ -263,12 +271,45 @@ bool Buffer::recv(Packet* p, Handler* h){
     }
 
     if(buffering){
+        auto& topo = MyTopology::instance();
+        prev_hop = iph->prev_hop;
+        prev_addr = this->toponode_->node->address();
+        auto prev_node = topo.get_node_by_address(prev_addr);
+        auto prev_node_peer = topo.get_peer(prev_node);
+        prev_uid = topo.uid(prev_node);
+        // auto& orch = BaseOrchestrator::instance();
+        // auto mig_root = topo.get_mig_root();
+        // std::vector<Node*> source_tree = topo.get_all_nodes(mig_root);
+        // bool prev_is_in_src_zone = true;
+        // for(auto & m_node : source_tree){
+        //     if (prev_addr == m_node->address()){
+        //         prev_is_in_src_zone = false;
+        //     }
+        // }
+        std::vector<int> children = this->toponode_->children;
+        if (prev_uid == topo.uid(prev_node_peer)
+            || std::find(children.begin(), children.end(), prev_uid) != children.end()
+            || prev_hop == -1){
+            // it's a high prio packet
+            queue_number = 1;
+            pq = pq1;
+        } else {
+            pq = pq2;
+            queue_number = 2;
+        }
+        std::cout << prev_hop <<  " || Q: " << queue_number << std::endl;
         if(pq->length() == size_){
             // TODO: drop the packet (free the memory, etc.) 
-            log_packet("Buffer is full. Dropping packet.");
+            log_packet("Buffer is full. Dropping packet on Q: ", queue_number);
         } else {
+            std::cout << "going to buffer" << std::endl;
             pq->enque(p);
-            log_packet("Buffering the packet. New Q length:", pq->length());
+            std::string message = "Buffering the packet in Q: " 
+                                    + std::to_string(queue_number) 
+                                    + ". New Q length:"
+                                    + std::to_string(pq->length());
+            std::cout << message << std::endl;
+            log_packet(message);
         }
         return false;
     } else {     
@@ -282,17 +323,20 @@ void Buffer::start_buffering(){
 }
 
 int Buffer::get_buffer_size(){
-    return pq->length(); 
+    return pq1->length(); 
 }
 
 void Buffer::stop_buffering(){
     buffering = false; 
 
-    while (pq->length() > 0){
-        log_packet("releasing a packet here.");
-        send(pq->deque());
+    while (pq1->length() > 0){
+        log_packet("releasing a packet from Q1.");
+        send(pq1->deque());
     } 
-
+    while (pq2->length() > 0){
+        log_packet("releasing a packet from Q2.");
+        send(pq2->deque());
+    } 
 }
 
 std::string Buffer::get_type(){
@@ -339,9 +383,9 @@ bool SelectiveBuffer::recv(Packet* p, Handler* h){
     }
 
     // only care about packets from a certain prev hop
-    if (iph->prev_hop != buffer_packets_from){
-        return true; 
-    }
+    // if (iph->prev_hop != buffer_packets_from){
+    //     return true; 
+    // }
     
     return Buffer::recv(p, h); 
 }
