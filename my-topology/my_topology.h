@@ -99,7 +99,9 @@ public:
 
     void connect_agents(Node* n1, Node* n2);
 
-    void print_graph(bool print_state = false);
+    void print_graph(void (*print_node) (Node*));
+
+    Node* storage_node; 
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
@@ -119,6 +121,8 @@ private:
                                          bool include_leaves, 
                                          bool include_internals ); 
 
+
+    void print_report(int interval);
 
     // Migration 
     Node* mig_root; 
@@ -144,7 +148,10 @@ private:
 
     // Useless functions 
 
-    void print_tree_node(std::string prefix, Node* this_node, bool isLast, bool print_state);
+    void print_tree_node(std::string prefix, 
+                         Node* this_node, 
+                         bool isLast, 
+                         void (*print_node) (Node*));
 
     void print_nodes();
 

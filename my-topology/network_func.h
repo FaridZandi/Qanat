@@ -89,17 +89,17 @@ protected:
 };
 
 
+enum ACCESS_MODE {
+    LOCAL, 
+    REMOTE, 
+    EVENTUAL,
+};
+
 class StatefulNF : public NF {
 public: 
     StatefulNF(TopoNode* toponode, int chain_pos); 
 
     virtual ~StatefulNF(); 
-
-    virtual bool recv(Packet* p, Handler* h);
-
-    bool is_recording; 
-
-    bool is_loading; 
 
     virtual bool is_stateful(); 
     
@@ -107,17 +107,18 @@ public:
     
     std::string get_five_tuple(Packet* p);
 
-    void increment_key(std::string key); 
-
-    virtual void load_state(Packet* p); 
-
-    virtual void record_state(std::string key, Packet* p);
+    bool increment_key(Packet* p, std::string key); 
 
     void print_state();
 
+    virtual std::string get_main_state();
+
+    void add_to_path(Packet* p, int addr);
 
 protected: 
     std::map<std::string, std::string> state; 
+
+    ACCESS_MODE access_mode; 
 };
 
 
@@ -134,7 +135,11 @@ public:
 
     virtual std::string get_type(); 
     
-    virtual void print_info();  
+    virtual void print_info(); 
+
+    std::string get_key(Packet* p);
+
+    virtual std::string get_main_state();
 };
 
 
@@ -158,7 +163,6 @@ public:
     virtual std::string get_type(); 
 
     virtual void print_info(); 
-
 
 protected:
     int size_; 

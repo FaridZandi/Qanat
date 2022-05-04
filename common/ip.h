@@ -110,10 +110,11 @@ struct hdr_ip {
 	int gw_path_pointer; // Farid
 	int traffic_class; // Sepehr
 	
-	// For State Migration
+	// For State Management
 	int32_t state_dst; // Farid 
 	char* key; // Farid 
 	char* value; // Farid 
+	bool is_storage_response; 
 
 	/* per-field member acces functions */
 	ns_addr_t& src() { return (src_); }

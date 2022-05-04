@@ -1,5 +1,6 @@
 #include "topo_node.h"
-
+#include "state_manager.h"
+#include <iostream>
 
 TopoNode::TopoNode(){
         uid = 0; 
@@ -20,7 +21,7 @@ void TopoNode::process_packet(Packet* p, Handler* h,
     for(uint current = start_pos; 
              current < nfs.size(); 
              current ++) {
-
+        // std::cout << "current:" << current << std::endl; 
         if (not nfs[current]->recv(p, h)){
             return;
         } 
@@ -53,27 +54,38 @@ NF* TopoNode::add_nf(std::string type, double param){
     } else if (type == "rate_limiter"){
         int rate = int(param); 
         RateLimiterNF* rl = new RateLimiterNF(
-            this, current_length, rate); 
+            this, current_length, rate
+        ); 
         nfs.push_back(rl); 
         return rl;
 
     } else if (type == "delayer"){
         DelayerNF* d = new DelayerNF(
-            this, current_length, param); 
+            this, current_length, param
+        ); 
         nfs.push_back(d); 
         return d; 
 
     } else if (type == "tunnel_manager"){
         TunnelManagerNF* tm = new TunnelManagerNF(
-            this, current_length); 
+            this, current_length
+        ); 
         nfs.push_back(tm); 
         return tm; 
         
     } else if (type == "router"){
         RouterNF* r = new RouterNF(
-            this, current_length); 
+            this, current_length
+        ); 
         nfs.push_back(r); 
         return r; 
+
+    } else if (type == "storage"){
+        StorageNF* s = new StorageNF(
+            this, current_length
+        ); 
+        nfs.push_back(s); 
+        return s; 
     }
 
     return nullptr;
@@ -115,4 +127,21 @@ void TopoNode::print_nfs(){
     for (auto& nf: nfs){
         nf->print_info(); 
     }
+}
+
+void TopoNode::print_stateful_nfs(){
+    for (auto& nf: nfs){
+        if (nf->is_stateful()){
+            nf->print_info(); 
+        }
+    }
+}
+
+StatefulNF* TopoNode::get_stateful_nf(){
+    for (auto& nf: nfs){
+        if (nf->is_stateful()){
+            return (StatefulNF*)nf; 
+        }
+    }
+    return nullptr; 
 }

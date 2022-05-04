@@ -59,7 +59,7 @@ set sink_app [new Application]
 
 # attach agents to nodes
 $ns attach-agent $n(150) $src
-$ns attach-agent $n(195) $sink
+$ns attach-agent $n(196) $sink
 
 # attach the apps
 $src_app attach-agent $src
@@ -73,15 +73,15 @@ $sink listen
  
 # $t make_tree 4 1 1 1
 # $t make_tree 2 2 2
-$t make_tree 3 2 1
+$t make_tree 1 1 1
 $t duplicate_tree
 $t print_graph
 
 $ns at 1 "$t setup_nodes"
 # $ns at 1.5 "$t activate_tunnel $n28 $n12 $n26 $n10 "
-$ns at 2 "$t start_migration"
+# $ns at 2 "$t start_migration"
 
-# $ns at 1.9 "$src_app send 300000000"
+$ns at 1.9 "$src_app send 350000"
 
 $ns at $sim_end "finish"
 $ns run

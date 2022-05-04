@@ -63,6 +63,9 @@ int MyTopology::command(int argc, const char*const* argv){
         return TCL_OK;
 
     } else if (strcmp(argv[1], "make_tree") == 0) {
+
+        storage_node = make_node(true);
+
         std::vector<int> branching_ds;
         for(int i = 2; i < argc; i++){
             branching_ds.push_back(atoi(argv[i]));
@@ -88,7 +91,11 @@ int MyTopology::command(int argc, const char*const* argv){
             return TCL_OK; 
 
         } else if (strcmp(argv[1], "print_graph") == 0) {
-            print_graph();
+            print_graph([](Node* n){
+                auto& topo = MyTopology::instance();
+                // std::cout << setw(2) << topo.uid(n);
+                std::cout << topo.get_data(n).pointer;
+            });
             return TCL_OK; 
 
         } else if (strcmp(argv[1], "duplicate_tree") == 0) {
@@ -116,13 +123,21 @@ int MyTopology::command(int argc, const char*const* argv){
             source_nodes_ptrs.push(argv[2]);
             source_nodes.push(new_node);
             return TCL_OK;
-
         } else if (strcmp(argv[1], "add_node_to_dest") == 0){
             auto new_node = (Node*)TclObject::lookup(argv[2]);
             dest_nodes_ptrs.push(argv[2]);
             dest_nodes.push(new_node);
             return TCL_OK;
-        }        
+        } else if (strcmp(argv[1], "get_logical_leaf") == 0){
+			int leaf_id = atoi(argv[2]);
+            auto children = get_leaves(mig_root);
+            if(leaf_id >= children.size()){
+                tcl.resultf("%d", -1);
+            } else {
+                tcl.resultf("%s", data[children[leaf_id]].pointer.c_str());
+            }
+            return TCL_OK;
+        }      
     } else if (argc == 4) {
         if (strcmp(argv[1], "add_child") == 0){
             Node* parent = (Node*)TclObject::lookup(argv[2]);
@@ -372,14 +387,13 @@ Node* MyTopology::get_nth_parent(Node* this_node, int n){
 
 void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
 
+    print_report(1);
+
     hdr_ip* iph = hdr_ip::access(p);
 
     // std::cout << "iph->dst_.addr_: " << iph->dst_.addr_ << " "; 
     // std::cout << "node->address() " << node->address();
     // std::cout << std::endl;  
-
-    
-
 
     if(iph->dst_.addr_ == node->address() or
        iph->src_.addr_ == node->address()){
@@ -501,7 +515,7 @@ void MyTopology::print_nodes(){
 void MyTopology::print_tree_node(std::string prefix, 
                                  Node* this_node, 
                                  bool isLast, 
-                                 bool print_state)  {
+                                 void (*print_node) (Node*))  {
 
     auto& orch = BaseOrchestrator::instance();
 
@@ -509,14 +523,9 @@ void MyTopology::print_tree_node(std::string prefix,
         std::cout << prefix;
         std::cout << (isLast ? "└──────" : "├──────");
         std::cout << setw(2) << this_node->address(); 
-        if (print_state){
-            std::cout << "(";
-            std::cout << orch.get_mig_state_string(this_node);
-            std::cout << ")";
-        } else {
-            std::cout << "(" << setw(2);
-            std::cout << data[this_node].uid << ")" << " ";
-        }
+        std::cout << "(";
+        print_node(this_node); 
+        std::cout << ")";
         std::cout << std::endl; 
         
         int child_count = data[this_node].children.size(); 
@@ -528,27 +537,51 @@ void MyTopology::print_tree_node(std::string prefix,
             if (i == child_count - 1){
                 print_tree_node(
                     prefix + (isLast ? "        " : "│       "), 
-                    child, true, print_state
+                    child, true, print_node
                 );
             } else {
                 print_tree_node(
                     prefix + (isLast ? "        " : "│       "), 
-                    child, false, print_state
+                    child, false, print_node
                 );
             }
         }
     }
 }
 
-void MyTopology::print_graph(bool print_state){
+void MyTopology::print_graph(void (*print_node) (Node*)){
     std::cout << "main tree: " << std::endl; 
 
-    print_tree_node("", mig_root, true, print_state); 
+    print_tree_node("", mig_root, true, print_node); 
 
     std::cout << "other tree: " << std::endl; 
 
-    print_tree_node("", node[data[mig_root].peer], true, print_state); 
+    print_tree_node("", node[data[mig_root].peer], true, print_node); 
 }
+
+void MyTopology::print_report(int interval){
+    static int last_report = 0; 
+
+    auto current_time = Scheduler::instance().clock();
+    
+    if(current_time > last_report + interval){
+        last_report += interval;
+
+        print_graph([](Node* n){
+            auto& topo = MyTopology::instance();
+            auto stateful_nf = topo.data[n].get_stateful_nf();
+            if(stateful_nf){
+                std::cout << stateful_nf->get_main_state(); 
+            } else {
+                std::cout << 0; 
+            }
+        });
+
+        data[storage_node].get_nf("storag")->print_info(); 
+    } 
+}
+
+
 
 
 void MyTopology::send_data(Node* n1, int n_bytes){

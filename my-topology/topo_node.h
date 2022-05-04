@@ -72,6 +72,10 @@ public:
      */
     void print_nfs();
 
+    void print_stateful_nfs(); 
+
+    StatefulNF* get_stateful_nf(); 
+
     /**
      * @brief add a node to the list of children.
      * 

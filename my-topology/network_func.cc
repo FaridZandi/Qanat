@@ -86,20 +86,12 @@ bool NF::log_packet(std::string message, int arg){
 
 StatefulNF::StatefulNF(TopoNode* toponode, int chain_pos) 
     : NF(toponode, chain_pos) {
-
-    is_loading = false; 
-    is_recording = false; 
+    access_mode = REMOTE; 
 }
 
 StatefulNF::~StatefulNF(){
 
 }
-
-bool StatefulNF::recv(Packet* p, Handler* h){
-    load_state(p); 
-    return true; 
-}
-
 
 std::string StatefulNF::get_five_tuple(Packet* p){
     std::stringstream five_tuple;
@@ -116,66 +108,41 @@ std::string StatefulNF::get_five_tuple(Packet* p){
     return five_tuple.str();
 }
 
-void StatefulNF::increment_key(std::string key){
-    
-    std::string value; 
+bool StatefulNF::increment_key(Packet* p, std::string key){
 
-    if (state.find(key) == state.end()) {
-        value = "0";
-    } else {
-        value = state[key];
-    }   
+    if (access_mode == LOCAL){
+        std::string value; 
+        if (state.find(key) == state.end()) {
+            value = "0";
+        } else {
+            value = state[key];
+        }   
 
-    int count = std::stoi(value) + 1;
-    state[key] = to_string(count);
-    if (verbose){
-        std::cout << "increment " << key << " to " << state[key] << std::endl; 
-    }
-}
-
-
-void StatefulNF::load_state(Packet* p){
-    if (is_loading){
-        hdr_ip* iph = hdr_ip::access(p); 
-
-        // std::cout << iph->state_dst << " " << toponode_->node->address() << std::endl; 
-
-        if (iph->state_dst == toponode_->node->address()){
-            state[std::string(iph->key)] = std::string(iph->value); 
-
-            std::cout << "Node " << this->toponode_->node->address(); 
-            std::cout << " loaded " << iph->key << ": " << state[iph->key];
-            std::cout << " from packet" << std::endl;
-
-            delete iph->key;
-            delete iph->value; 
-            iph->state_dst = -1; 
+        int count = std::stoi(value) + 1;
+        state[key] = to_string(count);
+        if (verbose){
+            std::cout << "increment " << key << " to " << state[key] << std::endl; 
         }
-    }
-}
+        return true; 
 
-void StatefulNF::record_state(std::string key, Packet* p){
-    if (is_recording){
+    } else if (access_mode == REMOTE) {
+        auto& topo = MyTopology::instance(); 
+        auto storage_node = topo.storage_node; 
+
         hdr_ip* iph = hdr_ip::access(p); 
-
-        auto& topo = MyTopology::instance();
-        auto peer = topo.get_peer(this->toponode_->node); 
-
-        iph->state_dst = peer->address();
-
+        iph->prio_ = 15;
+        
         iph->key = new char[key.length() + 1];
         memcpy(iph->key, key.c_str(), key.length() + 1); 
 
-        auto value = state[key];
-        iph->value = new char[value.length() + 1];
-        memcpy(iph->value, value.c_str(), value.length() + 1);
 
-        std::cout << "Node " << this->toponode_->node->address(); 
-        std::cout << " stored " << iph->key << ": " << iph->value;
-        std::cout << " to packet" << std::endl;
-    }
+        add_to_path(p, toponode_->node->address());
+        add_to_path(p, storage_node->address());
+
+        return true; 
+    }  
+
 }
-
 
 bool StatefulNF::is_stateful(){
     return true;
@@ -185,6 +152,25 @@ void StatefulNF::print_state(){
     for (auto const& x : state){
         std::cout << x.first  << ':' << x.second << std::endl;
     }
+}
+
+std::string StatefulNF::get_main_state(){
+    return 0; 
+}
+
+
+void StatefulNF::add_to_path(Packet* p, int addr){
+    log_packet("adding to path", addr);
+
+	auto& topo = MyTopology::instance();
+	hdr_ip* iph = hdr_ip::access(p); 
+    // if (iph->gw_path_pointer == -1){
+    //     log_packet("adding to path", iph->dst_.addr_);
+    //     iph->gw_path_pointer = 0; 
+    //     iph->gw_path[0] = iph->dst_.addr_;
+    // } 
+    iph->gw_path_pointer += 1; 
+    iph->gw_path[iph->gw_path_pointer] = addr;
 }
 
 
@@ -202,21 +188,29 @@ Monitor::~Monitor(){
 }
 
 bool Monitor::recv(Packet* p, Handler* h){
-    StatefulNF::recv(p, h); 
-
-    log_packet("recved packet here");
-
     hdr_ip* iph = hdr_ip::access(p); 
-    auto p_src = iph->src_.addr_;
-	auto p_dst = iph->dst_.addr_;
 
-    increment_key("packet_count");
-    auto five_tuple = get_five_tuple(p);
-    increment_key(five_tuple); 
+    if (iph->is_storage_response){
+        log_packet("storage response received");
+        state[std::string(iph->key)] = std::string(iph->value); 
+        iph->is_storage_response = false; 
+        iph->prio_ = 0;
 
-    record_state(five_tuple, p);
+        delete iph->key;
+        delete iph->value; 
 
-    return true; 
+        return true; 
+    } else {
+        log_packet("recved packet here");
+
+        auto p_src = iph->src_.addr_;
+        auto p_dst = iph->dst_.addr_;
+
+        // increment_key(p, "packet_count");
+
+        auto key = get_key(p);
+        return increment_key(p, key); 
+    }
 }
 
 void Monitor::handle(Event* event){
@@ -233,6 +227,24 @@ void Monitor::print_info(){
     std::cout << ", current count is: "; 
     std::cout << state["packet_count"]; 
     std::cout << std::endl;  
+}
+
+std::string Monitor::get_key(Packet* p){
+    std::stringstream key;
+    key << "packet_count-"; 
+    key << toponode_->node->address(); 
+    // if (p != NULL) {
+        // hdr_ip* iph = hdr_ip::access(p);
+        // key << "-" << iph->gw_path[0]; 
+    // }
+    return key.str();
+}
+
+
+
+std::string Monitor::get_main_state(){
+    // return std::to_string(state.size());
+    return state[get_key(NULL)];
 }
 
 
@@ -523,9 +535,9 @@ bool RouterNF::recv(Packet* p, Handler* h){
 
     hdr_ip* iph = hdr_ip::access(p);
     
+    // std::cout << "src: " << iph->src_.addr_ << " dst: " << iph->dst_.addr_ << std::endl; 
+    // std::cout << "this node address: " << this->toponode_->node->address() << std::endl; 
 
-    // std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
-	
     if (iph->gw_path_pointer != -1){
         
         auto ptr = iph->gw_path_pointer;
@@ -533,6 +545,9 @@ bool RouterNF::recv(Packet* p, Handler* h){
         iph->dst_.addr_ = iph->gw_path[ptr]; 
         iph->gw_path_pointer --; 
     }
+
+    // std::cout << "src: " << iph->src_.addr_ << " dst: " << iph->dst_.addr_ << std::endl; 
+    // std::cout << "-----------------------" << std::endl; 
 
 	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
 

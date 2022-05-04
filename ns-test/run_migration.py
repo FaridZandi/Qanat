@@ -9,7 +9,7 @@ def worker():
 		except Queue.Empty:
 			return
 		#Make directory to save results
-		os.system('mkdir '+j[1])
+		os.system('mkdir -p '+j[1])
 		os.system(j[0])
 
 q = Queue.Queue()
@@ -22,11 +22,11 @@ mean_link_delay = 0.0000002
 host_delay = 0.000020
 queueSize = 140
 # load_arr = [0.9,0.8,0.7,0.6,0.5]
-load_arr = [0.5]
+load_arr = [0.9]
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
-flow_cdf = 'CDF_dctcp.tcl'
+flow_cdf = 'CDF_My.tcl'
 
 enableMultiPath = 1
 perflowMP = 0
@@ -39,7 +39,7 @@ DCTCP_g = 0.0625
 min_rto = 0.000250
 prob_cap_ = 5
 
-switchAlg = 'DropTail'
+switchAlg = 'MyQueue'
 DCTCP_K = 65.0
 drop_prio_ = 'true'
 # prio_scheme_arr = [2,3]
@@ -61,9 +61,9 @@ pias_thresh_6 = 2001*1460
 # topology_spines = 4
 # topology_x = 1
 # smaller topology
-topology_spt = 4
-topology_tors = 2
-topology_spines = 1
+topology_spt = 10
+topology_tors = 4
+topology_spines = 2
 topology_x = 1
 #sets the number of machines needed on the destination (assumed to be on the same rack)
 topology_dest_servers = 4 

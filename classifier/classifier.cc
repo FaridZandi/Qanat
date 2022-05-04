@@ -41,6 +41,7 @@ static const char rcsid[] =
 #include "config.h"
 #include "classifier.h"
 #include "packet.h"
+#include <iostream>
 
 #include "my-topology/mig_manager.h" // Farid
 #include "my-topology/my_topology.h" // Farid
@@ -160,7 +161,6 @@ void Classifier::recv(Packet* p, Handler*h){ // Farid
 }
 
 void Classifier::recv2(Packet* p, Handler* h){ // Farid 
-
 	NsObject* node = find(p);
 	DBGMARK(DBGPFC,4,"@ %s: rcv...target:%s\n",this->name(),node->name());
 	if (node == NULL) {

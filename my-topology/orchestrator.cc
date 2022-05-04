@@ -13,6 +13,7 @@ BaseOrchestrator& BaseOrchestrator::instance(){
 };
 
 void BaseOrchestrator::setup_nodes(){
+    std::cout << "setting up nodes" << std::endl; 
     auto& topo = MyTopology::instance(); 
     
     auto mig_root = topo.get_mig_root();
@@ -28,20 +29,29 @@ void BaseOrchestrator::setup_nodes(){
         mig_state[node] = MigState::OutOfService;
     }
 
-    for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
+    topo.get_data(topo.storage_node).add_nf("storage");
+    topo.get_data(topo.storage_node).add_nf("delayer", 0.000005);
+    topo.get_data(topo.storage_node).add_nf("router");
+
+    
+    for (auto& root: std::list<Node*>({mig_root})){ //TODO: ,mig_root_peer
+        // std::cout << "populate the VM NFs based on the list"<< std::endl; 
         //populate the VM NFs based on the list
         for(auto& node: topo.get_leaves(root)){    
             topo.get_data(node).mode = OpMode::VM;
             for (nf_spec& nfs: get_vm_nf_list()){
                 topo.get_data(node).add_nf(nfs.type, nfs.parameter);
+                // std::cout << "node: " << node->address() << " " << nfs.type << " " << nfs.parameter << std::endl; 
             }
         }
 
+        // std::cout << "populate the GW NFs based on the list"<< std::endl; 
         //populate the GW NFs based on the list
         for(auto& node: topo.get_internals(root)){     
             topo.get_data(node).mode = OpMode::GW;
             for (nf_spec& nfs: get_gw_nf_list()){
                 topo.get_data(node).add_nf(nfs.type, nfs.parameter);
+                // std::cout << "node: " << node->address() << nfs.type << " " << nfs.parameter << std::endl; 
             }
         }
     }
@@ -109,7 +119,11 @@ void BaseOrchestrator::log_event(std::string message, int arg){
     std::cout << std::endl;
     
     auto& topo = MyTopology::instance();
-    topo.print_graph(true);
+
+    topo.print_graph([](Node* n){
+        auto& orch = BaseOrchestrator::instance();
+        std::cout << orch.get_mig_state_string(n);
+    });
 }
 
 void BaseOrchestrator::buffer_on_peer(Node* node){

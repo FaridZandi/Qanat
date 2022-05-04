@@ -267,7 +267,7 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 		if (strcmp(argv[1], "reset") == 0) {
-			std::cout << "going to reset the connection" << std::endl;
+			// std::cout << "going to reset the connection" << std::endl;
 			reset();
 			return (TCL_OK);
 		}
@@ -945,8 +945,6 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 		// }
 		// std::cout << std::endl; 
 
-
-
 		if (src_node != nullptr and dst_node != nullptr) {
 			// both src and dst are logical nodes 
 			// currently not supported 
@@ -966,27 +964,31 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 			iph->gw_path_pointer = path.size() - 2;
 
 			int ptr = path.size() - 1; 
+			
+			// std::cout << "path: ";
 			for (auto elem: path){
 				iph->gw_path[ptr --] = elem;
+				// std::cout << elem << " "; 
 			}
-			
+			// std::cout << std::endl; 
+
 		} else if (src_node != nullptr) {
 			
 			// Turning this off for now, until we think of 
 			// something that makes sense. 
 
-			// std::vector<int> path; 
+			std::vector<int> path; 
 
-			// path = topo.get_path(src_node, PATH_MODE_SENDER);
-			// path.push_back(dst_.addr_); 
+			path = topo.get_path(src_node, PATH_MODE_SENDER);
+			path.push_back(dst_.addr_); 
 
-			// iph->dst_.addr_ = path[0];
-			// iph->gw_path_pointer = path.size() - 2;
+			iph->dst_.addr_ = path[0];
+			iph->gw_path_pointer = path.size() - 2;
 
-			// int ptr = path.size() - 1; 
-			// for (auto elem: path){
-			// 	iph->gw_path[ptr --] = elem;
-			// }
+			int ptr = path.size() - 1; 
+			for (auto elem: path){
+				iph->gw_path[ptr --] = elem;
+			}
 
 		} else if (src_node == nullptr or dst_node == nullptr) {
 			// neither of src and dst are logical nodes 

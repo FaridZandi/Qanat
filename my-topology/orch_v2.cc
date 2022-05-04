@@ -190,21 +190,22 @@ bool OrchestratorV2::all_children_migrated(Node* node){
 
 std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
     return {
-        {"buffer", 100000},
-        {"rate_limiter", 100000},
-        {"delayer", 0.00005},
-        {"tunnel_manager", 0},
+        // {"buffer", 100000},
+        // {"rate_limiter", 1000000},
+        // {"monitor", 0},
+        // {"delayer", 0.000005},
+        // {"tunnel_manager", 0},
         {"router", 0}
     };
 }
 
 std::list<nf_spec> OrchestratorV2::get_gw_nf_list(){
     return {
-        {"selective_buffer", 100000},
-        {"rate_limiter", 100000},
+        // {"selective_buffer", 100000},
+        {"rate_limiter", 1000000},
         {"monitor", 0},
         {"delayer", 0.00005},
-        {"tunnel_manager", 0},
+        // {"tunnel_manager", 0},
         {"router", 0}
     };
 }

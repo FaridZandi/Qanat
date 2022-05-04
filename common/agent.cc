@@ -70,7 +70,7 @@ int Agent::uidcnt_;		/* running unique id */
 Agent::Agent(packet_t pkttype) : 
 	size_(0), type_(pkttype), 
 	channel_(0), traceName_(NULL),
-	oldValueList_(NULL), app_(0), et_(0)
+	oldValueList_(NULL), app_(0), et_(0), is_finish_callback_set(false)
 {
 }
 
@@ -476,6 +476,7 @@ Agent::initpkt(Packet* p) const
 	iph->traffic_class = 1; // Sepehr
 	iph->state_dst = -1; // Farid 
 	iph->prev_hop = -1; // Farid 
+	iph->is_storage_response = false; // Farid 
 
 	//DEBUG
 	//if (dst_ != -1)

@@ -9,8 +9,8 @@ if {$argc != 40} {
 }
 
 
-set tf [open out.tr w]
-$ns trace-all $tf
+# set tf [open out.tr w]
+# $ns trace-all $tf
 
 set sim_end [lindex $argv 0]
 set link_rate [lindex $argv 1]
@@ -165,7 +165,7 @@ Queue/RED set deque_prio_ $deque_prio_
 
 ############## Multipathing ###########################
 if {$enableMultiPath == 1} {
-    $ns rtproto DV
+    # $ns rtproto DV
     Agent/rtProto/DV set advertInterval	[expr 2*$sim_end]
     Node set multiPath_ 1
     if {$perflowMP != 0} {
@@ -177,29 +177,71 @@ if {$enableMultiPath == 1} {
 ############# Topoplgy #########################
 set S [expr $topology_spt * $topology_tors] ; #number of servers
 set UCap [expr $link_rate * $topology_spt / $topology_spines / $topology_x] ; #uplink rate
-
 puts "UCap: $UCap"
+
+
+set topo_level_1 2
+set topo_level_2 2 
+set topo_level_3 1
+
+#don't change this 
+set topo_level_4 1
+
+set logical_nodes_count [expr {1 + 1 + $topo_level_1 + $topo_level_1 * $topo_level_2 + $topo_level_1 * $topo_level_2 * $topo_level_3 + $topo_level_1 * $topo_level_2 * $topo_level_3 * $topo_level_4}] 
+puts "Logical Nodes Count: $logical_nodes_count"
+
+if {$logical_nodes_count >= $S} {
+    puts "you don't have enough nodes in the datacenter to support the NF tree you want"
+    exit
+}
+
+set t [new MyTopology]
+$t set_simulator $ns
+set logical_leaves {}
+set traffic_generators {}
 
 for {set i 0} {$i < $S} {incr i} {
     set s($i) [$ns node]
+    if {$i < $logical_nodes_count} {
+        # puts "Added a logical node $s($i)"
+        $t add_node_to_source $s($i)
+    } else {
+        # puts "Added a traffic generator"
+        lappend traffic_generators $s($i)
+    }
 }
 
-# ## destination servers
-# for {set i 0} {$i < $topology_dest_servers} {incr i} {
-#     set ds($i) [$ns node]
-# }
-
-## one additional ToR switch at the destination zone
 for {set i 0} {$i < [expr $topology_tors]} {incr i} {
     set n($i) [$ns node]
 }
 
-## one additional spine switch at the destination zone
 for {set i 0} {$i < [expr $topology_spines]} {incr i} {
     set a($i) [$ns node]
 }
 
-# $ns duplex-link $a($topology_spines) $a([expr $topology_spines-1]) [set UCap]Gb $mean_link_delay $switchAlg
+$t make_tree $topo_level_1 $topo_level_2 $topo_level_3 $topo_level_4
+$ns at 0.1 "$t setup_nodes"
+$t print_graph
+
+puts $logical_leaves
+set i 0; 
+while {1} {
+    set this_leaf [$t get_logical_leaf $i]
+    if {$this_leaf == -1} {
+        break 
+    } 
+    lappend logical_leaves $this_leaf;
+    set i [expr {$i + 1}];
+}
+
+foreach  leaf  $logical_leaves {
+    puts "traffic dst $leaf"
+}
+
+foreach  gen  $traffic_generators {
+    puts "traffic src $gen"
+}
+
 
 ############ Edge links ##############
 for {set i 0} {$i < $S} {incr i} {
@@ -207,25 +249,17 @@ for {set i 0} {$i < $S} {incr i} {
     $ns duplex-link $s($i) $n($j) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
 }
 
-# ## destination-side links between the ToR and servers
-# for {set i 0} {$i < $topology_dest_servers} {incr i} {
-#     $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-# }
-
 ############ Core links ##############
 for {set i 0} {$i < [expr $topology_tors]} {incr i} {
     for {set j 0} {$j < [expr $topology_spines]} {incr j} {
         $ns duplex-link $n($i) $a($j) [set UCap]Gb $mean_link_delay $switchAlg
     }
 }
-
 ############# Tree Structure ##############
-set t [new MyTopology]
-$t set_simulator $ns
 
-$t add_node_to_source $s(0)
-$t add_node_to_source $s(1)
-$t add_node_to_source $s(2)
+# $t add_node_to_source $s(0)
+# $t add_node_to_source $s(1)
+# $t add_node_to_source $s(2)
 
 # $t add_node_to_dest $ds(0)
 # $t add_node_to_dest $ds(1)
@@ -251,33 +285,66 @@ set flow_gen 0
 set flow_fin 0
 
 set init_fid 0
-for {set j 0} {$j < $S } {incr j} {
-    for {set i 0} {$i < $S } {incr i} {
-        if {$i != $j} {
-                set agtagr($i,$j) [new Agent_Aggr_pair]
-                $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
-                $agtagr($i,$j) attach-logfile $flowlog
 
-                puts -nonewline "($i,$j) "
-                #For Poisson/Pareto
-                $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+set i 0 
+foreach  leaf  $logical_leaves {
+    set j 0
+    foreach  gen  $traffic_generators {
 
-                $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
-                $ns at 1 "$agtagr($i,$j) init_schedule"
+        set agtagr($gen,$leaf) [new Agent_Aggr_pair]
+        $agtagr($gen,$leaf) setup $gen $leaf "$gen $leaf" $connections_per_pair $init_fid "TCP_pair"
+        $agtagr($gen,$leaf) attach-logfile $flowlog
 
-                set init_fid [expr $init_fid + $connections_per_pair];
-            }
-        }
+        puts -nonewline "($gen,$leaf) "
+        #For Poisson/Pareto
+        $agtagr($gen,$leaf) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+
+        $ns at 0.2 "$agtagr($gen,$leaf) warmup 0.5 10"
+        $ns at 1 "$agtagr($gen,$leaf) init_schedule"
+
+        set init_fid [expr $init_fid + $connections_per_pair];
+
+        set j [expr {$j + 1}];
+        break
+    }
+    set i [expr {$i + 1}];
 }
+
+
+# set i 100 
+# foreach  leaf  $logical_leaves {
+#     set j 100
+#     foreach  gen  $traffic_generators {
+
+#         set agtagr($gen,$leaf) [new Agent_Aggr_pair]
+#         $agtagr($gen,$leaf) setup $gen $leaf "$gen $leaf" $connections_per_pair $init_fid "TCP_pair"
+#         $agtagr($gen,$leaf) attach-logfile $flowlog
+
+#         puts -nonewline "($gen,$leaf) "
+#         #For Poisson/Pareto
+#         $agtagr($gen,$leaf) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+
+#         $ns at 5.2 "$agtagr($gen,$leaf) warmup 0.5 5"
+#         $ns at 6 "$agtagr($gen,$leaf) init_schedule"
+
+#         set init_fid [expr $init_fid + $connections_per_pair];
+
+#         set j [expr {$j + 1}];
+#         break
+#     }
+#     set i [expr {$i + 1}];
+# }
+
+
 
 puts "Initial agent creation done";flush stdout
 puts "Simulation started!"
 
 proc finish {} {
         puts "simulation finished"
-        global ns tf
-        $ns flush-trace
-        close $tf
+        # global ns tf
+        # $ns flush-trace
+        # close $tf
         exit 0
 }
 # $ns at 0 "$t setup_nodes"

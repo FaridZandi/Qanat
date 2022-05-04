@@ -37,19 +37,20 @@ void MyQueue::enque(Packet* p) {
 		std::stringstream command; 
 		command << "puts \"Queue Full Dropping\"\n " << std::endl;
 		tcl.eval(command.str().c_str());
+
 		drop(p);
 	}
 
 	if (iph->prio_ == 15){
 		q1_->enque(p);
-		std::stringstream command; 
-		command << "puts \"Enqueuing to Q1. New Queue length: " << q1_->length() << "\"\n " << std::endl;
-		tcl.eval(command.str().c_str());
+		// std::stringstream command; 
+		// command << "puts \"Enqueuing to Q1. New Queue length: " << q1_->length() << "\"\n " << std::endl;
+		// tcl.eval(command.str().c_str());
 	} else {
 		q2_->enque(p);
-		std::stringstream command; 
-		command << "puts \"Enqueuing to Q2. New Queue length: " << q2_->length() << "\"\n " << std::endl;
-		tcl.eval(command.str().c_str());
+		// std::stringstream command; 
+		// command << "puts \"Enqueuing to Q2. New Queue length: " << q2_->length() << "\"\n " << std::endl;
+		// tcl.eval(command.str().c_str());
 	}
 }
 
@@ -62,17 +63,17 @@ Packet* MyQueue::deque()
 	if (q1_->length() > 0) {
 		p = q1_->deque();
 		
-		std::stringstream command; 
-		command << "puts \"Dequeuing from Q1. New Queue length: " << q1_->length() << "\"\n " << std::endl;
-		tcl.eval(command.str().c_str());
+		// std::stringstream command; 
+		// command << "puts \"Dequeuing from Q1. New Queue length: " << q1_->length() << "\"\n " << std::endl;
+		// tcl.eval(command.str().c_str());
 
 	}
 	else if (q2_->length() > 0) {
 		p = q2_->deque();
 
-		std::stringstream command; 
-		command << "puts \"Dequeuing from Q2. New Queue length: " << q2_->length() << "\"\n " << std::endl;
-		tcl.eval(command.str().c_str());
+		// std::stringstream command; 
+		// command << "puts \"Dequeuing from Q2. New Queue length: " << q2_->length() << "\"\n " << std::endl;
+		// tcl.eval(command.str().c_str());
 		
 	}  
 
