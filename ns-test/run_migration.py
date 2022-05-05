@@ -22,7 +22,13 @@ mean_link_delay = 0.0000002
 host_delay = 0.000020
 queueSize = 140
 # load_arr = [0.9,0.8,0.7,0.6,0.5]
-load_arr = [0.9]
+
+load_arr = []
+l = 0.01
+for i in range(40):
+	load_arr.append(l)
+	l += 0.01
+
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
@@ -39,7 +45,7 @@ DCTCP_g = 0.0625
 min_rto = 0.000250
 prob_cap_ = 5
 
-switchAlg = 'MyQueue'
+switchAlg = 'DropTail'
 DCTCP_K = 65.0
 drop_prio_ = 'true'
 # prio_scheme_arr = [2,3]
@@ -61,9 +67,9 @@ pias_thresh_6 = 2001*1460
 # topology_spines = 4
 # topology_x = 1
 # smaller topology
-topology_spt = 10
-topology_tors = 4
-topology_spines = 2
+topology_spt = 32
+topology_tors = 2
+topology_spines = 1
 topology_x = 1
 #sets the number of machines needed on the destination (assumed to be on the same rack)
 topology_dest_servers = 4 
@@ -74,8 +80,12 @@ if DEBUG_VALGRIND:
 
 sim_script = 'spine_empirical.tcl'
 
+
+i = 0
 for prio_scheme_ in prio_scheme_arr:
 	for load in load_arr:
+		i += 1 
+
 		scheme = 'unknown'
 
 		if prio_scheme_ == 2:
@@ -84,7 +94,7 @@ for prio_scheme_ in prio_scheme_arr:
 			scheme = 'pfabric_bytesSent'
 
 		#Directory name: workload_scheme_load_[load]
-		directory_name = 'websearch_%s_%d' % (scheme,int(load*100))
+		directory_name = 'results/%d_%i' % (int(load*100),i)
 		directory_name = directory_name.lower()
 		#Simulation command
 		cmd = ns_path+' '+sim_script+' '\
@@ -134,7 +144,7 @@ for prio_scheme_ in prio_scheme_arr:
 
 #Create all worker threads
 threads = []
-number_worker_threads = 20
+number_worker_threads = 5
 
 #Start threads to process jobs
 for i in range(number_worker_threads):

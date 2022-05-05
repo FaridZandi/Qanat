@@ -181,11 +181,9 @@ puts "UCap: $UCap"
 
 
 set topo_level_1 2
-set topo_level_2 2 
-set topo_level_3 1
-
-#don't change this 
-set topo_level_4 1
+set topo_level_2 2
+set topo_level_3 2
+set topo_level_4 2
 
 set logical_nodes_count [expr {1 + 1 + $topo_level_1 + $topo_level_1 * $topo_level_2 + $topo_level_1 * $topo_level_2 * $topo_level_3 + $topo_level_1 * $topo_level_2 * $topo_level_3 * $topo_level_4}] 
 puts "Logical Nodes Count: $logical_nodes_count"
@@ -305,7 +303,7 @@ foreach  leaf  $logical_leaves {
         set init_fid [expr $init_fid + $connections_per_pair];
 
         set j [expr {$j + 1}];
-        break
+        # break
     }
     set i [expr {$i + 1}];
 }

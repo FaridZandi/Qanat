@@ -97,9 +97,10 @@ std::string StatefulNF::get_five_tuple(Packet* p){
     std::stringstream five_tuple;
     hdr_ip* iph = hdr_ip::access(p); 
 
+    // five_tuple << toponode_->node->address() << "-"; 
     five_tuple << iph->src_.addr_ << "-";
     five_tuple << iph->src_.port_ << "-";
-    five_tuple << iph->dst_.addr_ << "-";
+    five_tuple << iph->gw_path[0] << "-";
     five_tuple << iph->dst_.port_;
 
     // where is the protocol?  
@@ -535,29 +536,33 @@ bool RouterNF::recv(Packet* p, Handler* h){
 
     hdr_ip* iph = hdr_ip::access(p);
     
-    // std::cout << "src: " << iph->src_.addr_ << " dst: " << iph->dst_.addr_ << std::endl; 
-    // std::cout << "this node address: " << this->toponode_->node->address() << std::endl; 
+    // if (toponode_->node->address() == 4){
+    //     std::cout << "src: " << iph->src_.addr_ << " dst: " << iph->dst_.addr_ << std::endl; 
+    // }
 
     if (iph->gw_path_pointer != -1){
-        
         auto ptr = iph->gw_path_pointer;
         iph->prev_hop = iph->dst_.addr_; 
         iph->dst_.addr_ = iph->gw_path[ptr]; 
         iph->gw_path_pointer --; 
     }
+   
 
-    // std::cout << "src: " << iph->src_.addr_ << " dst: " << iph->dst_.addr_ << std::endl; 
-    // std::cout << "-----------------------" << std::endl; 
+    // if (toponode_->node->address() == 4 or 
+    //     toponode_->node->address() == 15) {
 
-	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
+    //     std::cout << "this node address: " << this->toponode_->node->address() << std::endl; 
+    //     std::cout << "src: " << iph->src_.addr_ << " dst: " << iph->dst_.addr_ << std::endl; 
+    // 	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
+    //     std::cout << "packet path: "; 
+    //     for (int i = 0; i <= iph->gw_path_pointer; i++){
+    //         std::cout << iph->gw_path[i] << " "; 
+    //     }
+    //     std::cout << std::endl; 
+    //     std::cout << "-----------------------" << std::endl; 
+    // }
 
-	// std::cout << "packet path: "; 
-	// for (int i = 0; i <= iph->gw_path_pointer; i++){
-	// 	std::cout << iph->gw_path[i] << " "; 
-	// }
-	// std::cout << std::endl; 
 
-    
 
     return true;
 }

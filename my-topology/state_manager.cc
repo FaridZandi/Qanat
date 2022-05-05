@@ -16,7 +16,7 @@ StorageNF::StorageNF(TopoNode* toponode, int chain_pos)
     
     busy_ = false;
     pq = new PacketQueue;
-    this->rate_ = 100000; 
+    this->rate_ = 1000000; 
 
     verbose = false; 
 
