@@ -102,6 +102,10 @@ public:
     void print_graph(void (*print_node) (Node*));
 
     Node* storage_node; 
+
+    static double eventual_timeout; 
+    static double access_mode; 
+
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);

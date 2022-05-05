@@ -17,7 +17,7 @@ public:
 
     virtual void print_info(); 
 
-    std::string increment_key(std::string key);
+    std::string increment_key(std::string key, int by = 1);
 
     void process_request(Packet* p);
 

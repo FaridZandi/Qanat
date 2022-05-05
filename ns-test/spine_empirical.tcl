@@ -3,7 +3,7 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 40} {
+if {$argc != 42} {
     puts "wrong number of arguments $argc"
     exit 0
 }
@@ -59,9 +59,11 @@ set topology_tors [lindex $argv 35]
 set topology_spines [lindex $argv 36]
 set topology_x [lindex $argv 37]
 set topology_dest_servers [lindex $argv 38]
+set eventual_timeout_ [lindex $argv 39]
+set access_mode_ [lindex $argv 40]
 
 ### result file
-set flowlog [open [lindex $argv 39] w]
+set flowlog [open [lindex $argv 41] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -180,10 +182,10 @@ set UCap [expr $link_rate * $topology_spt / $topology_spines / $topology_x] ; #u
 puts "UCap: $UCap"
 
 
-set topo_level_1 2
-set topo_level_2 2
-set topo_level_3 2
-set topo_level_4 2
+set topo_level_1 1
+set topo_level_2 1
+set topo_level_3 1
+set topo_level_4 1
 
 set logical_nodes_count [expr {1 + 1 + $topo_level_1 + $topo_level_1 * $topo_level_2 + $topo_level_1 * $topo_level_2 * $topo_level_3 + $topo_level_1 * $topo_level_2 * $topo_level_3 * $topo_level_4}] 
 puts "Logical Nodes Count: $logical_nodes_count"
@@ -192,6 +194,9 @@ if {$logical_nodes_count >= $S} {
     puts "you don't have enough nodes in the datacenter to support the NF tree you want"
     exit
 }
+
+MyTopology set eventual_timeout $eventual_timeout_
+MyTopology set access_mode $access_mode_
 
 set t [new MyTopology]
 $t set_simulator $ns
@@ -303,7 +308,6 @@ foreach  leaf  $logical_leaves {
         set init_fid [expr $init_fid + $connections_per_pair];
 
         set j [expr {$j + 1}];
-        # break
     }
     set i [expr {$i + 1}];
 }

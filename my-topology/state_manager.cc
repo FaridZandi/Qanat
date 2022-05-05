@@ -89,7 +89,7 @@ void StorageNF::print_info(){
     }
 }
 
-std::string StorageNF::increment_key(std::string key){
+std::string StorageNF::increment_key(std::string key, int by){
     std::string value; 
 
     if (state.find(key) == state.end()) {
@@ -98,7 +98,7 @@ std::string StorageNF::increment_key(std::string key){
         value = state[key];
     }   
 
-    int count = std::stoi(value) + 1;
+    int count = std::stoi(value) + by;
     state[key] = to_string(count);
 
     if (verbose){
@@ -114,9 +114,27 @@ void StorageNF::process_request(Packet* p){
 
     hdr_ip* iph = hdr_ip::access(p);
     std::string key = std::string(iph->key);
-    std::string value = increment_key(key); 
-    iph->value = new char[value.length() + 1];
-    memcpy(iph->value, value.c_str(), value.length() + 1);
+
+    if (access_mode == REMOTE){
+        log_packet("serving storage op 1");
+        std::string value = increment_key(key); 
+        
+        iph->value = new char[value.length() + 1];
+        memcpy(iph->value, value.c_str(), value.length() + 1);
+
+    } else if (access_mode == EVENTUAL) {
+        log_packet("serving storage op 2");
+
+        std::string diff_value = std::string(iph->value);
+        log_packet("incrementing key by", std::stoi(diff_value));
+        std::string value = increment_key(key, std::stoi(diff_value)); 
+        
+        delete[] iph->value; 
+
+        iph->value = new char[value.length() + 1];
+        memcpy(iph->value, value.c_str(), value.length() + 1);
+    }
+    
     iph->is_storage_response = true; 
 }
 

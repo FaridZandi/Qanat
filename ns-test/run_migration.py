@@ -23,16 +23,29 @@ host_delay = 0.000020
 queueSize = 140
 # load_arr = [0.9,0.8,0.7,0.6,0.5]
 
-load_arr = []
+load_arr = [0.2]
+# l = 0.01
+# for i in range(40):
+	# load_arr.append(l)
+	# l += 0.01
+
+connections_per_pair = 1
+meanFlowSize = 1138*1460
+paretoShape = 1.05
+eventual_timeouts = []
 l = 0.01
 for i in range(40):
 	load_arr.append(l)
 	l += 0.01
 
-connections_per_pair = 1
-meanFlowSize = 1138*1460
-paretoShape = 1.05
-flow_cdf = 'CDF_My.tcl'
+
+# access_mode = 0 # local
+# access_mode = 1 # remote 
+access_mode = 2 # eventual
+# access_mode = 3 # cache 
+
+# flow_cdf = 'CDF_My.tcl'
+flow_cdf = 'CDF_dctcp.tcl'
 
 enableMultiPath = 1
 perflowMP = 0
@@ -82,19 +95,14 @@ sim_script = 'spine_empirical.tcl'
 
 
 i = 0
-for prio_scheme_ in prio_scheme_arr:
+for eventual_timeout in eventual_timeouts:
 	for load in load_arr:
 		i += 1 
-
+		prio_scheme_ = 2 
 		scheme = 'unknown'
 
-		if prio_scheme_ == 2:
-			scheme = 'pfabric_remainingSize'
-		elif prio_scheme_ == 3:
-			scheme = 'pfabric_bytesSent'
-
 		#Directory name: workload_scheme_load_[load]
-		directory_name = 'results/%d_%i' % (int(load*100),i)
+		directory_name = 'results/%d_%f_%i' % (int(load*100), eventual_timeout, i)
 		directory_name = directory_name.lower()
 		#Simulation command
 		cmd = ns_path+' '+sim_script+' '\
@@ -137,6 +145,8 @@ for prio_scheme_ in prio_scheme_arr:
 			+str(topology_spines)+' '\
 			+str(topology_x)+' '\
 			+str(topology_dest_servers)+' '\
+			+str(eventual_timeout)+' '\
+			+str(access_mode)+' '\
 			+str('./'+directory_name+'/flow.tr')+'  >'\
 			+str('./'+directory_name+'/logFile.tr')
 
@@ -144,7 +154,7 @@ for prio_scheme_ in prio_scheme_arr:
 
 #Create all worker threads
 threads = []
-number_worker_threads = 5
+number_worker_threads = 10
 
 #Start threads to process jobs
 for i in range(number_worker_threads):

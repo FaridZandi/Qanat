@@ -114,7 +114,8 @@ struct hdr_ip {
 	int32_t state_dst; // Farid 
 	char* key; // Farid 
 	char* value; // Farid 
-	bool is_storage_response; 
+	bool is_storage_response; // Farid
+	bool storage_op; 
 
 	/* per-field member acces functions */
 	ns_addr_t& src() { return (src_); }

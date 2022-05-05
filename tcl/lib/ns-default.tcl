@@ -1727,3 +1727,8 @@ Agent/PBC set payloadSize 200
 Agent/PBC set periodicBroadcastInterval 1
 Agent/PBC set periodicBroadcastVariance 0.1
 Agent/PBC set modulationScheme 0
+
+
+
+MyTopology set eventual_timeout 0.01
+MyTopology set access_mode 0

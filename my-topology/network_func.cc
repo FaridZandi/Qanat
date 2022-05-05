@@ -14,6 +14,29 @@ NF::NF(TopoNode* toponode,
                         chain_pos_(chain_pos) {
                             
     verbose = false;
+    switch ((int)MyTopology::access_mode)
+    {
+    case 0:
+        access_mode = LOCAL;
+        std::cout << "access mode set to local" << std::endl;  
+        break;
+    case 1:
+        access_mode = REMOTE;
+        std::cout << "access mode set to remote" << std::endl;  
+        break;
+    case 2:
+        access_mode = EVENTUAL;
+        std::cout << "access mode set to eventual" << std::endl;  
+        break;
+    case 3:
+        access_mode = CACHE;
+        std::cout << "access mode set to cache" << std::endl;  
+        break;
+    default:
+        std::cout << "NO ACCESS MODE" << std::endl;  
+        exit(0);
+        break;
+    }
 }
 
 NF::~NF(){
@@ -55,8 +78,8 @@ bool NF::should_ignore(Packet* p){
     return false; 
 }
 
-bool NF::log_packet(std::string message, int arg){
-    if(verbose){    
+bool NF::log_packet(std::string message, int arg, bool force){
+    if(verbose or force){    
         print_time();
 
         std::cout << "[";
@@ -84,9 +107,12 @@ bool NF::log_packet(std::string message, int arg){
  * StatefulNF Implementation                              *  
  *********************************************************/
 
+double StatefulNF::eventual_timeout = 0.01;
+
 StatefulNF::StatefulNF(TopoNode* toponode, int chain_pos) 
     : NF(toponode, chain_pos) {
-    access_mode = REMOTE; 
+
+    eventual_timeout = MyTopology::eventual_timeout; 
 }
 
 StatefulNF::~StatefulNF(){
@@ -109,40 +135,86 @@ std::string StatefulNF::get_five_tuple(Packet* p){
     return five_tuple.str();
 }
 
+
+std::string StatefulNF::increment_local_key(std::string key, 
+                    std::map<std::string, std::string>& map){
+    
+    std::string value; 
+    if (map.find(key) == map.end()) {
+        value = "0";
+    } else {
+        value = map[key];
+    }   
+
+    int count = std::stoi(value) + 1;
+    map[key] = to_string(count);
+    if (verbose){
+        std::cout << "increment " << key << " to " << map[key] << std::endl; 
+    }
+    return map[key];                      
+}
+
+void copy_to_packet(std::string str, char*& where){
+    where = new char[str.length() + 1];
+    memcpy(where, str.c_str(), str.length() + 1);
+}
+
+
+
 bool StatefulNF::increment_key(Packet* p, std::string key){
 
     if (access_mode == LOCAL){
-        std::string value; 
-        if (state.find(key) == state.end()) {
-            value = "0";
-        } else {
-            value = state[key];
-        }   
+        increment_local_key(key, state);
 
-        int count = std::stoi(value) + 1;
-        state[key] = to_string(count);
-        if (verbose){
-            std::cout << "increment " << key << " to " << state[key] << std::endl; 
-        }
         return true; 
 
     } else if (access_mode == REMOTE) {
-        auto& topo = MyTopology::instance(); 
-        auto storage_node = topo.storage_node; 
 
         hdr_ip* iph = hdr_ip::access(p); 
         iph->prio_ = 15;
-        
-        iph->key = new char[key.length() + 1];
-        memcpy(iph->key, key.c_str(), key.length() + 1); 
+        iph->storage_op = 1; 
+        log_packet("issue storage op ", 1);
 
+        copy_to_packet(key, iph->key);
 
+        auto& topo = MyTopology::instance(); 
+        auto storage_node = topo.storage_node; 
         add_to_path(p, toponode_->node->address());
         add_to_path(p, storage_node->address());
 
         return true; 
-    }  
 
+    } else if (access_mode == EVENTUAL) {
+        auto now = Scheduler::instance().clock(); 
+
+        if (timeout.find(key) == timeout.end()) {
+            timeout[key] = now;
+        }
+        
+        std::string diff_value = increment_local_key(key, diff_state);
+
+        if (timeout[key] + eventual_timeout <= now){
+            log_packet("timeout for key", std::stoi(diff_value));
+
+            hdr_ip* iph = hdr_ip::access(p); 
+            iph->prio_ = 15;
+            iph->storage_op = 2; 
+            log_packet("issue storage op ", 2);
+
+            copy_to_packet(key, iph->key);
+            copy_to_packet(diff_value, iph->value);
+
+            auto& topo = MyTopology::instance(); 
+            auto storage_node = topo.storage_node; 
+            add_to_path(p, toponode_->node->address());
+            add_to_path(p, storage_node->address());
+
+            diff_state.erase(key); 
+            timeout[key] = now; 
+        }
+
+        return true; 
+    }
 }
 
 bool StatefulNF::is_stateful(){
@@ -197,8 +269,8 @@ bool Monitor::recv(Packet* p, Handler* h){
         iph->is_storage_response = false; 
         iph->prio_ = 0;
 
-        delete iph->key;
-        delete iph->value; 
+        delete[] iph->key;
+        delete[] iph->value; 
 
         return true; 
     } else {

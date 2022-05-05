@@ -477,7 +477,8 @@ Agent::initpkt(Packet* p) const
 	iph->state_dst = -1; // Farid 
 	iph->prev_hop = -1; // Farid 
 	iph->is_storage_response = false; // Farid 
-
+	iph->storage_op = -1; // Farid 
+	
 	//DEBUG
 	//if (dst_ != -1)
 	//  printf("pl break\n");

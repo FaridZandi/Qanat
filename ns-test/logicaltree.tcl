@@ -73,7 +73,7 @@ $sink listen
  
 # $t make_tree 4 1 1 1
 # $t make_tree 2 2 2
-$t make_tree 1 1 1
+$t make_tree 2 2 2 
 $t duplicate_tree
 $t print_graph
 

@@ -11,6 +11,14 @@ class TopoNode;
 class PacketQueue; 
 class Node; 
 
+
+enum ACCESS_MODE {
+    LOCAL, 
+    REMOTE, 
+    EVENTUAL,
+    CACHE,
+};
+
 class NF : public Handler {
 public: 
     NF(TopoNode* toponode, int chain_pos); 
@@ -78,7 +86,7 @@ protected:
 
     bool should_ignore(Packet* p); 
 
-    bool log_packet(std::string message, int arg = -1);
+    bool log_packet(std::string message, int arg = -1, bool force = false);
 
     void send(Event* e);
 
@@ -86,14 +94,10 @@ protected:
     int chain_pos_;
 
     bool verbose; 
+
+    ACCESS_MODE access_mode; 
 };
 
-
-enum ACCESS_MODE {
-    LOCAL, 
-    REMOTE, 
-    EVENTUAL,
-};
 
 class StatefulNF : public NF {
 public: 
@@ -109,6 +113,8 @@ public:
 
     bool increment_key(Packet* p, std::string key); 
 
+    std::string increment_local_key(std::string key, std::map<std::string, std::string>& map);
+
     void print_state();
 
     virtual std::string get_main_state();
@@ -117,8 +123,10 @@ public:
 
 protected: 
     std::map<std::string, std::string> state; 
+    std::map<std::string, std::string> diff_state; 
+    std::map<std::string, double> timeout;
 
-    ACCESS_MODE access_mode; 
+    static double eventual_timeout;  
 };
 
 

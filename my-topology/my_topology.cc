@@ -19,6 +19,8 @@ public:
 
 MyTopology* MyTopology::instance_ = nullptr;
 int MyTopology::toponode_uid_counter = 0;
+double MyTopology::eventual_timeout = 0.01;
+double MyTopology::access_mode = 0;
 
 MyTopology::MyTopology(){
     bind_bool("verbose_", &verbose); 
@@ -27,6 +29,9 @@ MyTopology::MyTopology(){
     instance_ = this; 
 
     mig_root = nullptr; 
+
+    bind("eventual_timeout", &eventual_timeout); 
+    bind("access_mode", &access_mode); 
 }
 
 MyTopology::~MyTopology(){
