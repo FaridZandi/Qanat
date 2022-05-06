@@ -287,7 +287,7 @@ puts "Setting up connections ..."; flush stdout
 set flow_gen 0
 set flow_fin 0
 
-set init_fid 0
+set init_fid 1
 
 set i 0 
 foreach  leaf  $logical_leaves {
@@ -306,6 +306,8 @@ foreach  leaf  $logical_leaves {
         $ns at 1 "$agtagr($gen,$leaf) init_schedule"
 
         set init_fid [expr $init_fid + $connections_per_pair];
+
+        puts $init_fid
 
         set j [expr {$j + 1}];
     }

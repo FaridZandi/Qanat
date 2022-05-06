@@ -35,9 +35,9 @@ bool StorageNF::recv(Packet* p, Handler* h){
         pq->enque(p);
         log_packet("Queuing the packet. New Q length:", pq->length());
         return false; 
+        
     } else {
     
-
         process_request(p);
 
         busy_ = true; 

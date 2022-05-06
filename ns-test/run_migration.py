@@ -32,10 +32,11 @@ load_arr = [0.2]
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
+
 eventual_timeouts = []
 l = 0.01
-for i in range(40):
-	load_arr.append(l)
+for i in range(5):
+	eventual_timeouts.append(l)
 	l += 0.01
 
 

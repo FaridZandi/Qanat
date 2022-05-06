@@ -14,8 +14,8 @@ NF::NF(TopoNode* toponode,
                         chain_pos_(chain_pos) {
                             
     verbose = false;
-    switch ((int)MyTopology::access_mode)
-    {
+
+    switch ((int)MyTopology::access_mode){
     case 0:
         access_mode = LOCAL;
         std::cout << "access mode set to local" << std::endl;  
@@ -161,7 +161,7 @@ void copy_to_packet(std::string str, char*& where){
 
 
 
-bool StatefulNF::increment_key(Packet* p, std::string key){
+bool StatefulNF::increment_key(Packet* p, std::string key, bool bypass_buffer){
 
     if (access_mode == LOCAL){
         increment_local_key(key, state);
@@ -190,10 +190,20 @@ bool StatefulNF::increment_key(Packet* p, std::string key){
         if (timeout.find(key) == timeout.end()) {
             timeout[key] = now;
         }
+
+        for (auto const &pair: pq) {
+            std::cout << "{" << pair.first << ": " << pair.second << "}\n";
+        }
         
+        if (pq.find(key) != pq.end() and not bypass_buffer) {
+            log_packet("enquing the packet");
+            pq[key]->enque(p); 
+            return false; 
+        }
+
         std::string diff_value = increment_local_key(key, diff_state);
 
-        if (timeout[key] + eventual_timeout <= now){
+        if (timeout[key] + eventual_timeout <= now and not bypass_buffer){
             log_packet("timeout for key", std::stoi(diff_value));
 
             hdr_ip* iph = hdr_ip::access(p); 
@@ -211,6 +221,8 @@ bool StatefulNF::increment_key(Packet* p, std::string key){
 
             diff_state.erase(key); 
             timeout[key] = now; 
+
+            // pq[key] = new PacketQueue;
         }
 
         return true; 
@@ -265,12 +277,26 @@ bool Monitor::recv(Packet* p, Handler* h){
 
     if (iph->is_storage_response){
         log_packet("storage response received");
-        state[std::string(iph->key)] = std::string(iph->value); 
+        std::string key = std::string(iph->key);
+        state[key] = std::string(iph->value); 
         iph->is_storage_response = false; 
         iph->prio_ = 0;
 
         delete[] iph->key;
         delete[] iph->value; 
+        
+        if (access_mode == EVENTUAL){
+            log_packet("storage response is here!");
+            if (pq.find(key) != pq.end()){
+                log_packet("emptying a buffer of size", pq[key]->length());
+                while (pq[key]->length() > 0){
+                    Packet* p = pq[key]->deque();
+                    increment_key(p, key, true);
+                }
+                pq.erase(key);
+                log_packet("deleted");
+            }
+        }
 
         return true; 
     } else {

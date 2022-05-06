@@ -111,7 +111,7 @@ public:
     
     std::string get_five_tuple(Packet* p);
 
-    bool increment_key(Packet* p, std::string key); 
+    bool increment_key(Packet* p, std::string key, bool bypass_buffer = false); 
 
     std::string increment_local_key(std::string key, std::map<std::string, std::string>& map);
 
@@ -125,6 +125,7 @@ protected:
     std::map<std::string, std::string> state; 
     std::map<std::string, std::string> diff_state; 
     std::map<std::string, double> timeout;
+    std::map<std::string, PacketQueue*> pq; 
 
     static double eventual_timeout;  
 };

@@ -180,6 +180,7 @@ TCP_pair instproc start { nr_bytes } {
 
     if { $debug_mode == 1 } {
 	puts "stats: [$ns now] start grp $group_id fid $id $nr_bytes bytes"
+    puts "\[[$ns now]\] $id flowstart" 
     }
 
     if { [info exists aggr_ctrl] } {
@@ -260,6 +261,7 @@ TCP_pair instproc flow_finished {} {
 
     if { $debug_mode == 1 } {
 	puts "stats: $ct fin grp $group_id fid $id fldur $dt sec $bps bps"
+    puts "[$ct] $id flowstart" 
     }
 }
 
