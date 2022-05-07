@@ -16,7 +16,7 @@ StorageNF::StorageNF(TopoNode* toponode, int chain_pos)
     
     busy_ = false;
     pq = new PacketQueue;
-    this->rate_ = 1000000; 
+    this->rate_ = MyTopology::remote_storage_rate; 
 
     verbose = false; 
 
@@ -35,7 +35,7 @@ bool StorageNF::recv(Packet* p, Handler* h){
         pq->enque(p);
         log_packet("Queuing the packet. New Q length:", pq->length());
         return false; 
-        
+
     } else {
     
         process_request(p);
@@ -109,18 +109,32 @@ std::string StorageNF::increment_key(std::string key, int by){
 }
 
 
+int StorageNF::get_key_owner(std::string key){
+    if (key_owner.find(key) == key_owner.end()){
+        return -1; 
+    } else {
+        return key_owner[key];
+    }
+}
+
+
 void StorageNF::process_request(Packet* p){
     log_packet("processing the packet");
 
     hdr_ip* iph = hdr_ip::access(p);
     std::string key = std::string(iph->key);
 
-    if (access_mode == REMOTE){
+    if (access_mode == REMOTE or access_mode == CACHE){
         log_packet("serving storage op 1");
         std::string value = increment_key(key); 
         
         iph->value = new char[value.length() + 1];
         memcpy(iph->value, value.c_str(), value.length() + 1);
+        
+        // log_packet("setting the state owner to", iph->state_dst, true);
+        // log_packet(key.c_str(),0, true);
+
+        key_owner[key] = iph->state_dst; 
 
     } else if (access_mode == EVENTUAL) {
         log_packet("serving storage op 2");

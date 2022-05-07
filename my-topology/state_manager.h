@@ -21,8 +21,11 @@ public:
 
     void process_request(Packet* p);
 
+    int get_key_owner(std::string key);
+
 private: 
     std::map<std::string, std::string> state; 
+    std::map<std::string, int> key_owner; 
 
     void send_and_sched();
     double get_interval(); 

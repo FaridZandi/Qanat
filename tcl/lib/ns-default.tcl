@@ -1732,4 +1732,6 @@ Agent/PBC set modulationScheme 0
 
 MyTopology set eventual_timeout 0.01
 MyTopology set access_mode 0
+MyTopology set remote_storage_rate 1
+MyTopology set local_storage_rate 1
 MyTopology set verbose_ false

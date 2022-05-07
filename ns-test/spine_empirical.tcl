@@ -3,7 +3,7 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 42} {
+if {$argc != 45} {
     puts "wrong number of arguments $argc"
     exit 0
 }
@@ -61,9 +61,11 @@ set topology_x [lindex $argv 37]
 set topology_dest_servers [lindex $argv 38]
 set eventual_timeout_ [lindex $argv 39]
 set access_mode_ [lindex $argv 40]
-
+set topology_shape_ [lindex $argv 41]
+set remote_storage_rate_ [lindex $argv 42]
+set local_storage_rate_ [lindex $argv 43]
 ### result file
-set flowlog [open [lindex $argv 41] w]
+set flowlog [open [lindex $argv 44] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -182,10 +184,33 @@ set UCap [expr $link_rate * $topology_spt / $topology_spines / $topology_x] ; #u
 puts "UCap: $UCap"
 
 
-set topo_level_1 1
-set topo_level_2 1
-set topo_level_3 1
-set topo_level_4 1
+set topo_level_1 0
+set topo_level_2 0
+set topo_level_3 0
+set topo_level_4 0
+
+if {$topology_shape_ == 1} {
+    set topo_level_1 15
+    set topo_level_2 1
+    set topo_level_3 0
+    set topo_level_4 0
+}
+
+if {$topology_shape_ == 2} {
+    set topo_level_1 2
+    set topo_level_2 2
+    set topo_level_3 2
+    set topo_level_4 2
+}
+
+
+if {$topology_shape_ == 3} {
+    set topo_level_1 10
+    set topo_level_2 1
+    set topo_level_3 1
+    set topo_level_4 0
+}
+
 
 set logical_nodes_count [expr {1 + 1 + $topo_level_1 + $topo_level_1 * $topo_level_2 + $topo_level_1 * $topo_level_2 * $topo_level_3 + $topo_level_1 * $topo_level_2 * $topo_level_3 * $topo_level_4}] 
 puts "Logical Nodes Count: $logical_nodes_count"
@@ -197,6 +222,8 @@ if {$logical_nodes_count >= $S} {
 
 MyTopology set eventual_timeout $eventual_timeout_
 MyTopology set access_mode $access_mode_
+MyTopology set local_storage_rate $local_storage_rate_
+MyTopology set remote_storage_rate $remote_storage_rate_
 
 set t [new MyTopology]
 $t set_simulator $ns
@@ -306,8 +333,6 @@ foreach  leaf  $logical_leaves {
         $ns at 1 "$agtagr($gen,$leaf) init_schedule"
 
         set init_fid [expr $init_fid + $connections_per_pair];
-
-        puts $init_fid
 
         set j [expr {$j + 1}];
     }

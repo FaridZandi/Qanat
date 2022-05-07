@@ -1,5 +1,7 @@
 flows = {}
 
+total_completion_time = 0 
+
 with open('flowstart.log') as f:
     for line in f.readlines():
         line = line.strip()
@@ -22,23 +24,32 @@ with open('flowend.log') as f:
         time_brak = line.split(" ")[0]
         time = float(time_brak[1:-1])
 
+        if time > total_completion_time: 
+            total_completion_time = time
+
         if fid != 0:
             # print(fid, time)
             flows[fid][1] = time   
+
+total_completion_time -= 1 
 
 fcts = [] 
 for flow in flows:
     # print(flow, flows[flow][0], flows[flow][1], flows[flow][1] - flows[flow][0])
     fcts.append(flows[flow][1] - flows[flow][0])
 
- 
 average_fct = sum(fcts)/len(fcts)
 
 with open('fct.log', "w") as f:
     print("average_fct:", average_fct)
+    print("total_completion_time:", total_completion_time)
 
     f.write("average_fct: ")
     f.write(str(average_fct))
+    f.write("\n")
+
+    f.write("total_completion_time: ")
+    f.write("%.2f" % round(total_completion_time, 2))
     f.write("\n\n\n")
 
     for flow,times in sorted(flows.items()):

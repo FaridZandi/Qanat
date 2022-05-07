@@ -115,6 +115,7 @@ struct hdr_ip {
 	char* key; // Farid 
 	char* value; // Farid 
 	bool is_storage_response; // Farid
+	bool next_delay; //Farid
 	bool storage_op; 
 
 	/* per-field member acces functions */

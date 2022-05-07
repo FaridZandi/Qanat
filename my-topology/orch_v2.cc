@@ -200,9 +200,12 @@ std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
 }
 
 std::list<nf_spec> OrchestratorV2::get_gw_nf_list(){
+
+    auto rate = MyTopology::local_storage_rate; 
+
     return {
         // {"selective_buffer", 100000},
-        {"rate_limiter", 1000000},
+        {"rate_limiter", rate},
         {"monitor", 0},
         {"delayer", 0.00005},
         // {"tunnel_manager", 0},

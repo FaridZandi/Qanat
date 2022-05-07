@@ -105,6 +105,8 @@ public:
 
     static double eventual_timeout; 
     static double access_mode; 
+    static double local_storage_rate; 
+    static double remote_storage_rate; 
 
 private:
 

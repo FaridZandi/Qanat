@@ -28,7 +28,6 @@ void BaseOrchestrator::setup_nodes(){
     for(auto& node: topo.get_all_nodes(mig_root_peer)){
         mig_state[node] = MigState::OutOfService;
     }
-
     topo.get_data(topo.storage_node).add_nf("storage");
     topo.get_data(topo.storage_node).add_nf("delayer", 0.000005);
     topo.get_data(topo.storage_node).add_nf("router");

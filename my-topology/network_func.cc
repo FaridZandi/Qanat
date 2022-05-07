@@ -8,6 +8,7 @@
 #include "tcp-full.h"
 #include <iomanip>
 #include "utility.h"
+#include "state_manager.h"
 
 NF::NF(TopoNode* toponode, 
        int chain_pos) : toponode_(toponode),
@@ -179,6 +180,8 @@ bool StatefulNF::increment_key(Packet* p, std::string key, bool bypass_buffer){
 
         auto& topo = MyTopology::instance(); 
         auto storage_node = topo.storage_node; 
+
+        iph->state_dst = toponode_->node->address(); 
         add_to_path(p, toponode_->node->address());
         add_to_path(p, storage_node->address());
 
@@ -216,6 +219,8 @@ bool StatefulNF::increment_key(Packet* p, std::string key, bool bypass_buffer){
 
             auto& topo = MyTopology::instance(); 
             auto storage_node = topo.storage_node; 
+
+            iph->state_dst = toponode_->node->address(); 
             add_to_path(p, toponode_->node->address());
             add_to_path(p, storage_node->address());
 
@@ -224,8 +229,41 @@ bool StatefulNF::increment_key(Packet* p, std::string key, bool bypass_buffer){
 
             // pq[key] = new PacketQueue;
         }
-
         return true; 
+
+    } else if (access_mode == CACHE) {
+
+        // log_packet("please print something", 0, true);
+
+        auto& topo = MyTopology::instance(); 
+        auto storage_node = topo.storage_node;
+        auto nf = (StorageNF*)topo.get_data(storage_node).get_nf("storag");
+
+        if (nf->get_key_owner(key) == toponode_->node->address()){
+            // I'm the key owner 
+            // log_packet("I'm the key owner", 0, true);
+            increment_local_key(key, state);
+            return true; 
+        } else {
+            // I'm not the key owner
+            // log_packet("I should ask the remote for you!", 0, true);
+
+            hdr_ip* iph = hdr_ip::access(p); 
+            iph->prio_ = 15;
+            iph->storage_op = 1; 
+            log_packet("issue storage op ", 1);
+
+            copy_to_packet(key, iph->key);
+
+            auto& topo = MyTopology::instance(); 
+            auto storage_node = topo.storage_node; 
+
+            iph->state_dst = toponode_->node->address(); 
+            add_to_path(p, toponode_->node->address());
+            add_to_path(p, storage_node->address());
+
+            return true; 
+        }
     }
 }
 
@@ -308,6 +346,7 @@ bool Monitor::recv(Packet* p, Handler* h){
         // increment_key(p, "packet_count");
 
         auto key = get_key(p);
+        // auto key = get_five_tuple(p);
         return increment_key(p, key); 
     }
 }
@@ -331,10 +370,12 @@ void Monitor::print_info(){
 std::string Monitor::get_key(Packet* p){
     std::stringstream key;
     key << "packet_count-"; 
-    key << toponode_->node->address(); 
+    // key << toponode_->node->address(); 
+
+    key << toponode_->layer_from_bottom;
     // if (p != NULL) {
-        // hdr_ip* iph = hdr_ip::access(p);
-        // key << "-" << iph->gw_path[0]; 
+    //     hdr_ip* iph = hdr_ip::access(p);
+    //     key << "-" << iph->src_.addr_; 
     // }
     return key.str();
 }

@@ -466,6 +466,7 @@ FullTcpAgent::bufferempty()
 		finish_notify_callback(node);
 	} else {
 		std::cout << "[" <<  Scheduler::instance().clock() << "] " << fid_ << " flowend" << std::endl;
+		std::cout << "[" <<  Scheduler::instance().clock() << "] " << fid_ << " " << rtxbytes_ << " " << int(t_seqno_) << " retrans" << std::endl;
 	}
    	signal_on_empty_=FALSE;
 	Tcl::instance().evalf("%s done_data", this->name());

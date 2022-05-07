@@ -21,6 +21,8 @@ MyTopology* MyTopology::instance_ = nullptr;
 int MyTopology::toponode_uid_counter = 0;
 double MyTopology::eventual_timeout = 0.01;
 double MyTopology::access_mode = 0;
+double MyTopology::local_storage_rate = 1;
+double MyTopology::remote_storage_rate = 1;
 
 MyTopology::MyTopology(){
     bind_bool("verbose_", &verbose); 
@@ -32,6 +34,8 @@ MyTopology::MyTopology(){
 
     bind("eventual_timeout", &eventual_timeout); 
     bind("access_mode", &access_mode); 
+    bind("local_storage_rate", &local_storage_rate); 
+    bind("remote_storage_rate", &remote_storage_rate); 
 }
 
 MyTopology::~MyTopology(){

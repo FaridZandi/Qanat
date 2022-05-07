@@ -33,16 +33,20 @@ connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
 
-eventual_timeouts = []
-l = 0.01
-for i in range(5):
-	eventual_timeouts.append(l)
-	l += 0.01
+eventual_timeouts = [0.01]
+# l = 0.01
+# for i in range(10):
+# 	eventual_timeouts.append(l)
+# 	l += 0.01
+# eventual_timeouts *= 1
 
+topology_shape = 1
+remote_storage_rate = 1000000
+local_storage_rate = 1000000
 
-# access_mode = 0 # local
+access_mode = 0 # local
 # access_mode = 1 # remote 
-access_mode = 2 # eventual
+# access_mode = 2 # eventual
 # access_mode = 3 # cache 
 
 # flow_cdf = 'CDF_My.tcl'
@@ -103,7 +107,19 @@ for eventual_timeout in eventual_timeouts:
 		scheme = 'unknown'
 
 		#Directory name: workload_scheme_load_[load]
-		directory_name = 'results/%d_%f_%i' % (int(load*100), eventual_timeout, i)
+		access_mode_name = "" 
+
+		if access_mode == 0: 
+			access_mode_name = "local"
+		elif access_mode == 1:
+			access_mode_name = "remote"
+		elif access_mode == 2:
+			access_mode_name = "eventual"
+		elif access_mode == 3:
+			access_mode_name = "cache"
+
+		directory_name = 'results/%d_%s_%f_%i' % (int(load*100), access_mode_name, eventual_timeout, i)
+		
 		directory_name = directory_name.lower()
 		#Simulation command
 		cmd = ns_path+' '+sim_script+' '\
@@ -148,6 +164,9 @@ for eventual_timeout in eventual_timeouts:
 			+str(topology_dest_servers)+' '\
 			+str(eventual_timeout)+' '\
 			+str(access_mode)+' '\
+			+str(topology_shape)+' '\
+			+str(remote_storage_rate)+' '\
+			+str(local_storage_rate)+' '\
 			+str('./'+directory_name+'/flow.tr')+'  >'\
 			+str('./'+directory_name+'/logFile.tr')
 
