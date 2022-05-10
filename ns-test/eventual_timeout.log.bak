@@ -1,0 +1,120 @@
+results_eventual_timeout/20_eventual_0.001000_1_1_1
+average_fct: 0.2279838178273684
+total_completion_time: 6.0727600000000002
+average_retrans: 0.672706777554391
+results_eventual_timeout/20_eventual_0.001000_1_2_11
+average_fct: 0.1988947817221053
+total_completion_time: 7.16786
+average_retrans: 0.7301515217534709
+results_eventual_timeout/20_eventual_0.001000_1_3_21
+average_fct: 0.8174395020378946
+total_completion_time: 7.828569999999999
+average_retrans: 0.9562897201547541
+results_eventual_timeout/20_eventual_0.002000_1_1_2
+average_fct: 0.28422971256421058
+total_completion_time: 5.839
+average_retrans: 0.7608016058693072
+results_eventual_timeout/20_eventual_0.002000_1_2_12
+average_fct: 0.28090623888
+total_completion_time: 6.39968
+average_retrans: 0.7206945983104076
+results_eventual_timeout/20_eventual_0.002000_1_3_22
+average_fct: 0.8107615894063158
+total_completion_time: 7.6731300000000005
+average_retrans: 1.0455073580807075
+results_eventual_timeout/20_eventual_0.003000_1_1_3
+average_fct: 0.20091076519578951
+total_completion_time: 6.12889
+average_retrans: 0.7956986872435319
+results_eventual_timeout/20_eventual_0.003000_1_2_13
+average_fct: 0.24471130098526325
+total_completion_time: 6.4336399999999996
+average_retrans: 0.7205750997685162
+results_eventual_timeout/20_eventual_0.003000_1_3_23
+average_fct: 0.8021833967747368
+total_completion_time: 8.02706
+average_retrans: 1.0566933693549296
+results_eventual_timeout/20_eventual_0.004000_1_1_4
+average_fct: 0.2864964030905261
+total_completion_time: 4.30117
+average_retrans: 0.8546416484193056
+results_eventual_timeout/20_eventual_0.004000_1_2_14
+average_fct: 0.29026497572210513
+total_completion_time: 5.30121
+average_retrans: 0.7970482509771513
+results_eventual_timeout/20_eventual_0.004000_1_3_24
+average_fct: 0.8111503862484212
+total_completion_time: 7.861560000000001
+average_retrans: 1.078994390352156
+results_eventual_timeout/20_eventual_0.005000_1_1_5
+average_fct: 0.26333522530105263
+total_completion_time: 4.00756
+average_retrans: 0.8457390155060986
+results_eventual_timeout/20_eventual_0.005000_1_2_15
+average_fct: 0.34593126835368426
+total_completion_time: 5.80438
+average_retrans: 0.8190498483172276
+results_eventual_timeout/20_eventual_0.005000_1_3_25
+average_fct: 0.7983484494063158
+total_completion_time: 7.89968
+average_retrans: 1.0777516634391024
+results_eventual_timeout/20_eventual_0.006000_1_1_6
+average_fct: 0.3257328977221053
+total_completion_time: 3.99599
+average_retrans: 0.8913983980052561
+results_eventual_timeout/20_eventual_0.006000_1_2_16
+average_fct: 0.3894757325642105
+total_completion_time: 5.16425
+average_retrans: 0.8770660873350904
+results_eventual_timeout/20_eventual_0.006000_1_3_26
+average_fct: 0.7773884494063155
+total_completion_time: 7.66066
+average_retrans: 1.0961916362605402
+results_eventual_timeout/20_eventual_0.007000_1_1_7
+average_fct: 0.2806530809852631
+total_completion_time: 4.00736
+average_retrans: 0.8464919101456386
+results_eventual_timeout/20_eventual_0.007000_1_2_17
+average_fct: 0.44050423887999973
+total_completion_time: 4.70321
+average_retrans: 0.890708792306185
+results_eventual_timeout/20_eventual_0.007000_1_3_27
+average_fct: 0.7901919230905262
+total_completion_time: 7.972009999999999
+average_retrans: 1.0717347547397997
+results_eventual_timeout/20_eventual_0.008000_1_1_8
+average_fct: 0.3338138788800002
+total_completion_time: 2.99022
+average_retrans: 0.8945179630400587
+results_eventual_timeout/20_eventual_0.008000_1_2_18
+average_fct: 0.44968101287999995
+total_completion_time: 4.57323
+average_retrans: 0.8954134595103755
+results_eventual_timeout/20_eventual_0.008000_1_3_28
+average_fct: 0.7904442533010531
+total_completion_time: 7.7637
+average_retrans: 1.1136734518580362
+results_eventual_timeout/20_eventual_0.009000_1_1_9
+average_fct: 0.35848402835368415
+total_completion_time: 4.3956
+average_retrans: 0.9088546907024597
+results_eventual_timeout/20_eventual_0.009000_1_2_19
+average_fct: 0.41034223888000015
+total_completion_time: 4.8922
+average_retrans: 0.8948632017348453
+results_eventual_timeout/20_eventual_0.009000_1_3_29
+average_fct: 0.7639215020378944
+total_completion_time: 7.9157399999999996
+average_retrans: 1.1307616145602495
+results_eventual_timeout/20_eventual_0.010000_1_1_10
+average_fct: 0.30501981782736837
+total_completion_time: 3.68886
+average_retrans: 0.9071177778830334
+results_eventual_timeout/20_eventual_0.010000_1_2_20
+average_fct: 0.43591823888000003
+total_completion_time: 4.56173
+average_retrans: 0.9049935324971343
+results_eventual_timeout/20_eventual_0.010000_1_3_30
+average_fct: 0.7618658882484209
+total_completion_time: 7.902699999999999
+average_retrans: 1.1115286016926558

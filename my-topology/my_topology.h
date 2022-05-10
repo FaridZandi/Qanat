@@ -107,6 +107,7 @@ public:
     static double access_mode; 
     static double local_storage_rate; 
     static double remote_storage_rate; 
+    static int key_type; 
 
 private:
 

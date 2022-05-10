@@ -1,0 +1,72 @@
+results/20_cache_0.010000_1_1_1
+average_fct: 0.20505139677473688
+total_completion_time: 1.1724800000000002
+average_retrans: 0.5424310289706217
+results/20_cache_0.010000_1_2_2
+average_fct: 0.41172044940631564
+total_completion_time: 3.4168700000000003
+average_retrans: 0.6252608530331953
+results/20_cache_0.010000_1_3_3
+average_fct: 0.7988866599326316
+total_completion_time: 9.7653
+average_retrans: 0.6947724421967327
+results/20_cache_0.010000_2_1_4
+average_fct: 0.18561539677473687
+total_completion_time: 2.14683
+average_retrans: 0.7117004354485831
+results/20_cache_0.010000_2_2_5
+average_fct: 0.44800244940631573
+total_completion_time: 7.044840000000001
+average_retrans: 0.7198050069483933
+results/20_cache_0.010000_2_3_6
+average_fct: 0.44084129151157886
+total_completion_time: 6.844
+average_retrans: 0.7258189596984351
+results/20_cache_0.010000_3_1_7
+average_fct: 0.30647508098526316
+total_completion_time: 3.00662
+average_retrans: 0.9972655145208188
+results/20_cache_0.010000_3_2_8
+average_fct: 0.42770097572210525
+total_completion_time: 4.13652
+average_retrans: 1.0084745460688924
+results/20_cache_0.010000_3_3_9
+average_fct: 0.5526767651957897
+total_completion_time: 5.31651
+average_retrans: 1.1843727433867577
+results/20_cache_0.010000_4_1_10
+average_fct: 0.16581056224842108
+total_completion_time: 2.70183
+average_retrans: 0.7081939290930196
+results/20_cache_0.010000_4_2_11
+average_fct: 0.17237392309052632
+total_completion_time: 4.77346
+average_retrans: 0.5828357632777407
+results/20_cache_0.010000_4_3_12
+average_fct: 0.2395163262484211
+total_completion_time: 2.88444
+average_retrans: 0.6966979500964868
+results/20_cache_0.010000_5_1_13
+average_fct: 0.31402276519578953
+total_completion_time: 2.99189
+average_retrans: 1.007446110260523
+results/20_cache_0.010000_5_2_14
+average_fct: 0.43036129151157887
+total_completion_time: 4.1369
+average_retrans: 1.0082066168292847
+results/20_cache_0.010000_5_3_15
+average_fct: 0.5527866079326315
+total_completion_time: 5.31704
+average_retrans: 1.1842316229452843
+results/20_cache_0.010000_6_1_16
+average_fct: 0.3465660283536842
+total_completion_time: 4.94333
+average_retrans: 0.8287901939062821
+results/20_cache_0.010000_6_2_17
+average_fct: 0.8020049638273681
+total_completion_time: 8.79703
+average_retrans: 1.003580880407118
+results/20_cache_0.010000_6_3_18
+average_fct: 1.1754498178273682
+total_completion_time: 12.8791
+average_retrans: 1.1029902182657114

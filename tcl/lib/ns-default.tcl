@@ -1735,3 +1735,4 @@ MyTopology set access_mode 0
 MyTopology set remote_storage_rate 1
 MyTopology set local_storage_rate 1
 MyTopology set verbose_ false
+MyTopology set key_type false

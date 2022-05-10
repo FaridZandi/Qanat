@@ -23,6 +23,7 @@ double MyTopology::eventual_timeout = 0.01;
 double MyTopology::access_mode = 0;
 double MyTopology::local_storage_rate = 1;
 double MyTopology::remote_storage_rate = 1;
+int MyTopology::key_type = 0;
 
 MyTopology::MyTopology(){
     bind_bool("verbose_", &verbose); 
@@ -36,6 +37,7 @@ MyTopology::MyTopology(){
     bind("access_mode", &access_mode); 
     bind("local_storage_rate", &local_storage_rate); 
     bind("remote_storage_rate", &remote_storage_rate); 
+    bind("key_type", &key_type); 
 }
 
 MyTopology::~MyTopology(){

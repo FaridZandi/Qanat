@@ -369,14 +369,46 @@ void Monitor::print_info(){
 
 std::string Monitor::get_key(Packet* p){
     std::stringstream key;
-    key << "packet_count-"; 
-    // key << toponode_->node->address(); 
+    key << "packet_count"; 
+    if (p == NULL) return key.str(); 
 
-    key << toponode_->layer_from_bottom;
-    // if (p != NULL) {
-    //     hdr_ip* iph = hdr_ip::access(p);
-    //     key << "-" << iph->src_.addr_; 
-    // }
+    hdr_ip* iph = hdr_ip::access(p); 
+
+    switch (MyTopology::key_type)
+    {
+    case 1:
+        break;
+    case 2:
+        key << toponode_->layer_from_bottom;
+        break;
+    case 3:
+        key << toponode_->node->address(); 
+        break;
+    case 4: {
+        auto parent = toponode_->first_parent(); 
+        if (parent == -1) parent = 1000;
+        key << parent; 
+        break;
+    }
+    case 5:
+        key << toponode_->node->address() << "-"; 
+        key << iph->src_.addr_ << "-";
+        key << iph->src_.port_ << "-";
+        key << iph->gw_path[0] << "-";
+        key << iph->dst_.port_;
+        break;
+
+    case 6:
+        key << iph->src_.addr_ << "-";
+        key << iph->src_.port_ << "-";
+        key << iph->gw_path[0] << "-";
+        key << iph->dst_.port_;
+
+        break;
+    default:
+        break;
+    }
+
     return key.str();
 }
 

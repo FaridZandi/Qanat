@@ -1,4 +1,4 @@
-for f in results/*; do 
+for f in $1/*; do 
     echo "$f"; 
     cd $f; 
     # tail -n 2 $f/logFile.tr;
