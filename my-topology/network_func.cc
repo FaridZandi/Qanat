@@ -287,9 +287,7 @@ bool Buffer::recv(Packet* p, Handler* h){
         //     }
         // }
         std::vector<int> children = this->toponode_->children;
-        if (prev_uid == topo.uid(prev_node_peer)
-            || std::find(children.begin(), children.end(), prev_uid) != children.end()
-            || prev_hop == -1){
+        if (prev_uid == topo.uid(prev_node_peer)){
             // it's a high prio packet
             queue_number = 1;
             pq = pq1;
@@ -304,11 +302,11 @@ bool Buffer::recv(Packet* p, Handler* h){
         } else {
             std::cout << "going to buffer" << std::endl;
             pq->enque(p);
-            std::string message = "Buffering the packet in Q: " 
+            std::string message = "Buffering the packet in Q " 
                                     + std::to_string(queue_number) 
                                     + ". New Q length:"
                                     + std::to_string(pq->length());
-            std::cout << message << std::endl;
+            // std::cout << message << std::endl;
             log_packet(message);
         }
         return false;
@@ -322,19 +320,23 @@ void Buffer::start_buffering(){
     buffering = true;
 }
 
-int Buffer::get_buffer_size(){
+int Buffer::get_buffer_size_highprio(){
     return pq1->length(); 
+}
+
+int Buffer::get_buffer_size_lowprio(){
+    return pq2->length(); 
 }
 
 void Buffer::stop_buffering(){
     buffering = false; 
 
     while (pq1->length() > 0){
-        log_packet("releasing a packet from Q1.");
+        log_packet("releasing a packet from Q 1.");
         send(pq1->deque());
     } 
     while (pq2->length() > 0){
-        log_packet("releasing a packet from Q2.");
+        log_packet("releasing a packet from Q 2.");
         send(pq2->deque());
     } 
 }
@@ -351,7 +353,6 @@ void Buffer::print_info(){
     std::cout << this->size_;
     std::cout << std::endl;  
 }
-
 
 /**********************************************************
  * SelectiveBuffer's Implementation                       *  

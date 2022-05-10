@@ -153,8 +153,10 @@ public:
 
     void stop_buffering();
 
-    int get_buffer_size(); 
+    int get_buffer_size_highprio(); 
     
+    int get_buffer_size_lowprio();
+
     virtual std::string get_type(); 
 
     virtual void print_info(); 

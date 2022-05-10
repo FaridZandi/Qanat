@@ -131,8 +131,10 @@ void BaseOrchestrator::process_on_peer(Node* node){
     auto peer_data = topo.get_data(peer);
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
-    auto queue_depth = peer_buffer->get_buffer_size();
-    log_event("releasing a buffer of size ", queue_depth);
+    auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
+    auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
+    log_event("releasing a high prio buffer of size ", queue_depth_high);
+    log_event("releasing a low prio buffer of size ", queue_depth_low);
 
     log_event("start processing for ", peer->address());
     peer_buffer->stop_buffering();

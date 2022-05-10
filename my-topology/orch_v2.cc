@@ -151,13 +151,15 @@ void OrchestratorV2::gw_snapshot_sent(Node* gw){
     auto peer_data = topo.get_data(peer);
     auto peer_buffer = (SelectiveBuffer*)peer_data.get_nf("selbuf");
 
-    auto queue_depth = peer_buffer->get_buffer_size();
+    auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
+    auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
     peer_buffer->stop_buffering();
 
     set_node_state(gw, MigState::Migrated);
     set_peer_state(gw, MigState::Normal);
 
-    log_event("releasing a buffer of size ", queue_depth);
+    log_event("releasing a high prio buffer of size ", queue_depth_high);
+    log_event("releasing a low prio buffer of size ", queue_depth_low);
 
     if (gw == topo.get_mig_root()){
         log_event("migration finished");
