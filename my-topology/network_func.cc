@@ -16,7 +16,7 @@ NF::NF(TopoNode* toponode,
        int chain_pos) : toponode_(toponode),
                         chain_pos_(chain_pos) {
                             
-    verbose = true;
+    verbose = MyTopology::verbose_nf;
 }
 
 NF::~NF(){
@@ -239,12 +239,86 @@ void Monitor::print_info(){
 }
 
 
-/**********************************************************
- * Buffer Implementation                                  *  
- *********************************************************/
+
+/*********************************************************
+* Buffer Implementation                                  *  
+*********************************************************/
 
 
 Buffer::Buffer(TopoNode* toponode, int chain_pos, int size) 
+    : NF(toponode, chain_pos) {
+
+    pq = new PacketQueue;
+    buffering = false; 
+    this->size_ = size; 
+}
+
+Buffer::~Buffer(){
+    delete pq; 
+}
+
+bool Buffer::recv(Packet* p, Handler* h){
+    hdr_ip* iph = hdr_ip::access(p);
+
+    log_packet("recved packet here with class: ", iph->traffic_class);
+
+    if (should_ignore(p)){
+        return true;
+    }
+
+    if(buffering){
+        if(pq->length() == size_){
+            // TODO: drop the packet (free the memory, etc.) 
+            log_packet("Buffer is full. Dropping packet.");
+        } else {
+            pq->enque(p);
+            log_packet("Buffering the packet. New Q length:", pq->length());
+        }
+        return false;
+    } else {     
+        log_packet("Letting the packet pass through.");   
+        return true; 
+    }
+}
+
+void Buffer::start_buffering(){
+    buffering = true;
+}
+
+int Buffer::get_buffer_size(){
+    return pq->length(); 
+}
+
+void Buffer::stop_buffering(){
+    buffering = false; 
+
+    while (pq->length() > 0){
+        log_packet("releasing a packet here.");
+        send(pq->deque());
+    } 
+
+}
+
+std::string Buffer::get_type(){
+    return "buffer"; 
+}
+
+void Buffer::print_info(){
+    std::cout << "buffer on node " ;
+    std::cout << this->toponode_->node->address();
+    std::cout << "(" << this->toponode_->uid << ")";
+    std::cout << " with size "; 
+    std::cout << this->size_;
+    std::cout << std::endl;  
+}
+
+
+/*********************************************************
+* PriorityBuffer Implementation                          *  
+*********************************************************/
+
+
+PriorityBuffer::PriorityBuffer(TopoNode* toponode, int chain_pos, int size) 
     : NF(toponode, chain_pos) {
 
     pq1 = new PacketQueue;
@@ -253,12 +327,12 @@ Buffer::Buffer(TopoNode* toponode, int chain_pos, int size)
     this->size_ = size; 
 }
 
-Buffer::~Buffer(){
+PriorityBuffer::~PriorityBuffer(){
     delete pq1;
     delete pq2; 
 }
 
-bool Buffer::recv(Packet* p, Handler* h){
+bool PriorityBuffer::recv(Packet* p, Handler* h){
     hdr_ip* iph = hdr_ip::access(p);
     int prev_hop, prev_addr, prev_uid;
     int queue_number;
@@ -272,30 +346,19 @@ bool Buffer::recv(Packet* p, Handler* h){
 
     if(buffering){
         auto& topo = MyTopology::instance();
-        prev_hop = iph->prev_hop;
-        prev_addr = this->toponode_->node->address();
-        auto prev_node = topo.get_node_by_address(prev_addr);
-        auto prev_node_peer = topo.get_peer(prev_node);
-        prev_uid = topo.uid(prev_node);
-        // auto& orch = BaseOrchestrator::instance();
-        // auto mig_root = topo.get_mig_root();
-        // std::vector<Node*> source_tree = topo.get_all_nodes(mig_root);
-        // bool prev_is_in_src_zone = true;
-        // for(auto & m_node : source_tree){
-        //     if (prev_addr == m_node->address()){
-        //         prev_is_in_src_zone = false;
-        //     }
-        // }
-        std::vector<int> children = this->toponode_->children;
-        if (prev_uid == topo.uid(prev_node_peer)){
-            // it's a high prio packet
+
+        auto peer = topo.get_peer(toponode_->node);
+
+        std::cout << iph->prev_hop << " " << peer->address() << std::endl; 
+
+        if (iph->prev_hop == peer->address()){
             queue_number = 1;
             pq = pq1;
         } else {
             pq = pq2;
             queue_number = 2;
         }
-        std::cout << prev_hop <<  " || Q: " << queue_number << std::endl;
+        // std::cout << prev_hop <<  " || Q: " << queue_number << std::endl;
         if(pq->length() == size_){
             // TODO: drop the packet (free the memory, etc.) 
             log_packet("Buffer is full. Dropping packet on Q: ", queue_number);
@@ -316,21 +379,20 @@ bool Buffer::recv(Packet* p, Handler* h){
     }
 }
 
-void Buffer::start_buffering(){
+void PriorityBuffer::start_buffering(){
     buffering = true;
 }
 
-int Buffer::get_buffer_size_highprio(){
+int PriorityBuffer::get_buffer_size_highprio(){
     return pq1->length(); 
 }
 
-int Buffer::get_buffer_size_lowprio(){
+int PriorityBuffer::get_buffer_size_lowprio(){
     return pq2->length(); 
 }
 
-void Buffer::stop_buffering(){
+void PriorityBuffer::stop_buffering(){
     buffering = false; 
-
     while (pq1->length() > 0){
         log_packet("releasing a packet from Q 1.");
         send(pq1->deque());
@@ -341,70 +403,18 @@ void Buffer::stop_buffering(){
     } 
 }
 
-std::string Buffer::get_type(){
-    return "buffer"; 
+std::string PriorityBuffer::get_type(){
+    return "pribuf"; 
 }
 
-void Buffer::print_info(){
-    std::cout << "buffer on node " ;
+void PriorityBuffer::print_info(){
+    std::cout << "priority buffer on node " ;
     std::cout << this->toponode_->node->address();
     std::cout << "(" << this->toponode_->uid << ")";
     std::cout << " with size "; 
     std::cout << this->size_;
     std::cout << std::endl;  
 }
-
-/**********************************************************
- * SelectiveBuffer's Implementation                       *  
- *********************************************************/
-
-
-SelectiveBuffer::SelectiveBuffer(TopoNode* toponode, int chain_pos, int size) 
-    : Buffer(toponode, chain_pos, size) {
-        buffer_packets_from = -1; 
-}
-
-SelectiveBuffer::~SelectiveBuffer(){
-
-}
-
-
-
-bool SelectiveBuffer::recv(Packet* p, Handler* h){
-    hdr_ip* iph = hdr_ip::access(p);
-
-    log_packet("recved packet here with class: ", iph->traffic_class);
-
-    if (should_ignore(p)){
-        return true;
-    }
-
-    if (not buffering){
-        return true; 
-    }
-
-    // only care about packets from a certain prev hop
-    // if (iph->prev_hop != buffer_packets_from){
-    //     return true; 
-    // }
-    
-    return Buffer::recv(p, h); 
-}
-
-
-std::string SelectiveBuffer::get_type(){
-    return "selbuf"; 
-}
-
-void SelectiveBuffer::print_info(){
-    std::cout << "selective buffer on node " ;
-    std::cout << this->toponode_->node->address();
-    std::cout << "(" << this->toponode_->uid << ")";
-    std::cout << " with size "; 
-    std::cout << this->size_;
-    std::cout << std::endl;  
-}
-
 
 
 /**********************************************************
@@ -581,11 +591,14 @@ bool RouterNF::recv(Packet* p, Handler* h){
 
 	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
 
-	// std::cout << "packet path: "; 
-	// for (int i = 0; i <= iph->gw_path_pointer; i++){
-	// 	std::cout << iph->gw_path[i] << " "; 
-	// }
-	// std::cout << std::endl; 
+    if (verbose) {
+        std::cout << "packet path: "; 
+        for (int i = 0; i <= iph->gw_path_pointer; i++){
+            std::cout << iph->gw_path[i] << " "; 
+        }
+        std::cout << std::endl; 
+    }
+	
 
     
 

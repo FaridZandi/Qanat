@@ -15,7 +15,7 @@
 #include "utility.h"
 
 
-OrchestratorV1::OrchestratorV1() {
+OrchestratorV1::OrchestratorV1() : BaseOrchestrator() {
 
 }
 
@@ -38,6 +38,7 @@ void OrchestratorV1::start_migration(){
     }
     std::cout << std::endl;
 
+    int parallel_migrations = MyTopology::parallel_mig; 
     for(int i = 0; i < parallel_migrations; i++){
         if (vm_migration_queue.size() > 0){
             auto next_vm = vm_migration_queue.front();

@@ -6,11 +6,17 @@
 #include "utility.h"
 #include <iostream>
 
+
+
 BaseOrchestrator& BaseOrchestrator::instance(){
     // return OrchestratorV1::instance(); 
     return OrchestratorV2::instance(); 
     // return Orchestrator::instance(); 
 };
+
+BaseOrchestrator::BaseOrchestrator(){
+    // parallel_migrations = MyTopology::parallel_mig; 
+}
 
 void BaseOrchestrator::setup_nodes(){
     auto& topo = MyTopology::instance(); 
@@ -85,16 +91,23 @@ void BaseOrchestrator::initiate_data_transfer(
 void BaseOrchestrator::tunnel_subtree_tru_parent(Node* node){
     auto& topo = MyTopology::instance();
 
-    // setup tunnels for all the nodes in one layer up. 
-    int node_layer = topo.get_data(node).layer_from_bottom;
-    auto parent = topo.get_nth_parent(node, 1); 
+    if (topo.get_mig_root() == node){
+        topo.is_migration_finished = true;
 
-    for(auto leaf: topo.get_leaves(node)){
-        topo.setup_nth_layer_tunnel(leaf, node_layer + 1);
+        // to clear the cache 
+        topo.get_path(NULL, PATH_MODE_SENDER, true); 
+    } else {
+        // setup tunnels for all the nodes in one layer up. 
+        int node_layer = topo.get_data(node).layer_from_bottom;
+        auto parent = topo.get_nth_parent(node, 1); 
+
+        for(auto leaf: topo.get_leaves(node)){
+            topo.setup_nth_layer_tunnel(leaf, node_layer + 1);
+        }
     }
 }
 
-void BaseOrchestrator::log_event(std::string message, int arg){
+void BaseOrchestrator::log_event(std::string message, int arg, bool print_tree){
     
     std::cout << std::endl; 
     std::cout << "---------------------------------------------"; 
@@ -109,35 +122,59 @@ void BaseOrchestrator::log_event(std::string message, int arg){
     std::cout << std::endl;
     
     auto& topo = MyTopology::instance();
-    topo.print_graph(true);
+
+    if (print_tree){
+        topo.print_graph(true);
+    }
 }
 
 void BaseOrchestrator::buffer_on_peer(Node* node){
     auto& topo = MyTopology::instance();
-
     auto peer = topo.get_peer(node);
     auto peer_data = topo.get_data(peer);
-    auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
-    log_event("starting to buffer for ", peer->address());
-    
-    peer_buffer->start_buffering();
+    if (topo.get_data(node).mode == VM){
+        auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
+        log_event("starting to buffer for ", peer->address());
+        peer_buffer->start_buffering();
+
+    } else if (topo.get_data(node).mode == GW){
+        auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
+        log_event("starting to buffer for ", peer->address());
+        peer_buffer->start_buffering();
+    }
 }
 
 void BaseOrchestrator::process_on_peer(Node* node){
     auto& topo = MyTopology::instance();
-
     auto peer = topo.get_peer(node);
     auto peer_data = topo.get_data(peer);
-    auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
-    auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
-    auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
-    log_event("releasing a high prio buffer of size ", queue_depth_high);
-    log_event("releasing a low prio buffer of size ", queue_depth_low);
+    if (topo.get_data(node).mode == VM){
 
-    log_event("start processing for ", peer->address());
-    peer_buffer->stop_buffering();
+        auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
+
+        auto queue_depth = peer_buffer->get_buffer_size();
+
+        log_event("releasing a buffer of size ", queue_depth, false);
+        log_event("start processing for ", peer->address());
+
+        peer_buffer->stop_buffering();
+
+    } else if (topo.get_data(node).mode == GW){
+
+        auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
+
+        auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
+        auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
+
+
+        log_event("releasing a high prio buffer of size ", queue_depth_high, false);
+        log_event("releasing a low prio buffer of size ", queue_depth_low, false);
+        log_event("start processing for ", peer->address());
+
+        peer_buffer->stop_buffering();
+    }
 }
 
 

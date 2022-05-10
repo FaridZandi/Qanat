@@ -20,10 +20,28 @@ public:
 MyTopology* MyTopology::instance_ = nullptr;
 int MyTopology::toponode_uid_counter = 0;
 
+int MyTopology::verbose = false;
+int MyTopology::verbose_mig = 0;
+int MyTopology::verbose_nf = 0;
+int MyTopology::vm_precopy_size = 0;
+int MyTopology::vm_snapshot_size = 0;
+int MyTopology::gw_snapshot_size = 0;
+int MyTopology::parallel_mig = 0;
+
+
 MyTopology::MyTopology(){
     bind_bool("verbose_", &verbose); 
+
+    bind("verbose_mig_", &verbose_mig); 
+    bind("verbose_nf_", &verbose_nf); 
+    bind("vm_precopy_size_", &vm_precopy_size); 
+    bind("vm_snapshot_size_", &vm_snapshot_size); 
+    bind("gw_snapshot_size_", &gw_snapshot_size);
+    bind("parallel_mig_", &parallel_mig);
+
+    is_migration_finished = false; 
+
     mig_manager_ = new MigrationManager(); 
-    verbose = false; 
     instance_ = this; 
 
     mig_root = nullptr; 
@@ -378,9 +396,6 @@ void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
     // std::cout << "node->address() " << node->address();
     // std::cout << std::endl;  
 
-    
-
-
     if(iph->dst_.addr_ == node->address() or
        iph->src_.addr_ == node->address()){
 
@@ -454,9 +469,14 @@ std::vector<Node*>& MyTopology::get_used_nodes(){
 }
 
 
-std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
+std::vector<int> MyTopology::get_path(Node* n1, path_mode pm, bool clear_cache){
     static std::map<std::pair<Node*, path_mode>, 
                     std::vector<int> > cache;
+
+    if (clear_cache){
+        cache.clear();
+        return std::vector<int>(); 
+    }
 
     if (cache.find(std::make_pair(n1, pm)) != cache.end()) {
         return cache[std::make_pair(n1, pm)]; 
@@ -465,6 +485,11 @@ std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
     std::vector<int> result; 
 
     if (n1 != nullptr){
+
+        if (is_migration_finished){
+            n1 = get_peer(n1);
+        }
+
         auto current = n1; 
         result.push_back(current->address());
 

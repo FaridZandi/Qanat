@@ -15,8 +15,7 @@
 #include "utility.h"
 
 
-OrchestratorV2::OrchestratorV2() {
-
+OrchestratorV2::OrchestratorV2() : BaseOrchestrator(){    
 }
 
 OrchestratorV2::~OrchestratorV2(){
@@ -36,6 +35,7 @@ void OrchestratorV2::start_migration(){
     }
     std::cout << std::endl;
 
+    int parallel_migrations = MyTopology::parallel_mig; 
     for(int i = 0; i < parallel_migrations; i++){
         dequeue_next_vm();
     }
@@ -52,7 +52,7 @@ void OrchestratorV2::start_vm_precopy(Node* vm){
     log_event("sending the VM precopy for node: ", vm->address());
 
     initiate_data_transfer(
-        vm, VM_PRECOPY_SIZE, 
+        vm, MyTopology::vm_precopy_size, 
         [](Node* n){
             BaseOrchestrator::instance().vm_precopy_finished(n);
         }
@@ -74,10 +74,10 @@ void OrchestratorV2::start_vm_migration(Node* vm){
     MyTopology::instance().setup_nth_layer_tunnel(vm, 1); 
 
     buffer_on_peer(vm);
-
+    
     log_event("sending the VM snapshot for node: ", vm->address());
     initiate_data_transfer(
-        vm, VM_SNAPSHOT_SIZE, 
+        vm, MyTopology::vm_snapshot_size, 
         [](Node* n){
             BaseOrchestrator::instance().vm_migration_finished(n);
         }
@@ -107,22 +107,10 @@ void OrchestratorV2::try_parent_migration(Node* node){
 
         log_event("all conditions ok to start migrating GW: ", gw->address()); 
 
-        if (gw != topo.get_mig_root()){
-            tunnel_subtree_tru_parent(gw);   
-
-            auto peer = topo.get_peer(gw);
-            auto peer_data = topo.get_data(peer);
-            auto peer_buffer = (SelectiveBuffer*)peer_data.get_nf("selbuf");
-            auto parent = topo.get_nth_parent(peer, 1)->address();
-            peer_buffer->buffer_packets_from = parent; 
-            peer_buffer->start_buffering();
-            set_peer_state(gw, MigState::Buffering);
-            log_event("starting a selective buffer for ", peer->address());
-        }
-
+        buffer_on_peer(gw);
+        set_peer_state(gw, MigState::Buffering);
 
         start_gw_snapshot(gw); 
-
     }
 }
 
@@ -133,7 +121,7 @@ void OrchestratorV2::start_gw_snapshot(Node* gw){
     log_event("sending the GW snapshot for GW: ", gw->address());
 
     initiate_data_transfer(
-        gw, VM_SNAPSHOT_SIZE, 
+        gw, MyTopology::gw_snapshot_size, 
         [](Node* n){
             BaseOrchestrator::instance().gw_snapshot_sent(n);
         }
@@ -147,19 +135,12 @@ void OrchestratorV2::gw_snapshot_sent(Node* gw){
 
     auto& topo = MyTopology::instance();
 
-    auto peer = topo.get_peer(gw);
-    auto peer_data = topo.get_data(peer);
-    auto peer_buffer = (SelectiveBuffer*)peer_data.get_nf("selbuf");
-
-    auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
-    auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
-    peer_buffer->stop_buffering();
+    tunnel_subtree_tru_parent(gw);   
+    
+    process_on_peer(gw);
 
     set_node_state(gw, MigState::Migrated);
     set_peer_state(gw, MigState::Normal);
-
-    log_event("releasing a high prio buffer of size ", queue_depth_high);
-    log_event("releasing a low prio buffer of size ", queue_depth_low);
 
     if (gw == topo.get_mig_root()){
         log_event("migration finished");
@@ -185,6 +166,7 @@ bool OrchestratorV2::all_children_migrated(Node* node){
             return false; 
         }
     }
+
     return true; 
 }
 
@@ -193,8 +175,8 @@ bool OrchestratorV2::all_children_migrated(Node* node){
 std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
     return {
         {"buffer", 100000},
-        {"rate_limiter", 100000},
-        {"delayer", 0.00005},
+        {"rate_limiter", 1000000},
+        {"delayer", 0.000005},
         {"tunnel_manager", 0},
         {"router", 0}
     };
@@ -202,10 +184,10 @@ std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
 
 std::list<nf_spec> OrchestratorV2::get_gw_nf_list(){
     return {
-        {"selective_buffer", 100000},
-        {"rate_limiter", 100000},
+        {"priority_buffer", 100000},
+        {"rate_limiter", 1000000},
         {"monitor", 0},
-        {"delayer", 0.00005},
+        {"delayer", 0.000005},
         {"tunnel_manager", 0},
         {"router", 0}
     };

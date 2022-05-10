@@ -1155,7 +1155,7 @@ Agent/TCP set tcpTick_ 0.01 ;		# default changed on 2002/03/07
 					# to reflect a changing reality.
 Agent/TCP set maxrto_ 60 ; 		# default changed on 2007/03/28
 					#  to reflect RFC2988.
-Agent/TCP set minrto_ 0.2 ;		# Default changed to 200ms on 
+Agent/TCP set minrto_ 0.200 ;		# Default changed to 200ms on 
 					#  2004/10/14, to match values
 					#  used by many implementations.
 Agent/TCP set srtt_init_ 0
@@ -1727,3 +1727,11 @@ Agent/PBC set payloadSize 200
 Agent/PBC set periodicBroadcastInterval 1
 Agent/PBC set periodicBroadcastVariance 0.1
 Agent/PBC set modulationScheme 0
+
+MyTopology set verbose_ false
+MyTopology set verbose_mig_ false
+MyTopology set verbose_nf_ false
+MyTopology set vm_precopy_size_ 1000
+MyTopology set vm_snapshot_size_ 1000
+MyTopology set gw_snapshot_size_ 1000
+MyTopology set parallel_mig_ 2

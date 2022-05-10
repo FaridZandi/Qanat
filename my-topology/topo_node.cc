@@ -38,17 +38,17 @@ NF* TopoNode::add_nf(std::string type, double param){
         nfs.push_back(m); 
         return m; 
 
+    } else if (type == "priority_buffer"){
+        int size = int(param); 
+        PriorityBuffer* pb = new PriorityBuffer(this, current_length, size);
+        nfs.push_back(pb); 
+        return pb;
+
     } else if (type == "buffer"){
         int size = int(param); 
         Buffer* b = new Buffer(this, current_length, size);
         nfs.push_back(b); 
         return b;
-
-    } else if (type == "selective_buffer"){
-        int size = int(param); 
-        SelectiveBuffer* sb = new SelectiveBuffer(this, current_length, size);
-        nfs.push_back(sb); 
-        return sb;
 
     } else if (type == "rate_limiter"){
         int rate = int(param); 

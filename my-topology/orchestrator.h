@@ -34,7 +34,7 @@ public:
 
     static BaseOrchestrator& instance();
     
-    BaseOrchestrator() {}
+    BaseOrchestrator();
 
     // signals 
     virtual void start_migration(){};
@@ -56,7 +56,7 @@ protected:
 
     void tunnel_subtree_tru_parent(Node* node);
 
-    void log_event(std::string message, int arg = -1);
+    void log_event(std::string message, int arg = -1, bool print_tree = true);
 
     void buffer_on_peer(Node* node); 
 
@@ -75,8 +75,6 @@ protected:
     std::queue<Node*> vm_migration_queue;
 
     std::map<Node*, MigState> mig_state; 
-
-    static const int parallel_migrations = 1; 
 };
 
 

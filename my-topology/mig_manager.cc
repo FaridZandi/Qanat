@@ -12,7 +12,7 @@ MigrationManager::MigrationManager(){
 	for (int i = 0; i < tunnel_count; i++){
 		tunnels[i].valid = false;
 	}
-	verbose = false;
+	verbose = MyTopology::verbose_mig;
 }
 
 MigrationManager::~MigrationManager(){
@@ -295,15 +295,9 @@ bool MigrationManager::tunnel_packet_in(tunnel_data td,
 	// destination of this packet are recorded in temp
 	// variables in their ip header. 
 
-	if(get_prio(p) == 0){
-		convert_path(p);
-		add_to_path(p, td.out->address());
-		set_prio(p, 15); 
-	} else {
-		// std::cout << "lowering the prio" << std::endl;
-		set_packet_src(p, td.from->address()); 
-		set_prio(p, 0); 
-	} 
+	convert_path(p);
+	add_to_path(p, td.out->address());
+	set_prio(p, 15); 
 
     return true; 	 
 }
@@ -315,17 +309,8 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// Original source will be recovered, but instead
 	// of the original destination, the new destination
 	// will be assigned to the packet. 
-	
-	
-	if(get_prio(p) == 0){
-		convert_path(p);
-		add_to_path(p, td.in->address());
-		set_prio(p, 15); 
-	} else {
-		// std::cout << "lowering the prio" << std::endl; 
-		set_prio(p, 0); 
-	}
-	
+		
+	set_prio(p, 0); 
 
     return true; 
 }
@@ -413,7 +398,7 @@ bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p,
 
 
 EfficentMigrationManager::EfficentMigrationManager(){
-	verbose = false; 	
+	verbose = MyTopology::verbose_mig; 	
 }
 
 EfficentMigrationManager::~EfficentMigrationManager(){

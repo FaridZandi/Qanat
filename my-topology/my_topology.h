@@ -51,8 +51,6 @@ public:
      */
     void process_packet(Packet* p, Handler*h, Node* node);
 
-    
-    
     void setup_nth_layer_tunnel(Node* vm, int n); 
     Node* get_nth_parent(Node* node, int n);
     TopoNode& get_data(Node* node); 
@@ -60,7 +58,7 @@ public:
     Node* get_peer(Node* n); 
     std::vector<Node*> get_children(Node* n); 
     Node* get_node_by_address(int addr);
-    std::vector<int> get_path(Node* n1, path_mode pm);
+    std::vector<int> get_path(Node* n1, path_mode pm, bool clear_cache = false);
     Node* get_mig_root(); 
     std::vector<Node*>& get_used_nodes();
 
@@ -100,6 +98,20 @@ public:
     void connect_agents(Node* n1, Node* n2);
 
     void print_graph(bool print_state = false);
+
+
+    static int verbose;  
+    static int verbose_mig; 
+    static int verbose_nf; 
+
+    static int vm_precopy_size; 
+    static int vm_snapshot_size; 
+    static int gw_snapshot_size; 
+
+    static int parallel_mig; 
+
+    bool is_migration_finished;
+    
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
@@ -135,7 +147,8 @@ private:
 
     std::string sim_ptr; 
 	  
-    int verbose;  
+    
+
     static MyTopology* instance_;
     static int toponode_uid_counter; 
     MigrationManager* mig_manager_; 

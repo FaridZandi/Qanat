@@ -138,12 +138,40 @@ public:
 };
 
 
-
 class Buffer : public NF {
 public:
     Buffer(TopoNode* toponode, int chain_pos, int size); 
     
     virtual ~Buffer(); 
+
+    virtual bool recv(Packet* p, Handler* h);
+
+    virtual void handle(Event* event){};
+
+    void start_buffering();
+
+    void stop_buffering();
+
+    int get_buffer_size(); 
+    
+    virtual std::string get_type(); 
+
+    virtual void print_info(); 
+
+
+protected:
+    int size_; 
+
+    bool buffering; 
+    PacketQueue* pq;
+};
+
+
+class PriorityBuffer : public NF {
+public:
+    PriorityBuffer(TopoNode* toponode, int chain_pos, int size); 
+    
+    virtual ~PriorityBuffer(); 
 
     virtual bool recv(Packet* p, Handler* h);
 
@@ -161,28 +189,11 @@ public:
 
     virtual void print_info(); 
 
-
 protected:
     int size_; 
-
     bool buffering; 
     PacketQueue* pq1;
     PacketQueue* pq2;
-};
-
-class SelectiveBuffer: public Buffer {
-public:
-    SelectiveBuffer(TopoNode* toponode, int chain_pos, int size); 
-    
-    virtual ~SelectiveBuffer();
-
-    virtual bool recv(Packet* p, Handler* h);
-
-    virtual std::string get_type(); 
-
-    virtual void print_info(); 
-
-    int buffer_packets_from; 
 };
 
 

@@ -19,6 +19,18 @@ proc finish {} {
 }
 
 
+MyTopology set verbose_ 0
+MyTopology set verbose_nf_ 0
+MyTopology set verbose_mig_ 0
+MyTopology set vm_precopy_size_ 10000000
+MyTopology set vm_snapshot_size_ 10000000
+MyTopology set gw_snapshot_size_ 10000000
+
+MyTopology set parallel_mig_ 1
+
+
+
+
 set t [new MyTopology]
 $t set_simulator $ns
 
@@ -29,7 +41,7 @@ set child_count 100
 
 set n_mid_left [$ns node]
 set n_mid_right [$ns node]
-$ns duplex-link $n_mid_left $n_mid_right $BW $LAT $QTYPE
+$ns duplex-link $n_mid_left $n_mid_right 100Gb $LAT $QTYPE
 
 
 for { set x 2} { $x < $child_count+2} { incr x } {
@@ -96,8 +108,8 @@ $ns at 1 "$t setup_nodes"
 # $ns at 1.5 "$t activate_tunnel $n28 $n12 $n26 $n10 "
 $ns at 2 "$t start_migration"
 
-$ns at 1.9 "$src_app send 30000000"
-$ns at 1.9 "$src_app2 send 30000000"
+# $ns at 1.9 "$src_app send 300000000"
+# $ns at 1.9 "$src_app2 send 300000000"
 
 $ns at $sim_end "finish"
 $ns run

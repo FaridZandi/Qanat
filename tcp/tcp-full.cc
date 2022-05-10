@@ -267,7 +267,7 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 		if (strcmp(argv[1], "reset") == 0) {
-			std::cout << "going to reset the connection" << std::endl;
+			// std::cout << "going to reset the connection" << std::endl;
 			reset();
 			return (TCL_OK);
 		}
