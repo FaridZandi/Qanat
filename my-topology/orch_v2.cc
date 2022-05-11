@@ -144,6 +144,7 @@ void OrchestratorV2::gw_snapshot_sent(Node* gw){
 
     if (gw == topo.get_mig_root()){
         log_event("migration finished");
+        exit(0);
     } else {
         try_parent_migration(gw); 
     }

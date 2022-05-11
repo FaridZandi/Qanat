@@ -3,14 +3,14 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 40} {
+if {$argc != 44} {
     puts "wrong number of arguments $argc"
     exit 0
 }
 
 
 set tf [open out.tr w]
-$ns trace-all $tf
+#$ns trace-all $tf
 
 set sim_end [lindex $argv 0]
 set link_rate [lindex $argv 1]
@@ -58,10 +58,16 @@ set topology_spt [lindex $argv 34]
 set topology_tors [lindex $argv 35]
 set topology_spines [lindex $argv 36]
 set topology_x [lindex $argv 37]
-set topology_dest_servers [lindex $argv 38]
+
+#### migration params 
+set vm_precopy_size [lindex $argv 38]
+set vm_snapshot_size [lindex $argv 39]
+set gw_snapshot_size [lindex $argv 40]
+set parallel_mig [lindex $argv 41]
+set topology_dest_servers [lindex $argv 42]
 
 ### result file
-set flowlog [open [lindex $argv 39] w]
+set flowlog [open [lindex $argv 43] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -211,7 +217,6 @@ set t [new MyTopology]
 ## destination-side links between the ToR and servers
 for {set i 0} {$i < $topology_dest_servers} {incr i} {
     $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-    $t add_node_to_dest $ds($i)
 }
 
 ############ Core links ##############
@@ -225,40 +230,47 @@ for {set i 0} {$i < [expr $topology_tors + 1]} {incr i} {
 set tf [open out.tr w]
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
-MyTopology set verbose_mig_ 1
-MyTopology set vm_precopy_size_ 1000
-MyTopology set vm_snapshot_size_ 1000
-MyTopology set gw_snapshot_size_ 1000
-MyTopology set parallel_mig_ 3
+MyTopology set verbose_mig_ 0
+MyTopology set vm_precopy_size_ $vm_precopy_size
+MyTopology set vm_snapshot_size_ $vm_snapshot_size
+MyTopology set gw_snapshot_size_ $gw_snapshot_size
+MyTopology set parallel_mig_ $parallel_mig
 
 $t set_simulator $ns
 
-set BW 10Gb 
-set LAT 5us
-set QTYPE DropTail 
-set child_count 100
-
-# for { set x 2} { $x < $child_count+2} { incr x } {
-#     set ss($x) [$ns node]
-#     # $ns duplex-link $n_mid_left $ss($x) $BW $LAT $QTYPE 
-#     $ns duplex-link $ss($x) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-#     $t add_node_to_dest $ss($x)
-# }
-
+set child_count 20
+set VM_link_rate 1
 
 for { set x 0} { $x < $child_count} { incr x } {
     set ss($x) [$ns node]
-    # $ns duplex-link $n_mid_right $n($x) $BW $LAT $QTYPE
-    $ns duplex-link $ss($x) $n(0) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+    $ns duplex-link $ss($x) $s(0) [set VM_link_rate]Gb [expr $host_delay] $switchAlg
     $t add_node_to_source $ss($x)
 }
 
-$t make_tree 1 1 1 
+for { set x 0} { $x < $child_count} { incr x } {
+    set dvm($x) [$ns node]
+    $ns duplex-link $dvm($x) $ds(0) [set VM_link_rate]Gb [expr $host_delay] $switchAlg
+    $t add_node_to_dest $dvm($x)
+}
+
+$t make_tree 1 2 8 
 $t duplicate_tree
 $t print_graph
 
+set logical_leaves {}
+set i 0; 
+while {1} {
+    set this_leaf [$t get_logical_leaf $i]
+    if {$this_leaf == -1} {
+        break 
+    } 
+    lappend logical_leaves $this_leaf;
+    set i [expr {$i + 1}];
+}
+
+
 $ns at 0.01 "$t setup_nodes"
-$ns at 1.1 "$t start_migration"
+$ns at 1.5 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -272,8 +284,8 @@ set flow_gen 0
 set flow_fin 0
 
 set init_fid 0
-for {set j 0} {$j < $S } {incr j} {
-    for {set i 0} {$i < $S } {incr i} {
+for {set j 1} {$j < $S } {incr j} {
+    for {set i 1} {$i < $S } {incr i} {
         if {$i != $j} {
                 set agtagr($i,$j) [new Agent_Aggr_pair]
                 $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
@@ -289,6 +301,26 @@ for {set j 0} {$j < $S } {incr j} {
                 set init_fid [expr $init_fid + $connections_per_pair];
             }
         }
+}
+
+set init_j 10000
+set j $init_j
+foreach vm $logical_leaves {  
+    for {set i $topology_spt} {$i < [expr 2*$topology_spt] } {incr i} {
+        set agtagr($i,$j) [new Agent_Aggr_pair]
+        $agtagr($i,$j) setup $s($i) $vm "$i $j" $connections_per_pair $init_fid "TCP_pair"
+        $agtagr($i,$j) attach-logfile $flowlog
+
+        puts -nonewline "($i,$j) "
+        #For Poisson/Pareto
+        $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*($j-$init_j)] [expr 33*$i+4369*($j-$init_j)]
+
+        $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
+        $ns at 1 "$agtagr($i,$j) init_schedule"
+
+        set init_fid [expr $init_fid + $connections_per_pair];
+    }    
+    set j [expr {$j + 1}]; 
 }
 
 puts "Initial agent creation done";flush stdout

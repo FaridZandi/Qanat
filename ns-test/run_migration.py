@@ -1,6 +1,7 @@
 import threading
 import os
 import Queue
+import itertools
 
 def worker():
 	while True:
@@ -16,13 +17,21 @@ q = Queue.Queue()
 
 DEBUG_VALGRIND = False
 
-sim_end = 12000 # simulate for 30 seconds
+vm_precopy_size = 100000000
+vm_snapshot_size = 10000000
+gw_snapshot_size = 1000000
+parallel_mig = 1
+
+parallel_mig_arr = [1,2,3,4,5,6]
+
+sim_end = 1200000
 link_rate = 10
-mean_link_delay = 0.0000002
-host_delay = 0.000020
-queueSize = 140
+mean_link_delay = 0.000005
+host_delay = 0.000010
+queueSize = 240
 # load_arr = [0.9,0.8,0.7,0.6,0.5]
-load_arr = [0.5]
+load_arr = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+oversub_arr = [1.0,4.0,16.0]
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
@@ -32,11 +41,11 @@ enableMultiPath = 1
 perflowMP = 0
 
 sourceAlg = 'DCTCP-Sack'
-initWindow = 70
+initWindow = 10
 ackRatio = 1
 slowstartrestart = 'true'
 DCTCP_g = 0.0625
-min_rto = 0.000250
+min_rto = 0.001
 prob_cap_ = 5
 
 switchAlg = 'DropTail'
@@ -56,17 +65,12 @@ pias_thresh_4 = 1989*1460
 pias_thresh_5 = 1999*1460
 pias_thresh_6 = 2001*1460
 
-# topology_spt = 16
-# topology_tors = 9
-# topology_spines = 4
-# topology_x = 1
-# smaller topology
-topology_spt = 4
-topology_tors = 2
-topology_spines = 1
+topology_spt = 16
+topology_tors = 9
+topology_spines = 4
 topology_x = 1
 #sets the number of machines needed on the destination (assumed to be on the same rack)
-topology_dest_servers = 100 
+topology_dest_servers = 16 
 
 ## sample debug method:
 # run: gdb ns
@@ -79,7 +83,7 @@ if DEBUG_VALGRIND:
 sim_script = 'spine_empirical.tcl'
 
 for prio_scheme_ in prio_scheme_arr:
-	for load in load_arr:
+	for load, parallel_mig, oversub in itertools.product(load_arr, parallel_mig_arr, oversub_arr):
 		scheme = 'unknown'
 
 		if prio_scheme_ == 2:
@@ -88,7 +92,7 @@ for prio_scheme_ in prio_scheme_arr:
 			scheme = 'pfabric_bytesSent'
 
 		#Directory name: workload_scheme_load_[load]
-		directory_name = 'websearch_%s_%d' % (scheme,int(load*100))
+		directory_name = 'websearch_P%d_L%d_O%d' % (parallel_mig,int(load*100), oversub)
 		directory_name = directory_name.lower()
 		#Simulation command
 		cmd = ns_path+' '+sim_script+' '\
@@ -131,14 +135,18 @@ for prio_scheme_ in prio_scheme_arr:
 			+str(topology_spines)+' '\
 			+str(topology_x)+' '\
 			+str(topology_dest_servers)+' '\
-			+str('./'+directory_name+'/flow2.tr')+'  >'\
-			+str('./'+directory_name+'/logFile2.tr')
+			+str(vm_precopy_size)+' '\
+			+str(vm_snapshot_size)+' '\
+			+str(gw_snapshot_size)+' '\
+			+str(parallel_mig)+' '\
+			+str('./'+directory_name+'/flow.tr')+'  >'\
+			+str('./'+directory_name+'/logFile.tr')
 
 		q.put([cmd, directory_name])
 
 #Create all worker threads
 threads = []
-number_worker_threads = 20
+number_worker_threads = 30
 
 #Start threads to process jobs
 for i in range(number_worker_threads):
