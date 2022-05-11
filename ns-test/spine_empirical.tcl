@@ -220,34 +220,44 @@ for {set i 0} {$i < [expr $topology_tors + 1]} {incr i} {
 }
 
 ############# Tree Structure ##############
-
+set tf [open out.tr w]
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
-MyTopology set verbose_mig_ 0
+MyTopology set verbose_mig_ 1
 MyTopology set vm_precopy_size_ 1000
 MyTopology set vm_snapshot_size_ 1000
-MyTopology set gw_snapshot_size_ 100000000
-
-MyTopology set parallel_mig_ 1
+MyTopology set gw_snapshot_size_ 1000
+MyTopology set parallel_mig_ 3
 
 set t [new MyTopology]
 $t set_simulator $ns
 
-$t add_node_to_source $s(0)
-$t add_node_to_source $s(1)
-$t add_node_to_source $s(2)
+set BW 10Gb 
+set LAT 5us
+set QTYPE DropTail 
+set child_count 100
 
-$t add_node_to_dest $ds(0)
-$t add_node_to_dest $ds(1)
-$t add_node_to_dest $ds(2)
+for { set x 2} { $x < $child_count+2} { incr x } {
+    set ss($x) [$ns node]
+    # $ns duplex-link $n_mid_left $ss($x) $BW $LAT $QTYPE 
+    $ns duplex-link $ss($x) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+    $t add_node_to_dest $ss($x)
+}
 
-set src [$t make_node]
 
-$t make_tree 1 1
+for { set x [expr $child_count+2]} { $x < [expr 2*$child_count+2]} { incr x } {
+    set ss($x) [$ns node]
+    # $ns duplex-link $n_mid_right $n($x) $BW $LAT $QTYPE
+    $ns duplex-link $ss($i) $n(0) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+    $t add_node_to_source $ss($x)
+}
+
+$t make_tree 1 1 1 
 $t duplicate_tree
+$t print_graph
 
-$t set_traffic_src $src
-$ns at 2 "$t start_migration"
+$ns at 0.01 "$t setup_nodes"
+$ns at 1.1 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -260,25 +270,25 @@ puts "Setting up connections ..."; flush stdout
 set flow_gen 0
 set flow_fin 0
 
-# set init_fid 0
-# for {set j 0} {$j < $S } {incr j} {
-#     for {set i 0} {$i < $S } {incr i} {
-#         if {$i != $j} {
-#                 set agtagr($i,$j) [new Agent_Aggr_pair]
-#                 $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
-#                 $agtagr($i,$j) attach-logfile $flowlog
+set init_fid 0
+for {set j 0} {$j < $S } {incr j} {
+    for {set i 0} {$i < $S } {incr i} {
+        if {$i != $j} {
+                set agtagr($i,$j) [new Agent_Aggr_pair]
+                $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
+                $agtagr($i,$j) attach-logfile $flowlog
 
-#                 puts -nonewline "($i,$j) "
-#                 #For Poisson/Pareto
-#                 $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+                puts -nonewline "($i,$j) "
+                #For Poisson/Pareto
+                $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
 
-#                 $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
-#                 $ns at 1 "$agtagr($i,$j) init_schedule"
+                $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
+                $ns at 1 "$agtagr($i,$j) init_schedule"
 
-#                 set init_fid [expr $init_fid + $connections_per_pair];
-#             }
-#         }
-# }
+                set init_fid [expr $init_fid + $connections_per_pair];
+            }
+        }
+}
 
 puts "Initial agent creation done";flush stdout
 puts "Simulation started!"
@@ -286,12 +296,11 @@ puts "Simulation started!"
 proc finish {} {
         puts "simulation finished"
         global ns tf
-        $ns flush-trace
+        # $ns flush-trace
         close $tf
         exit 0
 }
 
-$ns at 1 "$t setup_nodes"
 $ns at $sim_end "finish"
 
 $ns run

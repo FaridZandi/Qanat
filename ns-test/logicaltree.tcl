@@ -21,10 +21,10 @@ proc finish {} {
 
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
-MyTopology set verbose_mig_ 0
+MyTopology set verbose_mig_ 1
 MyTopology set vm_precopy_size_ 1000
 MyTopology set vm_snapshot_size_ 1000
-MyTopology set gw_snapshot_size_ 100000000
+MyTopology set gw_snapshot_size_ 1000
 
 MyTopology set parallel_mig_ 1
 

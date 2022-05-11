@@ -70,7 +70,8 @@ int Agent::uidcnt_;		/* running unique id */
 Agent::Agent(packet_t pkttype) : 
 	size_(0), type_(pkttype), 
 	channel_(0), traceName_(NULL),
-	oldValueList_(NULL), app_(0), et_(0)
+	oldValueList_(NULL), app_(0), et_(0),
+	is_finish_callback_set(false)
 {
 }
 

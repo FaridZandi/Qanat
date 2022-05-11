@@ -14,9 +14,9 @@ def worker():
 
 q = Queue.Queue()
 
-DEBUG_VALGRIND = True
+DEBUG_VALGRIND = False
 
-sim_end = 120 # simulate for 30 seconds
+sim_end = 12000 # simulate for 30 seconds
 link_rate = 10
 mean_link_delay = 0.0000002
 host_delay = 0.000020
@@ -131,8 +131,8 @@ for prio_scheme_ in prio_scheme_arr:
 			+str(topology_spines)+' '\
 			+str(topology_x)+' '\
 			+str(topology_dest_servers)+' '\
-			+str('./'+directory_name+'/flow.tr')+'  >'\
-			+str('./'+directory_name+'/logFile.tr')
+			+str('./'+directory_name+'/flow2.tr')+'  >'\
+			+str('./'+directory_name+'/logFile2.tr')
 
 		q.put([cmd, directory_name])
 
