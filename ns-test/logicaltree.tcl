@@ -22,9 +22,9 @@ proc finish {} {
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
-MyTopology set vm_precopy_size_ 10000000
-MyTopology set vm_snapshot_size_ 10000000
-MyTopology set gw_snapshot_size_ 10000000
+MyTopology set vm_precopy_size_ 1000
+MyTopology set vm_snapshot_size_ 1000
+MyTopology set gw_snapshot_size_ 100000000
 
 MyTopology set parallel_mig_ 1
 
@@ -79,9 +79,9 @@ set sink_app2 [new Application]
 
 # attach agents to nodes
 $ns attach-agent $n(50) $src
-$ns attach-agent $n(198) $sink
+$ns attach-agent $n(197) $sink
 $ns attach-agent $n(149) $src2
-$ns attach-agent $n(198) $sink2
+$ns attach-agent $n(197) $sink2
 
 # attach the apps
 $src_app attach-agent $src
@@ -100,7 +100,8 @@ $sink2 listen
  
 # $t make_tree 4 1 1 1
 # $t make_tree 2 2 2
-$t make_tree 3 2 1
+# $t make_tree 3 2 1
+$t make_tree 1 1 1 1
 $t duplicate_tree
 $t print_graph
 
@@ -108,8 +109,8 @@ $ns at 1 "$t setup_nodes"
 # $ns at 1.5 "$t activate_tunnel $n28 $n12 $n26 $n10 "
 $ns at 2 "$t start_migration"
 
-# $ns at 1.9 "$src_app send 300000000"
-# $ns at 1.9 "$src_app2 send 300000000"
+$ns at 1.9 "$src_app send 300000000"
+$ns at 1.9 "$src_app2 send 300000000"
 
 $ns at $sim_end "finish"
 $ns run

@@ -14,7 +14,7 @@ def worker():
 
 q = Queue.Queue()
 
-DEBUG_VALGRIND = False
+DEBUG_VALGRIND = True
 
 sim_end = 120 # simulate for 30 seconds
 link_rate = 10
