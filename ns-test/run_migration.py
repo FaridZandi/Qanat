@@ -66,7 +66,7 @@ topology_tors = 2
 topology_spines = 1
 topology_x = 1
 #sets the number of machines needed on the destination (assumed to be on the same rack)
-topology_dest_servers = 4 
+topology_dest_servers = 100 
 
 ## sample debug method:
 # run: gdb ns

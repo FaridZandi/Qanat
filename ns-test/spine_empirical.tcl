@@ -207,9 +207,11 @@ for {set i 0} {$i < $S} {incr i} {
     $ns duplex-link $s($i) $n($j) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
 }
 
+set t [new MyTopology]
 ## destination-side links between the ToR and servers
 for {set i 0} {$i < $topology_dest_servers} {incr i} {
     $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+    $t add_node_to_dest $ds($i)
 }
 
 ############ Core links ##############
@@ -229,7 +231,6 @@ MyTopology set vm_snapshot_size_ 1000
 MyTopology set gw_snapshot_size_ 1000
 MyTopology set parallel_mig_ 3
 
-set t [new MyTopology]
 $t set_simulator $ns
 
 set BW 10Gb 
@@ -237,18 +238,18 @@ set LAT 5us
 set QTYPE DropTail 
 set child_count 100
 
-for { set x 2} { $x < $child_count+2} { incr x } {
-    set ss($x) [$ns node]
-    # $ns duplex-link $n_mid_left $ss($x) $BW $LAT $QTYPE 
-    $ns duplex-link $ss($x) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-    $t add_node_to_dest $ss($x)
-}
+# for { set x 2} { $x < $child_count+2} { incr x } {
+#     set ss($x) [$ns node]
+#     # $ns duplex-link $n_mid_left $ss($x) $BW $LAT $QTYPE 
+#     $ns duplex-link $ss($x) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+#     $t add_node_to_dest $ss($x)
+# }
 
 
-for { set x [expr $child_count+2]} { $x < [expr 2*$child_count+2]} { incr x } {
+for { set x 0} { $x < $child_count} { incr x } {
     set ss($x) [$ns node]
     # $ns duplex-link $n_mid_right $n($x) $BW $LAT $QTYPE
-    $ns duplex-link $ss($i) $n(0) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
+    $ns duplex-link $ss($x) $n(0) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
     $t add_node_to_source $ss($x)
 }
 
