@@ -76,6 +76,7 @@ void OrchestratorV2::start_vm_migration(Node* vm){
     buffer_on_peer(vm);
     
     log_event("sending the VM snapshot for node: ", vm->address());
+    // log_event("VM snapshot size: ", MyTopology::vm_snapshot_size);
     initiate_data_transfer(
         vm, MyTopology::vm_snapshot_size, 
         [](Node* n){
@@ -119,6 +120,7 @@ void OrchestratorV2::start_gw_snapshot(Node* gw){
     set_node_state(gw, MigState::InMig);
     
     log_event("sending the GW snapshot for GW: ", gw->address());
+    // log_event("GW snapshot size: ", MyTopology::gw_snapshot_size);
 
     initiate_data_transfer(
         gw, MyTopology::gw_snapshot_size, 

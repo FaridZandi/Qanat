@@ -22,16 +22,18 @@ vm_snapshot_size = 10000000
 gw_snapshot_size = 1000000
 parallel_mig = 1
 
-parallel_mig_arr = [1,2,3,4,5,6]
 
 sim_end = 1200000
 link_rate = 10
 mean_link_delay = 0.000005
 host_delay = 0.000010
 queueSize = 240
-# load_arr = [0.9,0.8,0.7,0.6,0.5]
+parallel_mig_arr = [1,2,3,4,5,6]
 load_arr = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-oversub_arr = [1.0,4.0,16.0]
+oversub_arr = [1.0,4.0]
+# parallel_mig_arr = [2]
+# load_arr = [0.1]
+# oversub_arr = [1.0]
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
@@ -68,9 +70,6 @@ pias_thresh_6 = 2001*1460
 topology_spt = 16
 topology_tors = 9
 topology_spines = 4
-topology_x = 1
-#sets the number of machines needed on the destination (assumed to be on the same rack)
-topology_dest_servers = 16 
 
 ## sample debug method:
 # run: gdb ns
@@ -133,8 +132,7 @@ for prio_scheme_ in prio_scheme_arr:
 			+str(topology_spt)+' '\
 			+str(topology_tors)+' '\
 			+str(topology_spines)+' '\
-			+str(topology_x)+' '\
-			+str(topology_dest_servers)+' '\
+			+str(oversub)+' '\
 			+str(vm_precopy_size)+' '\
 			+str(vm_snapshot_size)+' '\
 			+str(gw_snapshot_size)+' '\
@@ -146,7 +144,7 @@ for prio_scheme_ in prio_scheme_arr:
 
 #Create all worker threads
 threads = []
-number_worker_threads = 30
+number_worker_threads = 10
 
 #Start threads to process jobs
 for i in range(number_worker_threads):
