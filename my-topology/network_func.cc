@@ -349,7 +349,7 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
 
         auto peer = topo.get_peer(toponode_->node);
 
-        std::cout << iph->prev_hop << " " << peer->address() << std::endl; 
+        // std::cout << iph->prev_hop << " " << peer->address() << std::endl; 
 
         if (iph->prev_hop == peer->address()){
             queue_number = 1;
@@ -363,14 +363,14 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
             // TODO: drop the packet (free the memory, etc.) 
             log_packet("Buffer is full. Dropping packet on Q: ", queue_number);
         } else {
-            std::cout << "going to buffer" << std::endl;
+            // std::cout << "going to buffer" << std::endl;
             pq->enque(p);
-            std::string message = "Buffering the packet in Q " 
-                                    + std::to_string(queue_number) 
-                                    + ". New Q length:"
-                                    + std::to_string(pq->length());
+            // std::string message = "Buffering the packet in Q " 
+            //                         + std::to_string(queue_number) 
+            //                         + ". New Q length:"
+            //                         + std::to_string(pq->length());
             // std::cout << message << std::endl;
-            log_packet(message);
+            // log_packet(message);
         }
         return false;
     } else {     

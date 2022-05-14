@@ -119,6 +119,8 @@ public:
     std::vector<int> parents;
     
     int layer_from_bottom; 
+    int child_index;
+    int which_tree; 
     
     bool bypass_processing; 
     OpMode mode; 

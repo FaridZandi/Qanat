@@ -7,7 +7,8 @@ TopoNode::TopoNode(){
         node = nullptr;
         mode = OpMode::NoneMode;  
         layer_from_bottom = 0; 
-        
+        child_index = 0; 
+        which_tree = 0; 
         bypass_processing = false; 
 }
 

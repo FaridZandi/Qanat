@@ -56,7 +56,7 @@ protected:
 
     void tunnel_subtree_tru_parent(Node* node);
 
-    void log_event(std::string message, int arg = -1, bool print_tree = true);
+    void log_event(std::string message, Node* node = nullptr, int arg = -1, bool print_tree = true);
 
     void buffer_on_peer(Node* node); 
 

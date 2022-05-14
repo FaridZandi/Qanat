@@ -50,7 +50,7 @@ void OrchestratorV1::start_migration(){
     
   
 void OrchestratorV1::start_vm_precopy(Node* vm){
-    log_event("sending the VM precopy for node: ", vm->address());
+    log_event("sending the VM precopy for node: ", vm);
 
     mig_state[vm] = MigState::PreMig; 
 
@@ -61,7 +61,7 @@ void OrchestratorV1::start_vm_precopy(Node* vm){
 }
 
 void OrchestratorV1::vm_precopy_finished(Node* vm){
-    log_event("finished sending the VM precopy for node: ", vm->address());
+    log_event("finished sending the VM precopy for node: ", vm);
 
     start_vm_migration(vm); 
 }; 
@@ -77,11 +77,11 @@ void OrchestratorV1::start_vm_migration(Node* vm){
     
     topo.setup_nth_layer_tunnel(vm, 1); 
 
-    log_event("start buffering for ", peer->address());
+    log_event("start buffering for ", peer);
 
     peer_buffer->start_buffering();
 
-    log_event("sending the VM snapshot for node: ", vm->address());
+    log_event("sending the VM snapshot for node: ", vm);
 
     initiate_data_transfer(
         vm, 10000000, 
@@ -91,7 +91,7 @@ void OrchestratorV1::start_vm_migration(Node* vm){
 
 
 void OrchestratorV1::vm_migration_finished(Node* vm){
-    log_event("VM migration finished for: ", vm->address());
+    log_event("VM migration finished for: ", vm);
 
     mig_state[vm] = MigState::Migrated; 
 
@@ -101,7 +101,7 @@ void OrchestratorV1::vm_migration_finished(Node* vm){
     auto peer_data = topo.get_data(peer);
     auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
 
-    log_event("stopped buffering for ", peer->address());
+    log_event("stopped buffering for ", peer);
     peer_buffer->stop_buffering();
 
     // signal parent migration
@@ -128,14 +128,14 @@ void OrchestratorV1::start_gw_migration_if_possible(
         }
     }
 
-    log_event("all conditions ok to start migrating GW: ", gw->address()); 
+    log_event("all conditions ok to start migrating GW: ", gw); 
 
     start_gw_snapshot(gw); 
 }
 
 
 void OrchestratorV1::start_gw_snapshot(Node* gw){
-    log_event("sending the GW snapshot for GW: ", gw->address());
+    log_event("sending the GW snapshot for GW: ", gw);
 
     mig_state[gw] = MigState::PreMig; 
 
@@ -147,7 +147,7 @@ void OrchestratorV1::start_gw_snapshot(Node* gw){
 
 
 void OrchestratorV1::gw_snapshot_sent(Node* gw){
-    log_event("finished sending the GW snapshot for GW: ", gw->address());
+    log_event("finished sending the GW snapshot for GW: ", gw);
 
     auto& topo = MyTopology::instance();
 
@@ -180,7 +180,7 @@ void OrchestratorV1::mark_last_packet(Node* parent,
 
 void OrchestratorV1::gw_sent_last_packet(Node* gw){
     
-    log_event("last packet has been sent to GW: ", gw->address());
+    log_event("last packet has been sent to GW: ", gw);
 
     tunnel_subtree_tru_parent(gw);
 
@@ -191,7 +191,7 @@ void OrchestratorV1::gw_sent_last_packet(Node* gw){
 
 
 void OrchestratorV1::gw_received_last_packet(Node* gw){
-    log_event("last packet has been received by GW: ", gw->address());
+    log_event("last packet has been received by GW: ", gw);
 
     auto& topo = MyTopology::instance();
 
@@ -202,7 +202,7 @@ void OrchestratorV1::gw_received_last_packet(Node* gw){
 
 
 void OrchestratorV1::start_gw_diff(Node* gw){
-    log_event("sending the GW diff for GW: ", gw->address());
+    log_event("sending the GW diff for GW: ", gw);
 
     initiate_data_transfer(
         gw, 1000000, 
@@ -212,7 +212,7 @@ void OrchestratorV1::start_gw_diff(Node* gw){
 
 
 void OrchestratorV1::gw_diff_sent(Node* gw){
-    log_event("GW migration finished for GW: ", gw->address());
+    log_event("GW migration finished for GW: ", gw);
 
     mig_state[gw] = MigState::Migrated; 
 

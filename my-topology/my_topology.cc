@@ -264,13 +264,15 @@ Node* MyTopology::make_node(bool is_source){
     return this_node; 
 }
 
-int MyTopology::make_tree(int parent, std::vector<int> branching_ds){
+int MyTopology::make_tree(int parent, std::vector<int> branching_ds, int child_index){
     // assign a virtual identity to a node.
     Node* this_node = make_node(true);
     int this_uid = data[this_node].uid;
 
     // Setting the depth of this node in the virtual tree. 
     data[this_node].layer_from_bottom = branching_ds.size();
+    data[this_node].child_index = child_index;
+    data[this_node].which_tree = 0;
 
     // If there is a parent, connect it to this node.
     if(parent != -1){
@@ -291,7 +293,7 @@ int MyTopology::make_tree(int parent, std::vector<int> branching_ds){
     // this layer. 
     int current_branching = branching_ds[0];
     for(int i = 0; i < current_branching; i++){        
-        make_tree(this_uid, next_branching_ds);
+        make_tree(this_uid, next_branching_ds, i);
     }
 
     return this_uid;
@@ -318,6 +320,11 @@ int MyTopology::find_node(int root,
 
 int MyTopology::duplicate_tree(int root){
     Node* root_peer = make_node(false); 
+    
+    data[root_peer].layer_from_bottom = data[node[root]].layer_from_bottom;
+    data[root_peer].child_index = data[node[root]].child_index;
+    data[root_peer].which_tree = 1;
+
     int root_peer_uid = data[root_peer].uid;
     make_peers(root, root_peer_uid);
 
@@ -330,6 +337,11 @@ int MyTopology::duplicate_tree(int root){
 
         if (current != root){
             Node* copy = make_node(false);
+
+            data[copy].layer_from_bottom = data[node[current]].layer_from_bottom;
+            data[copy].child_index = data[node[current]].child_index;
+            data[copy].which_tree = 1;
+            
             make_peers(current, data[copy].uid); 
 
             int parent_pid = data[node[current]].first_parent();
@@ -610,12 +622,16 @@ void MyTopology::setup_nth_layer_tunnel(Node* node, int layer){
     auto nth_parent = get_nth_parent(node, layer); 
     auto nth_parent_peer = get_peer(nth_parent); 
 
-    print_time(); 
-    std::cout << "node " << node->address() << " ";                           
-    std::cout << "migrated to " << peer->address() << " ";                           
-    std::cout << "tunnelled from " << nth_parent->address() << " ";
-    std::cout << "to " << nth_parent_peer->address() << " ";
-    std::cout << std::endl;
+    // print_time(); 
+
+    if (verbose) {
+        std::cout << "node " << node->address() << " ";                           
+        std::cout << "migrated to " << peer->address() << " ";                           
+        std::cout << "tunnelled from " << nth_parent->address() << " ";
+        std::cout << "to " << nth_parent_peer->address() << " ";
+        std::cout << std::endl;
+    }
+
 
     mig_manager().activate_tunnel(
         nth_parent, nth_parent_peer,  

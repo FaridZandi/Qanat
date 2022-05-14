@@ -104,24 +104,59 @@ void BaseOrchestrator::tunnel_subtree_tru_parent(Node* node){
         for(auto leaf: topo.get_leaves(node)){
             topo.setup_nth_layer_tunnel(leaf, node_layer + 1);
         }
+
+        if (mig_state[parent] == MigState::Normal){
+            set_node_state(parent, MigState::PreMig);
+            set_peer_state(parent, MigState::PreMig);
+            log_event("start gw precopy", parent);
+        }
+
     }
 }
 
-void BaseOrchestrator::log_event(std::string message, int arg, bool print_tree){
+void BaseOrchestrator::log_event(std::string message, Node* node, int arg, bool print_tree){
+    auto& topo = MyTopology::instance();
     
+
     std::cout << std::endl; 
     std::cout << "---------------------------------------------"; 
     std::cout << std::endl; 
     print_time();
-    std::cout << message; 
-    if (arg != -1){
-        std::cout << " " << arg; 
+
+    std::cout << " "; 
+
+
+    if (node != nullptr){
+        auto& data = topo.get_data(node);
+        
+        std::cout << "[";
+
+        if (data.mode == OpMode::VM) {
+            std::cout << "VM";
+        } else {
+            std::cout << "GW";
+        }
+
+        std::cout << "-";
+        std::cout << data.layer_from_bottom; 
+        std::cout << "-";
+        std::cout << data.uid; 
+        std::cout << "-";
+        std::cout << data.which_tree; 
+        
+        std::cout << "] ";  
     }
+
+    if (arg != -1){
+        std::cout << "[" << arg << "] ";  
+    }
+
+    std::cout << message; 
+
     std::cout << std::endl;
     std::cout << "---------------------------------------------"; 
     std::cout << std::endl;
     
-    auto& topo = MyTopology::instance();
 
     if (print_tree){
         topo.print_graph(true);
@@ -135,12 +170,12 @@ void BaseOrchestrator::buffer_on_peer(Node* node){
 
     if (topo.get_data(node).mode == VM){
         auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
-        log_event("starting to buffer for ", peer->address());
+        log_event("start vm buffering", peer);
         peer_buffer->start_buffering();
 
     } else if (topo.get_data(node).mode == GW){
         auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
-        log_event("starting to buffer for ", peer->address());
+        log_event("start gw buffering", peer);
         peer_buffer->start_buffering();
     }
 }
@@ -156,8 +191,8 @@ void BaseOrchestrator::process_on_peer(Node* node){
 
         auto queue_depth = peer_buffer->get_buffer_size();
 
-        log_event("releasing a buffer of size ", queue_depth, false);
-        log_event("start processing for ", peer->address());
+        // log_event("releasing a buffer of size ", queue_depth, false);
+        log_event("end vm buffering", peer);
 
         peer_buffer->stop_buffering();
 
@@ -169,9 +204,9 @@ void BaseOrchestrator::process_on_peer(Node* node){
         auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
 
 
-        log_event("releasing a high prio buffer of size ", queue_depth_high, false);
-        log_event("releasing a low prio buffer of size ", queue_depth_low, false);
-        log_event("start processing for ", peer->address());
+        // log_event("releasing a high prio buffer of size ", queue_depth_high, false);
+        // log_event("releasing a low prio buffer of size ", queue_depth_low, false);
+        log_event("end gw buffering", peer);
 
         peer_buffer->stop_buffering();
     }

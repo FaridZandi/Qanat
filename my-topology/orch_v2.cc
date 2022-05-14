@@ -22,6 +22,16 @@ OrchestratorV2::~OrchestratorV2(){
 
 }
 
+
+int get_random_transfer_size(int mean, int range_p){
+    int r = (100 - range_p) + std::rand() % (2 * range_p);
+    int size = r * mean / 100;
+    return size; 
+}
+
+
+
+
 void OrchestratorV2::start_migration(){
     std::srand(123);
 
@@ -49,10 +59,10 @@ void OrchestratorV2::start_vm_precopy(Node* vm){
     set_node_state(vm, MigState::PreMig);
     set_peer_state(vm, MigState::OutOfService);
 
-    log_event("sending the VM precopy for node: ", vm->address());
+    log_event("start vm precopy", vm);
 
     initiate_data_transfer(
-        vm, MyTopology::vm_precopy_size, 
+        vm, get_random_transfer_size(MyTopology::vm_precopy_size,50), 
         [](Node* n){
             BaseOrchestrator::instance().vm_precopy_finished(n);
         }
@@ -60,7 +70,7 @@ void OrchestratorV2::start_vm_precopy(Node* vm){
 }
 
 void OrchestratorV2::vm_precopy_finished(Node* vm){
-    log_event("finished sending the VM precopy for node: ", vm->address());
+    log_event("end vm precopy", vm);
 
     start_vm_migration(vm); 
 }; 
@@ -71,13 +81,24 @@ void OrchestratorV2::start_vm_migration(Node* vm){
     set_node_state(vm, MigState::InMig);
     set_peer_state(vm, MigState::Buffering);
 
-    MyTopology::instance().setup_nth_layer_tunnel(vm, 1); 
+    MyTopology::instance().setup_nth_layer_tunnel(vm, 1);
+    
+    auto& topo = MyTopology::instance();
+    auto parent_gw = topo.get_nth_parent(vm,1);
+    if (mig_state[parent_gw] == MigState::Normal){
+        set_node_state(parent_gw, MigState::PreMig);
+        set_peer_state(parent_gw, MigState::PreMig);
+        log_event("start gw precopy", parent_gw);
+    }
 
     buffer_on_peer(vm);
     
-    log_event("sending the VM snapshot for node: ", vm->address());
+    log_event("start vm migration", vm);
+
+    std::cout << "MyTopology::vm_snapshot_size: " << MyTopology::vm_snapshot_size << std::endl; 
+
     initiate_data_transfer(
-        vm, MyTopology::vm_snapshot_size, 
+        vm, get_random_transfer_size(MyTopology::vm_snapshot_size, 50), 
         [](Node* n){
             BaseOrchestrator::instance().vm_migration_finished(n);
         }
@@ -89,7 +110,7 @@ void OrchestratorV2::vm_migration_finished(Node* vm){
     set_node_state(vm, MigState::Migrated);
     set_peer_state(vm, MigState::Normal);
 
-    log_event("VM migration finished for: ", vm->address());
+    log_event("end vm migration", vm);
 
     process_on_peer(vm); 
     
@@ -105,7 +126,7 @@ void OrchestratorV2::try_parent_migration(Node* node){
 
     if (all_children_migrated(gw)){
 
-        log_event("all conditions ok to start migrating GW: ", gw->address()); 
+        // log_event("all conditions ok to start migrating GW: ", gw->address()); 
 
         buffer_on_peer(gw);
         set_peer_state(gw, MigState::Buffering);
@@ -118,10 +139,12 @@ void OrchestratorV2::try_parent_migration(Node* node){
 void OrchestratorV2::start_gw_snapshot(Node* gw){
     set_node_state(gw, MigState::InMig);
     
-    log_event("sending the GW snapshot for GW: ", gw->address());
+    log_event("end gw precopy", gw);
+
+    log_event("start gw migration", gw);
 
     initiate_data_transfer(
-        gw, MyTopology::gw_snapshot_size, 
+        gw, get_random_transfer_size(MyTopology::gw_snapshot_size, 50), 
         [](Node* n){
             BaseOrchestrator::instance().gw_snapshot_sent(n);
         }
@@ -131,7 +154,7 @@ void OrchestratorV2::start_gw_snapshot(Node* gw){
 
 void OrchestratorV2::gw_snapshot_sent(Node* gw){
 
-    log_event("finished sending the GW snapshot for GW: ", gw->address());
+    log_event("end gw migration", gw);
 
     auto& topo = MyTopology::instance();
 
@@ -143,7 +166,7 @@ void OrchestratorV2::gw_snapshot_sent(Node* gw){
     set_peer_state(gw, MigState::Normal);
 
     if (gw == topo.get_mig_root()){
-        log_event("migration finished");
+        log_event("migration finished", gw);
         exit(0);
     } else {
         try_parent_migration(gw); 

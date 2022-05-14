@@ -121,7 +121,7 @@ private:
 
     // Virtual tree managament
     Node* make_node(bool is_source);
-    int make_tree(int parent, std::vector<int> branching_ds); 
+    int make_tree(int parent, std::vector<int> branching_ds, int child_index = 0); 
     int find_node(int root, std::vector<int> branch_ids); 
     void make_peers(int n1, int n2);
     int duplicate_tree(int root); 
