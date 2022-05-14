@@ -17,10 +17,14 @@ q = Queue.Queue()
 
 DEBUG_VALGRIND = False
 
-vm_precopy_size = 100000000
 vm_snapshot_size = 10000000
 gw_snapshot_size = 1000000
-parallel_mig = 1
+
+vm_precopy_size_arr = [100000, 1000000, 10000000, 100000000]
+parallel_mig_arr = [1,2,4,8,16]
+load_arr = [0.3, 0.5, 0.7, 0.9]
+oversub_arr = [1.0, 4.0, 16.0]
+sourceAlg_arr = ['DCTCP-Sack', 'TCP']
 
 
 sim_end = 1200000
@@ -28,12 +32,6 @@ link_rate = 10
 mean_link_delay = 0.000005
 host_delay = 0.000010
 queueSize = 240
-parallel_mig_arr = [1,2,3,4,5,6]
-load_arr = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-oversub_arr = [1.0,4.0]
-# parallel_mig_arr = [2]
-# load_arr = [0.1]
-# oversub_arr = [1.0]
 connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
@@ -42,7 +40,6 @@ flow_cdf = 'CDF_dctcp.tcl'
 enableMultiPath = 1
 perflowMP = 0
 
-sourceAlg = 'DCTCP-Sack'
 initWindow = 10
 ackRatio = 1
 slowstartrestart = 'true'
@@ -50,11 +47,11 @@ DCTCP_g = 0.0625
 min_rto = 0.001
 prob_cap_ = 5
 
-switchAlg = 'DropTail'
+switchAlg = 'MyQueue'
 DCTCP_K = 65.0
 drop_prio_ = 'true'
 # prio_scheme_arr = [2,3]
-prio_scheme_arr = [0]
+prio_scheme_ = 0
 deque_prio_ = 'true'
 keep_order_ = 'true'
 prio_num_ = 1
@@ -81,66 +78,61 @@ if DEBUG_VALGRIND:
 
 sim_script = 'spine_empirical.tcl'
 
-for prio_scheme_ in prio_scheme_arr:
-	for load, parallel_mig, oversub in itertools.product(load_arr, parallel_mig_arr, oversub_arr):
-		scheme = 'unknown'
 
-		if prio_scheme_ == 2:
-			scheme = 'pfabric_remainingSize'
-		elif prio_scheme_ == 3:
-			scheme = 'pfabric_bytesSent'
+for load, parallel_mig, oversub, vm_precopy_size, sourceAlg in\
+	itertools.product(load_arr, parallel_mig_arr, oversub_arr, vm_precopy_size_arr, sourceAlg_arr):
 
-		#Directory name: workload_scheme_load_[load]
-		directory_name = 'websearch_P%d_L%d_O%d' % (parallel_mig,int(load*100), oversub)
-		directory_name = directory_name.lower()
-		#Simulation command
-		cmd = ns_path+' '+sim_script+' '\
-			+str(sim_end)+' '\
-			+str(link_rate)+' '\
-			+str(mean_link_delay)+' '\
-			+str(host_delay)+' '\
-			+str(queueSize)+' '\
-			+str(load)+' '\
-			+str(connections_per_pair)+' '\
-			+str(meanFlowSize)+' '\
-			+str(paretoShape)+' '\
-			+str(flow_cdf)+' '\
-			+str(enableMultiPath)+' '\
-			+str(perflowMP)+' '\
-			+str(sourceAlg)+' '\
-			+str(initWindow)+' '\
-			+str(ackRatio)+' '\
-			+str(slowstartrestart)+' '\
-			+str(DCTCP_g)+' '\
-			+str(min_rto)+' '\
-			+str(prob_cap_)+' '\
-			+str(switchAlg)+' '\
-			+str(DCTCP_K)+' '\
-			+str(drop_prio_)+' '\
-			+str(prio_scheme_)+' '\
-			+str(deque_prio_)+' '\
-			+str(keep_order_)+' '\
-			+str(prio_num_)+' '\
-			+str(ECN_scheme_)+' '\
-			+str(pias_thresh_0)+' '\
-			+str(pias_thresh_1)+' '\
-			+str(pias_thresh_2)+' '\
-			+str(pias_thresh_3)+' '\
-			+str(pias_thresh_4)+' '\
-			+str(pias_thresh_5)+' '\
-			+str(pias_thresh_6)+' '\
-			+str(topology_spt)+' '\
-			+str(topology_tors)+' '\
-			+str(topology_spines)+' '\
-			+str(oversub)+' '\
-			+str(vm_precopy_size)+' '\
-			+str(vm_snapshot_size)+' '\
-			+str(gw_snapshot_size)+' '\
-			+str(parallel_mig)+' '\
-			+str('./'+directory_name+'/flow.tr')+'  >'\
-			+str('./'+directory_name+'/logFile.tr')
+	#Directory name: workload_parallel_load_oversub_vm_alg
+	directory_name = 'websearch_P%d_L%d_O%d_V%d_A%s' % (parallel_mig,int(load*100), oversub, vm_precopy_size, sourceAlg)
+	directory_name = directory_name.lower()
+	#Simulation command
+	cmd = ns_path+' '+sim_script+' '\
+		+str(sim_end)+' '\
+		+str(link_rate)+' '\
+		+str(mean_link_delay)+' '\
+		+str(host_delay)+' '\
+		+str(queueSize)+' '\
+		+str(load)+' '\
+		+str(connections_per_pair)+' '\
+		+str(meanFlowSize)+' '\
+		+str(paretoShape)+' '\
+		+str(flow_cdf)+' '\
+		+str(enableMultiPath)+' '\
+		+str(perflowMP)+' '\
+		+str(sourceAlg)+' '\
+		+str(initWindow)+' '\
+		+str(ackRatio)+' '\
+		+str(slowstartrestart)+' '\
+		+str(DCTCP_g)+' '\
+		+str(min_rto)+' '\
+		+str(prob_cap_)+' '\
+		+str(switchAlg)+' '\
+		+str(DCTCP_K)+' '\
+		+str(drop_prio_)+' '\
+		+str(prio_scheme_)+' '\
+		+str(deque_prio_)+' '\
+		+str(keep_order_)+' '\
+		+str(prio_num_)+' '\
+		+str(ECN_scheme_)+' '\
+		+str(pias_thresh_0)+' '\
+		+str(pias_thresh_1)+' '\
+		+str(pias_thresh_2)+' '\
+		+str(pias_thresh_3)+' '\
+		+str(pias_thresh_4)+' '\
+		+str(pias_thresh_5)+' '\
+		+str(pias_thresh_6)+' '\
+		+str(topology_spt)+' '\
+		+str(topology_tors)+' '\
+		+str(topology_spines)+' '\
+		+str(oversub)+' '\
+		+str(vm_precopy_size)+' '\
+		+str(vm_snapshot_size)+' '\
+		+str(gw_snapshot_size)+' '\
+		+str(parallel_mig)+' '\
+		+str('./'+directory_name+'/flow.tr')+'  >'\
+		+str('./'+directory_name+'/logFile.tr')
 
-		q.put([cmd, directory_name])
+	q.put([cmd, directory_name])
 
 #Create all worker threads
 threads = []
