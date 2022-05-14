@@ -26,7 +26,7 @@ MyTopology set vm_precopy_size_ 10000000
 MyTopology set vm_snapshot_size_ 10000000
 MyTopology set gw_snapshot_size_ 10000000
 
-MyTopology set parallel_mig_ [lindex $argv 0]
+MyTopology set parallel_mig_ 2
 
 
 
@@ -101,8 +101,8 @@ $sink2 listen
 # $t make_tree 4 1 1 1
 # $t make_tree 2 2 2
 # $t make_tree 3 2 1
-$t make_tree 3 1 3 1 3
-# $t make_tree 3 3 
+# $t make_tree 3 1 3 1 3
+$t make_tree 4 1 1 1
 $t duplicate_tree
 $t print_graph
 

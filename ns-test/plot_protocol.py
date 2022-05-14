@@ -2,6 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Patch
+from argparse import ArgumentParser
+import sys
+
 
 times = {}
 min_time = 10000
@@ -9,12 +12,31 @@ max_time = 0
 
 file_path = "protocol.out"
 
-with open(file_path) as f: 
-    for line in f.readlines(): 
+parser = ArgumentParser()
+parser.add_argument("-m", "--mode", dest="mode",
+                    help="operation mode", default="input", metavar="MODE")
+
+parser.add_argument("-f", "--file", dest="filename", default="protocol.out",
+                    help="read protocol log from", metavar="FILE")
+
+parser.add_argument("-v", "--verbose",
+                    action="store_true", dest="verbose", default=False,
+                    help="print the lines to ouput")
+
+args = parser.parse_args()
+
+
+def process_line(line):
+    global times, min_time, max_time, args
+
+    try: 
+        if args.verbose:
+            print(line[:-1])
+
         line = line.strip()
 
         if not line.startswith("["):
-            continue 
+            return 
 
         s = line.split(" ")
 
@@ -26,7 +48,7 @@ with open(file_path) as f:
             address = address_str[1:-1]
 
             if address == "":
-                continue 
+                return 
 
             if time > max_time:
                 max_time = time 
@@ -101,9 +123,31 @@ with open(file_path) as f:
                         times[address]["type"] = "GW"
                         times[address]["end_buf"] = time
 
+    except Exception as e: 
+        print(e)
+        print("*", end="") 
 
 
-df = pd.DataFrame(columns=["address", "id", "layer", "which_tree", "type", "start_pre", "end_pre", "start_mig", "end_mig", "start_buf", "end_buf"])
+if args.mode == "file":
+    print("reading from", args.filename)
+    with open(args.filename) as f: 
+        for line in f.readlines(): 
+            process_line(line)
+
+elif args.mode == "input":
+    print("reading the log from input")
+    for line in sys.stdin:
+        process_line(line)
+
+print("done with processing the input")
+
+
+
+df = pd.DataFrame(columns=[
+    "address", "id", "layer", "which_tree", 
+    "type", "start_pre", "end_pre", "start_mig", 
+    "end_mig", "start_buf", "end_buf"
+])
 
 
 for address in times: 
