@@ -19,6 +19,9 @@ parser.add_argument("-m", "--mode", dest="mode",
 parser.add_argument("-f", "--file", dest="filename", default="protocol.out",
                     help="read protocol log from", metavar="FILE")
 
+parser.add_argument("-o", "--output", dest="output", default="protocol",
+                    help="output png file", metavar="OUT")
+
 parser.add_argument("-v", "--verbose",
                     action="store_true", dest="verbose", default=False,
                     help="print the lines to ouput")
@@ -215,13 +218,13 @@ for i in range(3):
     legend_elements = [
         Patch(facecolor='lime', edgecolor='g', label='VM Precopy'),
         Patch(facecolor='green', edgecolor='g', label='VM Migration'),
-        Patch(facecolor='red', edgecolor='r', label='GW Migration'),
-        Patch(facecolor='orange', edgecolor='r', label='GW Tunneling'),
+        Patch(facecolor='red', edgecolor='r', label='VNF Migration'),
+        Patch(facecolor='orange', edgecolor='r', label='VNF Tunneling'),
     ]
 
     fig, ax = plt.subplots(1, figsize=(plot_height, plot_height))
     
-    ax.set_xlim(min_time, max_time)
+    ax.set_xlim(min_time, 41)
 
     ax.barh(vm_df.address, vm_df.len_pre, left=vm_df.start_pre, color="lime")
     ax.barh(vm_df.address, vm_df.len_mig, left=vm_df.start_mig, color="green")
@@ -229,16 +232,18 @@ for i in range(3):
     ax.barh(gw_df.address, gw_df.len_pre, left=gw_df.start_pre, color="orange")
     ax.barh(half_df.address, half_df.len_buf, left=half_df.start_buf, color="gray")
     
-    ax.legend(handles=legend_elements, loc='lower right')
+    # ax.legend(handles=legend_elements, loc='lower right')
+    ax.legend(handles=legend_elements ,loc='center right', bbox_to_anchor=(1, 1))
 
     plt.xlabel("Simulation Time (ms)")
     plt.ylabel("Node (type - layer - id)")
     
     if i == 0: 
-        name = "protocol_src"
+        name = args.output + "_src"
     if i == 1: 
-        name = "protocol_dst"
+        name = args.output + "_dst"
     if i == 2: 
-        name = "protocol_all"
+        name = args.output + "_all"
 
-    plt.savefig(name, dpi=300)
+    plt.savefig(name+".svg", dpi=300)
+    print("MAX time:", max_time)

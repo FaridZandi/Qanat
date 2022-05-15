@@ -125,7 +125,7 @@ void OrchestratorV2::try_parent_migration(Node* node){
     auto gw = topo.get_nth_parent(node, 1); 
 
     if (all_children_migrated(gw)){
-
+        tunnel_subtree_tru_parent(gw);
         // log_event("all conditions ok to start migrating GW: ", gw->address()); 
 
         buffer_on_peer(gw);
@@ -156,9 +156,7 @@ void OrchestratorV2::gw_snapshot_sent(Node* gw){
 
     log_event("end gw migration", gw);
 
-    auto& topo = MyTopology::instance();
-
-    tunnel_subtree_tru_parent(gw);   
+    auto& topo = MyTopology::instance();   
     
     process_on_peer(gw);
 
