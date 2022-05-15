@@ -26,9 +26,9 @@ set BW 10Gb
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
-MyTopology set vm_precopy_size_ 100000000
+MyTopology set vm_precopy_size_  50000000
 MyTopology set vm_snapshot_size_ 10000000
-MyTopology set gw_snapshot_size_ 1000000
+MyTopology set gw_snapshot_size_ 10000000
 
 MyTopology set parallel_mig_ $parallel_mig
 
@@ -98,8 +98,8 @@ $cbr0 attach-agent $udp0
 set null0 [new Agent/Null]
 $ns attach-agent $n(50) $null0
 $ns connect $udp0 $null0
-$ns at 1.9 "$cbr0 start"
-$ns at 10 "$cbr0 stop"
+# $ns at 1.9 "$cbr0 start"
+# $ns at 10 "$cbr0 stop"
 
 
 
@@ -118,7 +118,7 @@ $ns connect $src2 $sink2
 $sink2 listen
 
  
-$t make_tree 1 1 8
+$t make_tree 1 2 2 2
 $t duplicate_tree
 $t print_graph
 

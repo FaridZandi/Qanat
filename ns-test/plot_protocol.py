@@ -224,7 +224,7 @@ for i in range(3):
 
     fig, ax = plt.subplots(1, figsize=(plot_height, plot_height))
     
-    ax.set_xlim(min_time, 41)
+    ax.set_xlim(min_time, 996)
 
     ax.barh(vm_df.address, vm_df.len_pre, left=vm_df.start_pre, color="lime")
     ax.barh(vm_df.address, vm_df.len_mig, left=vm_df.start_mig, color="green")
@@ -232,8 +232,8 @@ for i in range(3):
     ax.barh(gw_df.address, gw_df.len_pre, left=gw_df.start_pre, color="orange")
     ax.barh(half_df.address, half_df.len_buf, left=half_df.start_buf, color="gray")
     
-    # ax.legend(handles=legend_elements, loc='lower right')
-    ax.legend(handles=legend_elements ,loc='center right', bbox_to_anchor=(1, 1))
+    ax.legend(handles=legend_elements, loc='lower right')
+    # ax.legend(handles=legend_elements ,loc='center right', bbox_to_anchor=(1, 1))
 
     plt.xlabel("Simulation Time (ms)")
     plt.ylabel("Node (type - layer - id)")
@@ -245,5 +245,5 @@ for i in range(3):
     if i == 2: 
         name = args.output + "_all"
 
-    plt.savefig(name+".svg", dpi=300)
+    plt.savefig(name+".png", dpi=300)
     print("MAX time:", max_time)

@@ -25,7 +25,7 @@ OrchestratorV2::~OrchestratorV2(){
 
 int get_random_transfer_size(int mean, int range_p){
     int r = (100 - range_p) + std::rand() % (2 * range_p);
-    int size = r * mean / 100;
+    int size = r * (mean / 100);
     return size; 
 }
 
@@ -62,7 +62,7 @@ void OrchestratorV2::start_vm_precopy(Node* vm){
     log_event("start vm precopy", vm);
 
     initiate_data_transfer(
-        vm, get_random_transfer_size(MyTopology::vm_precopy_size,50), 
+        vm, get_random_transfer_size(MyTopology::vm_precopy_size, 50), 
         [](Node* n){
             BaseOrchestrator::instance().vm_precopy_finished(n);
         }
