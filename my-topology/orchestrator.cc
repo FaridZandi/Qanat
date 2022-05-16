@@ -227,17 +227,17 @@ std::string BaseOrchestrator::get_mig_state_string(Node* node){
     auto state = mig_state[node];
     switch(state){
         case MigState::InMig: 
-            return "InMig";
+            return "\e[101mInMig\e[0m";
         case MigState::PreMig: 
-            return "PreMg";
+            return "\e[43mPreMg\e[0m";
         case MigState::Migrated: 
-            return "Mgrtd";
+            return "\e[42mMgrtd\e[0m";
         case MigState::Buffering: 
-            return "BuFFr";
+            return "\e[41mBuFFr\e[0m";
         case MigState::Normal: 
-            return "Norml";
+            return "\e[44mNorml\e[0m";
         case MigState::OutOfService: 
-            return "zzzzz";
+            return "\e[107m\e[30mzzzzz\e[0m";
     }
 }
 
