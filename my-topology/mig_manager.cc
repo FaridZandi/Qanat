@@ -83,7 +83,7 @@ void MigrationManager::log_packet(Packet* p){
 	hdr_ip* iph = hdr_ip::access(p); 
 
 	std::cout << "pre_classify "; 
-    std::cout << iph->src_.addr_ << " to " << iph->dst_.addr_;
+    std::cout << iph->src_.addr_ << " to " << iph->dst_.addr_ << " with prio " << iph->prio_ << " with class " << iph->traffic_class;
     std::cout << std::endl; 
 }
 

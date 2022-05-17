@@ -852,23 +852,25 @@ int
 FullTcpAgent::set_prio(int seq, int maxseq) {
 	int max = 100 * 1460;
 	int prio;
-	if (prio_scheme_ == 0) {
-		if ( seq - startseq_ > max)
-		    prio = max;
-		else
-			prio = seq - startseq_;
-	}
-	if (prio_scheme_ == 1)
-		prio =  maxseq - startseq_;
-	if (prio_scheme_ == 2)
-		prio =  maxseq - seq;
-	if (prio_scheme_ == 3)
-		prio = seq - startseq_;
+	// #FIXME the following logic which is disabled for now breaks pFabric's logic
+	// if (prio_scheme_ == 0) {
+	// 	if ( seq - startseq_ > max)
+	// 	    prio = max;
+	// 	else
+	// 		prio = seq - startseq_;
+	// }
+	// if (prio_scheme_ == 1)
+	// 	prio =  maxseq - startseq_;
+	// if (prio_scheme_ == 2)
+	// 	prio =  maxseq - seq;
+	// if (prio_scheme_ == 3)
+	// 	prio = seq - startseq_;
 
-	if (prio_num_ == 0)
-		return prio;
-	else
-		return calPrio(prio);
+	// if (prio_num_ == 0)
+	// 	return prio;
+	// else
+	// 	return calPrio(prio);
+	return 123456;
 }
 
 int
@@ -926,6 +928,10 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	// change the traffic class for determining whether 
 	// it should be bufferred or not
 	iph->traffic_class = this->traffic_class_;
+	// Sepehr: if not background traffic, set it to high priority #FIXME
+	if (iph->traffic_class == 2) {
+		iph->prio_ = 15;
+	}
 
 	if (this->traffic_class_ == 1){
 		auto& topo = MyTopology::instance(); 
@@ -1084,53 +1090,55 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 //printf("%f(%s)[state:%s]: sending pkt ", now(), name(), statestr(state_));
 //prpkt(p);
 //}
-	if (deadline > 0)
-		iph->prio_type() = 1;
-	if (datalen > 0) {
-		//iph->prio_type() = 0;
-		//iph->prio() = set_prio(seqno, curseq_);
-		/* Shuang: prio dropping */
-		if (deadline == 0) {
-			iph->prio() = set_prio(seqno, curseq_);
-			iph->prio_type() = 0;
-		} else {
-			int tleft = deadline - int((now() - start_time) * 1e6);
-			iph->prio_type() = 1;
-			iph->prio() = deadline + int(start_time * 1e6);
-			if (tleft < 0 || byterm() * 8 / 1e4 > tleft) {
-				iph->prio_type() = 0;
-				iph->prio() = (1 << 30);
-			} else {
-//				iph->prio() = iph->prio() / 40 * 1000 + set_prio(seqno, curseq_) / 1460;
-			}
-		}
+
+// Sepehr: disabled deadline
+// 	if (deadline > 0)
+// 		iph->prio_type() = 1;
+// 	if (datalen > 0) {
+// 		//iph->prio_type() = 0;
+// 		//iph->prio() = set_prio(seqno, curseq_);
+// 		/* Shuang: prio dropping */
+// 		if (deadline == 0) {
+// 			iph->prio() = set_prio(seqno, curseq_);
+// 			iph->prio_type() = 0;
+// 		} else {
+// 			int tleft = deadline - int((now() - start_time) * 1e6);
+// 			iph->prio_type() = 1;
+// 			iph->prio() = deadline + int(start_time * 1e6);
+// 			if (tleft < 0 || byterm() * 8 / 1e4 > tleft) {
+// 				iph->prio_type() = 0;
+// 				iph->prio() = (1 << 30);
+// 			} else {
+// //				iph->prio() = iph->prio() / 40 * 1000 + set_prio(seqno, curseq_) / 1460;
+// 			}
+// 		}
 		
-	        /* Mohammad: this is deprecated
-		 * it was for path-aware multipath
-		 * congestion control experiments */
-	        //Shuang: delete it
-			//iph->prio() = fid_;
+	//         /* Mohammad: this is deprecated
+	// 	 * it was for path-aware multipath
+	// 	 * congestion control experiments */
+	//         //Shuang: delete it
+	// 		//iph->prio() = fid_;
 	
-		/* Mohammad: inform pacer (TBF) that
-		 * this connection received an EcnEcho.
-		 * this is a bit hacky, but necessary 
-		 * for now since the TBF class doesn't see the
-		 * ACKS. */
+	// 	/* Mohammad: inform pacer (TBF) that
+	// 	 * this connection received an EcnEcho.
+	// 	 * this is a bit hacky, but necessary 
+	// 	 * for now since the TBF class doesn't see the
+	// 	 * ACKS. */
 		
-		if (informpacer) 
-		       iph->gotecnecho = 1;
-		else 
-		       iph->gotecnecho = 0;
+	// 	if (informpacer) 
+	// 	       iph->gotecnecho = 1;
+	// 	else 
+	// 	       iph->gotecnecho = 0;
         
-		informpacer = 0; 
-		//abd
-	}
+	// 	informpacer = 0; 
+	// 	//abd
+	// }
 	
 	send(p, 0);
-	if(seqno>=(curseq_-2))
-	{
+	// if(seqno>=(curseq_-2))
+	// {
 
-	}
+	// }
 
 	return;
 }

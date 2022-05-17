@@ -3,7 +3,7 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 44} {
+if {$argc != 43} {
     puts "wrong number of arguments $argc"
     exit 0
 }
@@ -64,10 +64,9 @@ set vm_precopy_size [lindex $argv 38]
 set vm_snapshot_size [lindex $argv 39]
 set gw_snapshot_size [lindex $argv 40]
 set parallel_mig [lindex $argv 41]
-set topology_dest_servers [lindex $argv 42]
 
 ### result file
-set flowlog [open [lindex $argv 43] w]
+set flowlog [open [lindex $argv 42] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -95,6 +94,10 @@ puts "switch algorithm $switchAlg"
 puts "DCTCP_K_ $DCTCP_K"
 puts "pktSize(payload) $pktSize Bytes"
 puts "pktSize(include header) [expr $pktSize + 40] Bytes"
+puts "vm precopy size $vm_precopy_size Bytes"
+puts "vm snapshot size $vm_snapshot_size Bytes"
+puts "GW snapshot size $gw_snapshot_size Bytes"
+puts "Number of parallel VMs to migrate $parallel_mig"
 
 puts " "
 
@@ -133,15 +136,16 @@ if {[string compare $sourceAlg "DCTCP-Sack"] == 0} {
     Agent/TCPSink set ecnhat_ true
     Agent/TCP set ecnhat_g_ $DCTCP_g;
     Agent/TCP set lldct_ true
+} elseif {[string compare $sourceAlg "TCP"] == 0} {
+    Agent/TCP set ecnhat_ false
+    Agent/TCPSink set ecnhat_ false
 }
 
 #Shuang
-Agent/TCP/FullTcp set dynamic_dupack_ 1000000; #disable dupack
-Agent/TCP set window_ 1000000
+Agent/TCP/FullTcp set dynamic_dupack_ 0; #disable dupack
+Agent/TCP set window_ 100
 Agent/TCP set windowInit_ $initWindow
 Agent/TCP set rtxcur_init_ $min_rto;
-
-set myAgent "Agent/TCP/FullTcp";
 
 ################# Switch Options ######################
 Queue set limit_ $queueSize
@@ -180,6 +184,8 @@ if {$enableMultiPath == 1} {
     }
 }
 
+set myAgent "Agent/TCP/FullTcp";
+
 ############# Topoplgy #########################
 set S [expr $topology_spt * $topology_tors] ; #number of servers
 set UCap [expr $link_rate * $topology_spt / $topology_spines / $topology_x] ; #uplink rate
@@ -191,7 +197,7 @@ for {set i 0} {$i < $S} {incr i} {
 }
 
 ## destination servers
-for {set i 0} {$i < $topology_dest_servers} {incr i} {
+for {set i 0} {$i < $topology_spt} {incr i} {
     set ds($i) [$ns node]
 }
 
@@ -213,9 +219,8 @@ for {set i 0} {$i < $S} {incr i} {
     $ns duplex-link $s($i) $n($j) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
 }
 
-set t [new MyTopology]
 ## destination-side links between the ToR and servers
-for {set i 0} {$i < $topology_dest_servers} {incr i} {
+for {set i 0} {$i < $topology_spt} {incr i} {
     $ns duplex-link $ds($i) $n($topology_tors) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
 }
 
@@ -236,10 +241,13 @@ MyTopology set vm_snapshot_size_ $vm_snapshot_size
 MyTopology set gw_snapshot_size_ $gw_snapshot_size
 MyTopology set parallel_mig_ $parallel_mig
 
+
+set t [new MyTopology]
+
 $t set_simulator $ns
 
 set child_count 20
-set VM_link_rate 1
+set VM_link_rate 10
 
 for { set x 0} { $x < $child_count} { incr x } {
     set ss($x) [$ns node]
@@ -253,7 +261,7 @@ for { set x 0} { $x < $child_count} { incr x } {
     $t add_node_to_dest $dvm($x)
 }
 
-$t make_tree 1 2 8 
+$t make_tree 1 1 4 
 $t duplicate_tree
 $t print_graph
 
@@ -270,7 +278,7 @@ while {1} {
 
 
 $ns at 0.01 "$t setup_nodes"
-$ns at 1.5 "$t start_migration"
+$ns at 1.2 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -291,7 +299,7 @@ for {set j 1} {$j < $S } {incr j} {
                 $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
                 $agtagr($i,$j) attach-logfile $flowlog
 
-                puts -nonewline "($i,$j) "
+                # puts -nonewline "($i,$j) "
                 #For Poisson/Pareto
                 $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
 
@@ -303,25 +311,26 @@ for {set j 1} {$j < $S } {incr j} {
         }
 }
 
-set init_j 10000
-set j $init_j
-foreach vm $logical_leaves {  
-    for {set i $topology_spt} {$i < [expr 2*$topology_spt] } {incr i} {
-        set agtagr($i,$j) [new Agent_Aggr_pair]
-        $agtagr($i,$j) setup $s($i) $vm "$i $j" $connections_per_pair $init_fid "TCP_pair"
-        $agtagr($i,$j) attach-logfile $flowlog
+# set init_j 10000
+# set j $init_j
+# foreach vm $logical_leaves {  
+#     for {set i $topology_spt} {$i < [expr 2*$topology_spt] } {incr i} {
+#         set agtagr($i,$j) [new Agent_Aggr_pair]
+#         $agtagr($i,$j) setup $s($i) $vm "$i $j" $connections_per_pair $init_fid "TCP_pair"
+#         $agtagr($i,$j) attach-logfile $flowlog
 
-        puts -nonewline "($i,$j) "
-        #For Poisson/Pareto
-        $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*($j-$init_j)] [expr 33*$i+4369*($j-$init_j)]
+#         # puts -nonewline "($i,$j) "
+#         #For Poisson/Pareto
+#         # multiply lambda by 8 to account for 8 VMs on a physical host
+#         $agtagr($i,$j) set_PCarrival_process [expr $lambda*8/($S - 1)] $flow_cdf [expr 17*$i+1244*($j-$init_j)] [expr 33*$i+4369*($j-$init_j)]
 
-        $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
-        $ns at 1 "$agtagr($i,$j) init_schedule"
+#         $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
+#         $ns at 1 "$agtagr($i,$j) init_schedule"
 
-        set init_fid [expr $init_fid + $connections_per_pair];
-    }    
-    set j [expr {$j + 1}]; 
-}
+#         set init_fid [expr $init_fid + $connections_per_pair];
+#     }    
+#     set j [expr {$j + 1}]; 
+# }
 
 puts "Initial agent creation done";flush stdout
 puts "Simulation started!"
