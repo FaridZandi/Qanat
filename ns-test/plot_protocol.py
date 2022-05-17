@@ -1,5 +1,6 @@
 import pandas as pd 
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 from matplotlib.patches import Patch
 from argparse import ArgumentParser
@@ -192,7 +193,7 @@ df["start_buf"] = df["start_buf"] - min_time
 max_time -= min_time
 min_time = 0
 
-for i in range(3): 
+for i in range(1): 
 
     if i == 0: 
         half_df = df[df["which_tree"] == 0]
@@ -222,9 +223,14 @@ for i in range(3):
         Patch(facecolor='orange', edgecolor='r', label='VNF Tunneling'),
     ]
 
+    font = {'family' : 'DejaVu Sans',
+            'size'   : 20}
+
+    matplotlib.rc('font', **font)
+
     fig, ax = plt.subplots(1, figsize=(plot_height, plot_height))
     
-    ax.set_xlim(min_time, 996)
+    ax.set_xlim(min_time, max_time)
 
     ax.barh(vm_df.address, vm_df.len_pre, left=vm_df.start_pre, color="lime")
     ax.barh(vm_df.address, vm_df.len_mig, left=vm_df.start_mig, color="green")
@@ -232,7 +238,7 @@ for i in range(3):
     ax.barh(gw_df.address, gw_df.len_pre, left=gw_df.start_pre, color="orange")
     ax.barh(half_df.address, half_df.len_buf, left=half_df.start_buf, color="gray")
     
-    ax.legend(handles=legend_elements, loc='lower right')
+    # ax.legend(handles=legend_elements, loc='lower right', bbox_to_anchor=(1.45, 0.75))
     # ax.legend(handles=legend_elements ,loc='center right', bbox_to_anchor=(1, 1))
 
     plt.xlabel("Simulation Time (ms)")
@@ -245,5 +251,5 @@ for i in range(3):
     if i == 2: 
         name = args.output + "_all"
 
-    plt.savefig(name+".png", dpi=300)
-    print("MAX time:", max_time)
+    plt.savefig(name+".png", dpi=300, bbox_inches='tight')
+    print("MAX time:", max_time )

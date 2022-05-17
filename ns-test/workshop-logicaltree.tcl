@@ -118,15 +118,15 @@ $ns connect $src2 $sink2
 $sink2 listen
 
  
-$t make_tree 1 2 2 2
+# $t make_tree 1 2 2 2
+# $t make_tree 1 1 1 8
+$t make_tree 4 1 1 1
+
 $t duplicate_tree
 $t print_graph
 
 $ns at 1 "$t setup_nodes"
 $ns at 2 "$t start_migration"
-
-# $ns at 1.99 "$src_app send 1000000000"
-# $ns at 1.99 "$src_app2 send 30000000000"
 
 $ns at $sim_end "finish"
 $ns run

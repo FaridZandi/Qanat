@@ -62,7 +62,7 @@ void OrchestratorV2::start_vm_precopy(Node* vm){
     log_event("start vm precopy", vm);
 
     initiate_data_transfer(
-        vm, get_random_transfer_size(MyTopology::vm_precopy_size, 50), 
+        vm, get_random_transfer_size(MyTopology::vm_precopy_size, 10), 
         [](Node* n){
             BaseOrchestrator::instance().vm_precopy_finished(n);
         }
@@ -95,10 +95,10 @@ void OrchestratorV2::start_vm_migration(Node* vm){
     
     log_event("start vm migration", vm);
 
-    std::cout << "MyTopology::vm_snapshot_size: " << MyTopology::vm_snapshot_size << std::endl; 
+    // std::cout << "MyTopology::vm_snapshot_size: " << MyTopology::vm_snapshot_size << std::endl; 
 
     initiate_data_transfer(
-        vm, get_random_transfer_size(MyTopology::vm_snapshot_size, 50), 
+        vm, get_random_transfer_size(MyTopology::vm_snapshot_size, 10), 
         [](Node* n){
             BaseOrchestrator::instance().vm_migration_finished(n);
         }
@@ -144,7 +144,7 @@ void OrchestratorV2::start_gw_snapshot(Node* gw){
     log_event("start gw migration", gw);
 
     initiate_data_transfer(
-        gw, get_random_transfer_size(MyTopology::gw_snapshot_size, 50), 
+        gw, get_random_transfer_size(MyTopology::gw_snapshot_size, 10), 
         [](Node* n){
             BaseOrchestrator::instance().gw_snapshot_sent(n);
         }

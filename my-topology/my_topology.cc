@@ -554,7 +554,7 @@ void MyTopology::print_tree_node(std::string prefix,
     if(this_node != nullptr){
         std::cout << prefix;
         std::cout << (isLast ? "└──────" : "├──────");
-        std::cout << setw(2) << this_node->address(); 
+        std::cout << setw(2) << data[this_node].uid; 
         if (print_state){
             std::cout << "(";
             std::cout << orch.get_mig_state_string(this_node);
