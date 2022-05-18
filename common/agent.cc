@@ -477,6 +477,7 @@ Agent::initpkt(Packet* p) const
 	iph->traffic_class = 1; // Sepehr
 	iph->state_dst = -1; // Farid 
 	iph->prev_hop = -1; // Farid 
+	iph->is_high_prio = false; // Sepehr
 
 	//DEBUG
 	//if (dst_ != -1)

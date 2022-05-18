@@ -930,7 +930,7 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	iph->traffic_class = this->traffic_class_;
 	// Sepehr: if not background traffic, set it to high priority #FIXME
 	if (iph->traffic_class == 2) {
-		iph->prio_ = 15;
+		iph->is_high_prio = true;
 	}
 
 	if (this->traffic_class_ == 1){

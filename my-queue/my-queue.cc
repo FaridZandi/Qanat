@@ -39,7 +39,7 @@ void MyQueue::enque(Packet* p) {
 	// 	drop(p);
 	// }
 
-	if (iph->prio_ == 15){
+	if (iph->is_high_prio){
 		if (q1_->length() >= qlim_) {
 			std::stringstream command; 
 			// command << "puts \"Queue 1 Full Dropping\"\n " << std::endl;

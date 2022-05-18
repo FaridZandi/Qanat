@@ -257,7 +257,11 @@ void MigrationManager::add_to_path(Packet* p, int addr){
 
 void MigrationManager::set_prio(Packet* p, int prio){
 	hdr_ip* iph = hdr_ip::access(p); 
-	iph->prio_ = prio; 
+	if (prio == 1){
+		iph->is_high_prio = true;
+	} else {
+		iph->is_high_prio = false; 
+	}
 }
 
 
@@ -297,7 +301,7 @@ bool MigrationManager::tunnel_packet_in(tunnel_data td,
 
 	convert_path(p);
 	add_to_path(p, td.out->address());
-	set_prio(p, 15); 
+	set_prio(p, 1); 
 
     return true; 	 
 }

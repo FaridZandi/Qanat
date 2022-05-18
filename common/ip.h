@@ -109,6 +109,7 @@ struct hdr_ip {
 	int gw_path[10];   // Farid
 	int gw_path_pointer; // Farid
 	int traffic_class; // Sepehr
+	bool is_high_prio; // Sepehr
 	
 	// For State Migration
 	int32_t state_dst; // Farid 
