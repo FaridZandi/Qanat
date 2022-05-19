@@ -178,8 +178,9 @@ TCP_pair instproc start { nr_bytes } {
 	set flow_gen [expr $flow_gen + 1]
     }
 
+    $self setfid $flow_gen 
     if { $debug_mode == 1 } {
-	puts "stats: [$ns now] start grp $group_id fid $id $nr_bytes bytes"
+	puts "stats: [$ns now] start grp $group_id fid $flow_gen $nr_bytes bytes"
     }
 
     if { [info exists aggr_ctrl] } {
