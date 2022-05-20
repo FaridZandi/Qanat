@@ -458,14 +458,18 @@ void
 FullTcpAgent::bufferempty()
 {
 
-	printf("flow fid= %d is done\n",fid_);
+	// printf("flow fid= %d is done\n",fid_);
 	/* if the C++ callback is not set, it is not important for us to 
 	   get the notification. 
 	*/
 	if (is_finish_callback_set){
 		finish_notify_callback(node);
 	} else {
-		std::cout << "[" <<  Scheduler::instance().clock() << "]" << " Buffer empty called" << std::endl;
+		std::cout << "[" <<  Scheduler::instance().clock() << "]";
+		std::cout << " flow_end " << fid_ ;
+		std::cout << " retrans " << retrans_count;
+		std::cout << std::endl;
+
 	}
    	signal_on_empty_=FALSE;
 	Tcl::instance().evalf("%s done_data", this->name());
@@ -928,6 +932,8 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	// change the traffic class for determining whether 
 	// it should be bufferred or not
 	iph->traffic_class = this->traffic_class_;
+	iph->is_tcp_traffic = true; 
+	
 	// Sepehr: if not background traffic, set it to high priority #FIXME
 	if (iph->traffic_class == 2) {
 		iph->is_high_prio = true;
@@ -1706,7 +1712,8 @@ FullTcpAgent::fast_retransmit(int seq)
 {
 	// we are now going to fast-retransmit and willtrace that event
 	trace_event("FAST_RETX");
-	printf("%f: fid %d did a fast retransmit - dupacks = %d prio:%d state:%d\n", now(), fid_, (int)dupacks_, set_prio(startseq_,curseq_));
+	retrans_count ++; 
+	// printf("%f: fid %d did a fast retransmit - dupacks = %d prio:%d state:%d\n", now(), fid_, (int)dupacks_, set_prio(startseq_,curseq_));
 	recover_ = maxseq_;	// recovery target
 	last_cwnd_action_ = CWND_ACTION_DUPACK;
 	return(foutput(seq, REASON_DUPACK));	// send one pkt

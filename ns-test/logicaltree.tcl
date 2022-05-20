@@ -2,8 +2,8 @@ set ns [new Simulator]
 set sim_end 100
 
 
-# $ns rtproto DV
-# Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
+$ns rtproto DV
+Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
 Node set multiPath_ 1
 Agent/TCP/FullTcp set segsize_ 1400
 
@@ -24,8 +24,8 @@ set BW [lindex $argv 1]
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
-MyTopology set vm_precopy_size_ 100000000
-MyTopology set vm_snapshot_size_ 10000000
+MyTopology set vm_precopy_size_ 1000000
+MyTopology set vm_snapshot_size_ 1000000
 MyTopology set gw_snapshot_size_ 1000000
 
 MyTopology set parallel_mig_ $parallel_mig
@@ -61,8 +61,6 @@ for { set x [expr $child_count+2]} { $x < [expr 2*$child_count+2]} { incr x } {
     $t add_node_to_source $n($x)
 }
 
-
-
 # make agents 
 set src [new Agent/TCP/FullTcp]
 set sink [new Agent/TCP/FullTcp]
@@ -97,8 +95,8 @@ $cbr0 attach-agent $udp0
 set null0 [new Agent/Null]
 $ns attach-agent $n(197) $null0
 $ns connect $udp0 $null0
-$ns at 1.9 "$cbr0 start"
-$ns at 10 "$cbr0 stop"
+# $ns at 1.9 "$cbr0 start"
+# $ns at 10 "$cbr0 stop"
 
 
 

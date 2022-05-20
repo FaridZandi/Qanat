@@ -417,9 +417,13 @@ void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
     // std::cout << "node->address() " << node->address();
     // std::cout << std::endl;  
 
+    if(not iph->is_tcp_traffic){
+        return; 
+    }
+    
     if(iph->dst_.addr_ == node->address() or
        iph->src_.addr_ == node->address()){
-
+        
         auto& orch = BaseOrchestrator::instance();
 
         if (orch.get_mig_state(node) == MigState::InMig) {

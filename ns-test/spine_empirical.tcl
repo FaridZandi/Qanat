@@ -10,7 +10,7 @@ if {$argc != 43} {
 
 
 set tf [open out.tr w]
-#$ns trace-all $tf
+$ns trace-all $tf
 
 set sim_end [lindex $argv 0]
 set link_rate [lindex $argv 1]
@@ -261,24 +261,24 @@ for { set x 0} { $x < $child_count} { incr x } {
     $t add_node_to_dest $dvm($x)
 }
 
-$t make_tree 1 1 4 
-$t duplicate_tree
-$t print_graph
+$t make_tree 1 4
+# $t duplicate_tree
+# $t print_graph
 
 set logical_leaves {}
-set i 0; 
+set logical_leaves_counter 0; 
 while {1} {
-    set this_leaf [$t get_logical_leaf $i]
+    set this_leaf [$t get_logical_leaf $logical_leaves_counter]
     if {$this_leaf == -1} {
         break 
     } 
     lappend logical_leaves $this_leaf;
-    set i [expr {$i + 1}];
+    set logical_leaves_counter [expr {$logical_leaves_counter + 1}];
 }
 
 
 $ns at 0.01 "$t setup_nodes"
-$ns at 1.2 "$t start_migration"
+# $ns at 1 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -292,24 +292,49 @@ set flow_gen 0
 set flow_fin 0
 
 set init_fid 0
-for {set j 1} {$j < $S } {incr j} {
-    for {set i 1} {$i < $S } {incr i} {
+# for {set j 1} {$j < $S } {incr j} {
+#     for {set i 1} {$i < $S } {incr i} {
+#         if {$i != $j} {
+#                 set agtagr($i,$j) [new Agent_Aggr_pair]
+#                 $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
+#                 $agtagr($i,$j) attach-logfile $flowlog
+
+#                 # puts -nonewline "($i,$j) "
+#                 #For Poisson/Pareto
+#                 $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+
+#                 $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
+#                 $ns at 1 "$agtagr($i,$j) init_schedule"
+
+#                 set init_fid [expr $init_fid + $connections_per_pair];
+#             }
+#         }
+# }
+
+# set init_fid 0
+set j 0 
+foreach leaf $logical_leaves {
+    puts $leaf
+    for {set i 4} {$i < 8} {incr i} {
         if {$i != $j} {
-                set agtagr($i,$j) [new Agent_Aggr_pair]
-                $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair"
-                $agtagr($i,$j) attach-logfile $flowlog
+            set agtagr($i,$j) [new Agent_Aggr_pair]
+            $agtagr($i,$j) setup $s($i) $leaf "$i $j" $connections_per_pair $init_fid "TCP_pair"
+            $agtagr($i,$j) attach-logfile $flowlog
 
-                # puts -nonewline "($i,$j) "
-                #For Poisson/Pareto
-                $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+            # puts -nonewline "($i,$j) "
+            #For Poisson/Pareto
+            $agtagr($i,$j) set_PCarrival_process [expr $lambda/($S - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
 
-                $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
-                $ns at 1 "$agtagr($i,$j) init_schedule"
+            $ns at 0.1 "$agtagr($i,$j) warmup 0.5 5"
+            $ns at 1 "$agtagr($i,$j) init_schedule"
 
-                set init_fid [expr $init_fid + $connections_per_pair];
-            }
+            set init_fid [expr $init_fid + $connections_per_pair];
         }
+    }
+    set j [expr {$j + 1}];
+    # break 
 }
+
 
 # set init_j 10000
 # set j $init_j
@@ -338,7 +363,7 @@ puts "Simulation started!"
 proc finish {} {
         puts "simulation finished"
         global ns tf
-        # $ns flush-trace
+        $ns flush-trace
         close $tf
         exit 0
 }

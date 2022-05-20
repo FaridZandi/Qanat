@@ -20,14 +20,14 @@ DEBUG_VALGRIND = False
 vm_snapshot_size = 10000000
 gw_snapshot_size = 1000000
 
-vm_precopy_size_arr = [100000, 1000000, 10000000, 100000000]
-parallel_mig_arr = [1,2,4,8,16]
-load_arr = [0.3, 0.5, 0.7, 0.9]
-oversub_arr = [1.0, 4.0, 16.0]
-sourceAlg_arr = ['DCTCP-Sack', 'TCP']
+vm_precopy_size_arr = [1000000]#[100000, 1000000, 10000000, 100000000]
+parallel_mig_arr = [2]#[1,2,4,8,16]
+load_arr = [0.5] #[0.3, 0.5, 0.7, 0.9]
+oversub_arr = [2.0] #[1.0, 4.0, 16.0]
+sourceAlg_arr = ['TCP']#['DCTCP-Sack', 'TCP']
 
 
-sim_end = 1200000
+sim_end = 100
 link_rate = 10
 mean_link_delay = 0.000005
 host_delay = 0.000010
@@ -64,9 +64,9 @@ pias_thresh_4 = 1989*1460
 pias_thresh_5 = 1999*1460
 pias_thresh_6 = 2001*1460
 
-topology_spt = 16
-topology_tors = 9
-topology_spines = 4
+topology_spt = 4
+topology_tors = 2
+topology_spines = 1
 
 ## sample debug method:
 # run: gdb ns

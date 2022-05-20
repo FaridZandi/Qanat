@@ -87,7 +87,7 @@ public:
         	delack_timer_(this), flags_(0),
         	state_(TCPS_CLOSED), recent_ce_(FALSE),
 		  last_state_(TCPS_CLOSED), rq_(rcv_nxt_), last_ack_sent_(-1),
-		  informpacer(0),m_bPFC(0),traffic_class_(1) {}
+		  informpacer(0),m_bPFC(0),traffic_class_(1), retrans_count(0) {}
 		// Mohammad: added informpacer
 
 	~FullTcpAgent() { cancel_timers(); rq_.clear(); }
@@ -103,7 +103,8 @@ public:
 
 	virtual void set_traffic_class(int);
 	virtual int get_traffic_class(void);
-	
+
+	int retrans_count; 
 protected:
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
