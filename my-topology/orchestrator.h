@@ -46,7 +46,8 @@ public:
     virtual void gw_received_last_packet(Node* node){}; 
     virtual void setup_nodes(); 
     virtual void start_background_traffic(){};
-    
+    virtual void migration_finished(); 
+
     MigState get_mig_state(Node* node);  
     std::string get_mig_state_string(Node* node);  
 protected: 

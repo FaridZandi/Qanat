@@ -21,7 +21,7 @@ const std::string QUEUE_T = "DropTail";
 class Tcl;
 class TclObject;
 class MigrationManager; 
-
+class StatRecorder;
 
 enum path_mode{
     PATH_MODE_SENDER,
@@ -51,6 +51,8 @@ public:
      */
     void process_packet(Packet* p, Handler*h, Node* node);
 
+    void collect_recurring_stats();
+    void print_stats();
     void setup_nth_layer_tunnel(Node* vm, int n); 
     Node* get_nth_parent(Node* node, int n);
     TopoNode& get_data(Node* node); 
@@ -112,6 +114,8 @@ public:
 
     bool is_migration_finished;
     
+    MigrationManager* mig_manager_; 
+
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
@@ -147,22 +151,27 @@ private:
 
     std::string sim_ptr; 
 	  
-    
-
     static MyTopology* instance_;
     static int toponode_uid_counter; 
-    MigrationManager* mig_manager_; 
     
-    
-
-    // Useless functions 
+    StatRecorder* stat_recorder; 
 
     void print_tree_node(std::string prefix, Node* this_node, bool isLast, bool print_state);
 
     void print_nodes();
 
+};
 
-    //New stuff 
+
+class StatRecorder : public Handler{
+public: 
+    StatRecorder(); 
+    virtual ~StatRecorder();
+
+    void start();
+    virtual void handle(Event* event);
+
+    double interval; 
 
 };
 

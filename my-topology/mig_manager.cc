@@ -73,6 +73,9 @@ void MigrationManager::add_tunnel(tunnel_data tunnel){
             return; 
         }
 	}
+	std::cout << "Not enough space to store the tunnels!"; 
+	std::cout << "Exiting!";
+	exit(0); 
 }
 
 void MigrationManager::log_packet(Packet* p){
@@ -201,7 +204,6 @@ bool MigrationManager::bypass_processing(Packet* p, Handler* h, Node* n){
 
 
 bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
-	
 	if (should_ignore(p)){
 		return true; 
 	}

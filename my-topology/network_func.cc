@@ -180,6 +180,23 @@ void StatefulNF::record_state(std::string key, Packet* p){
 }
 
 
+void StatefulNF::update_highest_seq(Packet* p){
+    hdr_ip* iph = hdr_ip::access(p); 
+    hdr_tcp* tcph = hdr_tcp::access(p);
+
+    auto fid = iph->fid_; 
+    auto seqno = tcph->seqno();
+
+    if(highest_seq.find(fid) == highest_seq.end()){
+        highest_seq[fid] = 0; 
+        ooo_packets[fid] = 0; 
+    }
+
+    if(seqno < highest_seq[fid]){
+        ooo_packets[fid] ++; 
+    }
+}
+
 bool StatefulNF::is_stateful(){
     return true;
 }
@@ -219,6 +236,8 @@ bool Monitor::recv(Packet* p, Handler* h){
 
     record_state(five_tuple, p);
 
+    update_highest_seq(p); 
+
     return true; 
 }
 
@@ -233,9 +252,13 @@ std::string Monitor::get_type(){
 void Monitor::print_info(){
     std::cout << "monitor on node " ;
     std::cout << toponode_->node->address();
-    std::cout << ", current count is: "; 
+    std::cout << ", PCount is: "; 
     std::cout << state["packet_count"]; 
     std::cout << std::endl;  
+
+    for (auto flow : ooo_packets){
+        std::cout << flow.first << ": " << flow.second << std::endl; 
+    }
 }
 
 
@@ -342,7 +365,7 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
 
     if (should_ignore(p)){
         return true;
-    }
+    }   
 
     if(buffering){
         auto& topo = MyTopology::instance();
@@ -407,6 +430,13 @@ std::string PriorityBuffer::get_type(){
     return "pribuf"; 
 }
 
+void PriorityBuffer::record_buffer_size(){
+    auto now = Scheduler::instance().clock();
+    pq1_sizes[now] = pq1->length(); 
+    pq2_sizes[now] = pq2->length(); 
+}
+
+
 void PriorityBuffer::print_info(){
     std::cout << "priority buffer on node " ;
     std::cout << this->toponode_->node->address();
@@ -414,6 +444,13 @@ void PriorityBuffer::print_info(){
     std::cout << " with size "; 
     std::cout << this->size_;
     std::cout << std::endl;  
+
+
+    for (auto flow : pq1_sizes){
+        auto key = flow.first;
+        std::cout << key << ": " << pq1_sizes[key] << " " << pq2_sizes[key] << std::endl; 
+    }
+
 }
 
 
@@ -545,8 +582,9 @@ bool TunnelManagerNF::recv(Packet* p, Handler* h){
 
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 
-    
-    return mig_manager.pre_classify(p, h, toponode_->node);
+
+    auto ret = mig_manager.pre_classify(p, h, toponode_->node);
+    return ret;
 }
 
 std::string TunnelManagerNF::get_type(){

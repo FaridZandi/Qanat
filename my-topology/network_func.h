@@ -115,9 +115,13 @@ public:
 
     void print_state();
 
-
+    void update_highest_seq(Packet* p); 
+    
 protected: 
     std::map<std::string, std::string> state; 
+    
+    std::map<int, int> highest_seq;
+    std::map<int, int> ooo_packets;
 };
 
 
@@ -189,11 +193,16 @@ public:
 
     virtual void print_info(); 
 
+    virtual void record_buffer_size(); 
 protected:
     int size_; 
     bool buffering; 
+
     PacketQueue* pq1;
     PacketQueue* pq2;
+
+    std::map<double, int> pq1_sizes;
+    std::map<double, int> pq2_sizes;
 };
 
 

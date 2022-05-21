@@ -71,6 +71,14 @@ void BaseOrchestrator::setup_nodes(){
     // }
 }
 
+void BaseOrchestrator::migration_finished(){
+    auto& topo = MyTopology::instance();   
+    topo.is_migration_finished = true;
+    topo.get_path(NULL, PATH_MODE_SENDER, true);
+
+    topo.print_stats();
+
+}
 
 void BaseOrchestrator::initiate_data_transfer(
                             Node* node, int size, 
@@ -92,10 +100,7 @@ void BaseOrchestrator::tunnel_subtree_tru_parent(Node* node){
     auto& topo = MyTopology::instance();
 
     if (topo.get_mig_root() == node){
-        topo.is_migration_finished = true;
-
-        // to clear the cache 
-        topo.get_path(NULL, PATH_MODE_SENDER, true); 
+        //nothing  
     } else {
         // setup tunnels for all the nodes in one layer up. 
         int node_layer = topo.get_data(node).layer_from_bottom;

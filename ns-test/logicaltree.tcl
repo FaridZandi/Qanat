@@ -1,9 +1,9 @@
 set ns [new Simulator]
-set sim_end 100
+set sim_end 3
 
 
-$ns rtproto DV
-Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
+# $ns rtproto DV
+# Agent/rtProto/DV set advertInterval [expr 2*$sim_end]
 Node set multiPath_ 1
 Agent/TCP/FullTcp set segsize_ 1400
 
@@ -12,8 +12,9 @@ $ns trace-all $tf
 
 proc finish {} {
         puts "simulation finished"
-        global ns tf
+        global ns tf t
         # $ns flush-trace
+        $t print_stats
         close $tf
         exit 0
 }
@@ -39,7 +40,7 @@ $t set_simulator $ns
 set LAT 5us
 # set QTYPE DropTail 
 set QTYPE MyQueue
-set child_count 100
+set child_count 5
 
 Queue set limit_ 200
 
@@ -82,19 +83,19 @@ set src_app2 [new Application]
 set sink_app2 [new Application]
 
 # attach agents to nodes
-$ns attach-agent $n(50) $src
-$ns attach-agent $n(197) $sink
-$ns attach-agent $n(149) $src2
-$ns attach-agent $n(197) $sink2
+$ns attach-agent $n(8) $src
+$ns attach-agent $n(9) $sink
+$ns attach-agent $n(7) $src2
+$ns attach-agent $n(9) $sink2
 
-$ns attach-agent $n(50) $udp0
-set cbr0 [new Application/Traffic/CBR]
-$cbr0 set packetSize_ 1000
-$cbr0 set interval_ 0.0000005
-$cbr0 attach-agent $udp0
-set null0 [new Agent/Null]
-$ns attach-agent $n(197) $null0
-$ns connect $udp0 $null0
+# $ns attach-agent $n(50) $udp0
+# set cbr0 [new Application/Traffic/CBR]
+# $cbr0 set packetSize_ 1000
+# $cbr0 set interval_ 0.0000005
+# $cbr0 attach-agent $udp0
+# set null0 [new Agent/Null]
+# $ns attach-agent $n(197) $null0
+# $ns connect $udp0 $null0
 # $ns at 1.9 "$cbr0 start"
 # $ns at 10 "$cbr0 stop"
 
@@ -119,15 +120,20 @@ $sink2 listen
 # $t make_tree 2 2 2
 # $t make_tree 3 2 1
 # $t make_tree 3 1 3 1 3
-$t make_tree 4 1 1 1
+# $t make_tree 4 1 1 1
+$t make_tree 1 1
 $t duplicate_tree
 $t print_graph
 
 $ns at 1 "$t setup_nodes"
 $ns at 2 "$t start_migration"
 
-# $ns at 1.9 "$src_app send 300000000"
-# $ns at 1.9 "$src_app2 send 300000000"
+$ns at 1.999 "$src_app send 30000000"
+$ns at 1.9 "$src_app2 send 3000000"
+
 
 $ns at $sim_end "finish"
 $ns run
+
+## run logicaltree.tcl 1 10G 
+## break network_func.cc:572

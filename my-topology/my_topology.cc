@@ -45,10 +45,15 @@ MyTopology::MyTopology(){
     instance_ = this; 
 
     mig_root = nullptr; 
+    stat_recorder = nullptr; 
 }
 
 MyTopology::~MyTopology(){
 	delete mig_manager_; 
+
+    if (stat_recorder != nullptr){
+        delete stat_recorder; 
+    }
 }
 
 MigrationManager& MyTopology::mig_manager(){
@@ -99,6 +104,11 @@ int MyTopology::command(int argc, const char*const* argv){
         } else if (strcmp(argv[1], "start_migration") == 0){
             auto& orch = BaseOrchestrator::instance();
             orch.start_migration();
+
+            stat_recorder = new StatRecorder(); 
+            stat_recorder->interval = 0.0001; 
+            stat_recorder->start(); 
+
             return TCL_OK; 
 
         } else if (strcmp(argv[1], "print_nodes") == 0) {
@@ -112,6 +122,10 @@ int MyTopology::command(int argc, const char*const* argv){
         } else if (strcmp(argv[1], "duplicate_tree") == 0) {
             int n1 = data[mig_root].uid; 
             duplicate_tree(n1);
+            return TCL_OK; 
+
+        } else if (strcmp(argv[1], "print_stats") == 0) {
+            print_stats();
             return TCL_OK; 
         } 
     } else if (argc == 3) {
@@ -558,7 +572,10 @@ void MyTopology::print_tree_node(std::string prefix,
     if(this_node != nullptr){
         std::cout << prefix;
         std::cout << (isLast ? "└──────" : "├──────");
-        std::cout << setw(2) << data[this_node].uid; 
+        std::cout << this_node->address(); 
+        std::cout << "("; 
+        std::cout << data[this_node].uid; 
+        std::cout << ")"; 
         if (print_state){
             std::cout << "(";
             std::cout << orch.get_mig_state_string(this_node);
@@ -619,6 +636,39 @@ std::vector<Node*> MyTopology::get_all_nodes(Node* root){
     return get_subtree_nodes(root, true, true);
 }
 
+void MyTopology::collect_recurring_stats(){
+    // std::cout << "MyTopology::collect_recurring_stats" << std::endl; 
+    auto mig_root_peer = get_peer(mig_root);
+
+    for(auto& node: get_internals(mig_root_peer)){
+        auto pb = (PriorityBuffer*)(data[node].get_nf("pribuf"));
+        // std::cout << "node: " << node << std::endl; 
+        pb->record_buffer_size(); 
+    } 
+}
+
+
+void MyTopology::print_stats(){
+
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << "--------------Stats---------------" << std::endl;
+    std::cout << "----------------------------------" << std::endl;
+
+    auto mig_root_peer = get_peer(mig_root);
+
+    for(auto& node: get_internals(mig_root_peer)){
+        auto m = (Monitor*)(data[node].get_nf("monitr"));
+        m->print_info(); 
+
+        auto pb = (PriorityBuffer*)(data[node].get_nf("pribuf"));
+        pb->print_info();
+    }   
+
+    std::cout << "----------------------------------" << std::endl;
+    std::cout << "----------------------------------" << std::endl;
+}
+
+
 
 void MyTopology::setup_nth_layer_tunnel(Node* node, int layer){
     auto peer = get_peer(node); 
@@ -636,9 +686,46 @@ void MyTopology::setup_nth_layer_tunnel(Node* node, int layer){
         std::cout << std::endl;
     }
 
-
     mig_manager().activate_tunnel(
         nth_parent, nth_parent_peer,  
         node, peer
     );
 };
+
+
+
+/**********************************************************
+ * StatRecorder Implementation                            *  
+ *********************************************************/
+
+
+StatRecorder::StatRecorder(){
+
+}
+
+StatRecorder::~StatRecorder(){
+    
+}
+
+void StatRecorder::start(){
+    auto& topo = MyTopology::instance(); 
+    topo.collect_recurring_stats(); 
+
+    Event* e = new Event; 
+    auto& sched = Scheduler::instance();
+    sched.schedule(this, e, interval);
+    
+}
+
+void StatRecorder::handle(Event* event){
+    auto& topo = MyTopology::instance(); 
+    topo.collect_recurring_stats(); 
+
+    if(topo.is_migration_finished){
+        return; 
+    } else {
+        Event* e = new Event; 
+        auto& sched = Scheduler::instance();
+        sched.schedule(this, e, interval);
+    }
+}

@@ -468,6 +468,8 @@ FullTcpAgent::bufferempty()
 		std::cout << "[" <<  Scheduler::instance().clock() << "]";
 		std::cout << " flow_end " << fid_ ;
 		std::cout << " retrans " << retrans_count;
+		std::cout << " src " << this->here_.addr_;
+		std::cout << " dst " << this->dst_.addr_;
 		std::cout << std::endl;
 
 	}

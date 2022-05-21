@@ -34,7 +34,7 @@ with open(args.filename) as f:
             line = line.strip()
 
             time_brak = line.split(" ")[0]
-            time = float(time_brak[1:-1])
+            time = round(float(time_brak[1:-1]),6)
 
             event = line.split(" ")[1]
 
@@ -45,16 +45,20 @@ with open(args.filename) as f:
                 flows[fid] = {
                     "start": time, 
                     "size": size,
+                    "src": 0,
+                    "dst": 0,
                     "end": 0, 
-                    "retransmissions": 0, 
+                    "ret": 0, 
                     "fct": 0,
                 }
+
             elif event == "flow_end":
                 fid = int(line.split(" ")[2])
                 flows[fid]["end"] = time    
-                retransmissions = int(line.split(" ")[4])
-                flows[fid]["retransmissions"] = retransmissions    
-                flows[fid]["fct"] = flows[fid]["end"] - flows[fid]["start"]    
+                flows[fid]["ret"] = int(line.split(" ")[4])    
+                flows[fid]["src"] = int(line.split(" ")[6])
+                flows[fid]["dst"] = int(line.split(" ")[8])
+                flows[fid]["fct"] = round(flows[fid]["end"] - flows[fid]["start"], 6) 
 
 
     except Exception as e:

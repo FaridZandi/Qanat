@@ -10,7 +10,7 @@ if {$argc != 43} {
 
 
 set tf [open out.tr w]
-$ns trace-all $tf
+# $ns trace-all $tf
 
 set sim_end [lindex $argv 0]
 set link_rate [lindex $argv 1]
@@ -261,9 +261,9 @@ for { set x 0} { $x < $child_count} { incr x } {
     $t add_node_to_dest $dvm($x)
 }
 
-$t make_tree 1 4
-# $t duplicate_tree
-# $t print_graph
+$t make_tree 1 18
+$t duplicate_tree
+$t print_graph
 
 set logical_leaves {}
 set logical_leaves_counter 0; 
@@ -278,7 +278,7 @@ while {1} {
 
 
 $ns at 0.01 "$t setup_nodes"
-# $ns at 1 "$t start_migration"
+$ns at 1 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -315,7 +315,7 @@ set init_fid 0
 set j 0 
 foreach leaf $logical_leaves {
     puts $leaf
-    for {set i 4} {$i < 8} {incr i} {
+    for {set i 40} {$i < 80} {incr i} {
         if {$i != $j} {
             set agtagr($i,$j) [new Agent_Aggr_pair]
             $agtagr($i,$j) setup $s($i) $leaf "$i $j" $connections_per_pair $init_fid "TCP_pair"
@@ -362,8 +362,9 @@ puts "Simulation started!"
 
 proc finish {} {
         puts "simulation finished"
-        global ns tf
-        $ns flush-trace
+        global ns tf t
+        $t print_stats
+        # $ns flush-trace
         close $tf
         exit 0
 }

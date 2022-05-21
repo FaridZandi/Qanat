@@ -16,6 +16,7 @@ def worker():
 q = Queue.Queue()
 
 DEBUG_VALGRIND = False
+DEBUG_GDB = False
 
 vm_snapshot_size = 10000000
 gw_snapshot_size = 1000000
@@ -64,7 +65,7 @@ pias_thresh_4 = 1989*1460
 pias_thresh_5 = 1999*1460
 pias_thresh_6 = 2001*1460
 
-topology_spt = 4
+topology_spt = 40
 topology_tors = 2
 topology_spines = 1
 
@@ -75,6 +76,8 @@ topology_spines = 1
 ns_path = 'ns'
 if DEBUG_VALGRIND:
 	ns_path = 'valgrind -s --track-origins=yes --leak-check=full ns'
+if DEBUG_GDB:
+	ns_path = 'gdb -ex "run" --args ns'
 
 sim_script = 'spine_empirical.tcl'
 

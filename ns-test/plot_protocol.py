@@ -50,6 +50,9 @@ def process_line(line):
 
             address_str = s[2]
             address = address_str[1:-1]
+            
+            if address == 0 or address == "0":
+                return 
 
             if address == "":
                 return 
@@ -155,7 +158,6 @@ df = pd.DataFrame(columns=[
 
 
 for address in times: 
-
     uid = int(address.split("-")[2])
 
     if uid < 10:
