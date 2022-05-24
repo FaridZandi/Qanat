@@ -40,7 +40,9 @@ public:
     virtual void start_migration(){};
     virtual void vm_precopy_finished(Node* node){};
     virtual void vm_migration_finished(Node* node){};
-    virtual void gw_snapshot_sent(Node* node){}; 
+    virtual void gw_snapshot_send_ack_from_peer(Node* node){};
+    virtual void gw_start_processing_buffer_on_peer(Node* node){};
+    virtual void gw_snapshot_ack_rcvd(Node* node){};
     virtual void gw_diff_sent(Node* node){}; 
     virtual void gw_sent_last_packet(Node* node1, Node* node2){}; 
     virtual void gw_received_last_packet(Node* node){}; 
