@@ -63,7 +63,7 @@ public:
     std::vector<int> get_path(Node* n1, path_mode pm, bool clear_cache = false);
     Node* get_mig_root(); 
     std::vector<Node*>& get_used_nodes();
-
+    
     std::vector<Node*> get_leaves(Node* root); 
     std::vector<Node*> get_internals(Node* root); 
     std::vector<Node*> get_all_nodes(Node* root); 
@@ -163,16 +163,26 @@ private:
 };
 
 
+
+struct Stat {
+    int high_prio_buf; 
+    int low_prio_buf; 
+    int packet_count; 
+};
+
 class StatRecorder : public Handler{
 public: 
     StatRecorder(); 
     virtual ~StatRecorder();
 
+    void print_stats(); 
+    void record_stats(); 
     void start();
     virtual void handle(Event* event);
 
     double interval; 
 
+    std::map<int, std::map<double, Stat> > stats; 
 };
 
 #endif

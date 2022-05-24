@@ -76,7 +76,7 @@ void BaseOrchestrator::migration_finished(){
     topo.is_migration_finished = true;
     topo.get_path(NULL, PATH_MODE_SENDER, true);
 
-    topo.print_stats();
+    // topo.print_stats();
 
 }
 

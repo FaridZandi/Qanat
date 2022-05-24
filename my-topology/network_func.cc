@@ -249,6 +249,10 @@ std::string Monitor::get_type(){
     return "monitr"; 
 }
 
+int Monitor::get_packet_count(){
+    return std::stoi(state["packet_count"]);
+}
+
 void Monitor::print_info(){
     std::cout << "monitor on node " ;
     std::cout << toponode_->node->address();

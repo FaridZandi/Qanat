@@ -139,6 +139,8 @@ public:
     virtual std::string get_type(); 
     
     virtual void print_info();  
+
+    int get_packet_count(); 
 };
 
 

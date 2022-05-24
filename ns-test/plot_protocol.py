@@ -181,7 +181,6 @@ for address in times:
         "end_mig": times[address]["end_mig"], 
         "start_buf": times[address]["start_buf"], 
         "end_buf": times[address]["end_buf"],
-
     }, ignore_index=True)
 
 df["len_pre"] = df["end_pre"] - df["start_pre"]  

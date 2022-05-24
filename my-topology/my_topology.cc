@@ -623,7 +623,6 @@ void MyTopology::send_data(Node* n1, int n_bytes){
     // tcl_command({data[n1].app, "advance_bytes", std::to_string(n_bytes)});
 }
 
-
 std::vector<Node*> MyTopology::get_leaves(Node* root){
     return get_subtree_nodes(root, true, false);
 }
@@ -654,15 +653,7 @@ void MyTopology::print_stats(){
     std::cout << "--------------Stats---------------" << std::endl;
     std::cout << "----------------------------------" << std::endl;
 
-    auto mig_root_peer = get_peer(mig_root);
-
-    for(auto& node: get_internals(mig_root_peer)){
-        auto m = (Monitor*)(data[node].get_nf("monitr"));
-        m->print_info(); 
-
-        auto pb = (PriorityBuffer*)(data[node].get_nf("pribuf"));
-        pb->print_info();
-    }   
+    stat_recorder->print_stats(); 
 
     std::cout << "----------------------------------" << std::endl;
     std::cout << "----------------------------------" << std::endl;
@@ -707,20 +698,74 @@ StatRecorder::~StatRecorder(){
     
 }
 
-void StatRecorder::start(){
-    auto& topo = MyTopology::instance(); 
-    topo.collect_recurring_stats(); 
 
+void StatRecorder::record_stats(){
+    auto& topo = MyTopology::instance(); 
+
+    auto mig_root = topo.get_mig_root(); 
+    auto mig_root_peer = topo.get_peer(mig_root);
+
+    for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
+        for(auto& node: topo.get_internals(root)){
+            auto pb = (PriorityBuffer*)(topo.get_data(node).get_nf("pribuf"));
+            int high_prio_buf = pb->get_buffer_size_highprio(); 
+            int low_prio_buf = pb->get_buffer_size_lowprio(); 
+
+            auto m = (Monitor*)(topo.get_data(node).get_nf("monitr"));
+            int packet_count = m->get_packet_count(); 
+
+            auto uid = topo.uid(node); 
+            auto now = Scheduler::instance().clock();
+
+            stats[uid][now] = {
+                high_prio_buf, 
+                low_prio_buf, 
+                packet_count
+            }; 
+        } 
+    }
+}
+
+
+void StatRecorder::print_stats(){
+    for (auto& node_stat: stats){
+        for (auto& stat: node_stat.second){
+            std::cout << "stat_recorder ";
+            std::cout << "[";
+            std::cout << node_stat.first; 
+            std::cout << "]";
+
+            std::cout << " ";
+
+            std::cout << "[";
+            std::cout << stat.first; 
+            std::cout << "]";
+
+            std::cout << " ";
+
+            std::cout << stat.second.high_prio_buf;
+            std::cout << " ";
+            std::cout << stat.second.low_prio_buf;
+            std::cout << " ";
+            std::cout << stat.second.packet_count;
+            
+            std::cout << std::endl; 
+        }
+    }
+}
+
+void StatRecorder::start(){
+    record_stats(); 
+    
     Event* e = new Event; 
     auto& sched = Scheduler::instance();
     sched.schedule(this, e, interval);
-    
 }
 
 void StatRecorder::handle(Event* event){
-    auto& topo = MyTopology::instance(); 
-    topo.collect_recurring_stats(); 
+    record_stats(); 
 
+    auto& topo = MyTopology::instance(); 
     if(topo.is_migration_finished){
         return; 
     } else {
