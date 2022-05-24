@@ -145,26 +145,51 @@ void OrchestratorV2::start_gw_snapshot(Node* gw){
     initiate_data_transfer(
         gw, get_random_transfer_size(MyTopology::gw_snapshot_size, 10), 
         [](Node* n){
-            BaseOrchestrator::instance().gw_snapshot_sent(n);
+            BaseOrchestrator::instance().gw_snapshot_send_ack_from_peer(n);
         }
     );
 }
 
 
-void OrchestratorV2::gw_snapshot_sent(Node* gw){
+void OrchestratorV2::gw_snapshot_send_ack_from_peer(Node* gw){
+    auto& topo = MyTopology::instance();   
+    auto peer = topo.get_peer(gw); // peer of gw sends the S_ack to gw
+    initiate_data_transfer(
+        peer, 100, 
+        [](Node* n){
+            BaseOrchestrator::instance().gw_snapshot_ack_rcvd(n);
+        }
+    );    
+}
 
-    tunnel_subtree_tru_parent(gw);
+void OrchestratorV2::gw_snapshot_ack_rcvd(Node* gw){
+    // here Node gw is the gw at the destination
+    auto& topo = MyTopology::instance();   
+    auto peer = topo.get_peer(gw); // peer is gw at the source
+    // source node sends the ack 0f S_ack to its peer
+    initiate_data_transfer(
+        peer, 100, 
+        [](Node* n){
+            BaseOrchestrator::instance().gw_start_processing_buffer_on_peer(n);
+        }
+    ); 
+    // start to send the data through the lower priority tunnel
+    tunnel_subtree_tru_parent(peer);   
+}
+
+void OrchestratorV2::gw_start_processing_buffer_on_peer(Node* gw){
+    // here Node gw is the gw at the source
+    auto& topo = MyTopology::instance();   
+    auto peer = topo.get_peer(gw); // peer is gw at the source
 
     log_event("end gw migration", gw);
-
-    auto& topo = MyTopology::instance();   
-    
+ 
     process_on_peer(gw);
 
     set_node_state(gw, MigState::Migrated);
     set_peer_state(gw, MigState::Normal);
 
-    if (gw == topo.get_mig_root()){
+    if (gw == topo.get_peer(topo.get_mig_root())){
         log_event("migration finished", gw);
 
         migration_finished();

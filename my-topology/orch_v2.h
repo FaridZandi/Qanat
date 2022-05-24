@@ -26,7 +26,9 @@ public:
 
     virtual void vm_precopy_finished(Node* vm); 
     virtual void vm_migration_finished(Node* vm); 
-    virtual void gw_snapshot_sent(Node* gw); 
+    virtual void gw_snapshot_send_ack_from_peer(Node* gw);
+    virtual void gw_start_processing_buffer_on_peer(Node* gw);
+    virtual void gw_snapshot_ack_rcvd(Node* gw); 
     virtual void gw_sent_last_packet(Node* gw){}; 
     virtual void gw_received_last_packet(Node* gw){}; 
 
