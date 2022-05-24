@@ -215,6 +215,7 @@ void MyTopology::start_tcp_app(Node* n1){
     agent->set_traffic_class(2);
     agent->node = n1;
 
+    std::cout << "data[n1].pointer: " << data[n1].pointer << std::endl; 
     tcl_command({sim_ptr, "attach-agent",
                  data[n1].pointer, 
                  data[n1].tcp});

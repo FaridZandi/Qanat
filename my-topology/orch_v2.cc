@@ -189,7 +189,7 @@ void OrchestratorV2::gw_start_processing_buffer_on_peer(Node* gw){
     set_node_state(gw, MigState::Migrated);
     set_peer_state(gw, MigState::Normal);
 
-    if (gw == topo.get_peer(topo.get_mig_root())){
+    if (gw == topo.get_mig_root()){
         log_event("migration finished", gw);
 
         migration_finished();
