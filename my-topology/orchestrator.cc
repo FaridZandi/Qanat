@@ -74,6 +74,7 @@ void BaseOrchestrator::migration_finished(){
     auto& topo = MyTopology::instance();   
     topo.is_migration_finished = true;
     topo.get_path(NULL, PATH_MODE_SENDER, true);
+    topo.migration_finish_time = Scheduler::instance().clock(); 
 
     // topo.print_stats();
 
@@ -113,6 +114,8 @@ void BaseOrchestrator::tunnel_subtree_tru_parent(Node* node){
             set_node_state(parent, MigState::PreMig);
             set_peer_state(parent, MigState::PreMig);
             log_event("start gw precopy", parent);
+            log_event("start gw precopy", topo.get_peer(parent));
+
         }
 
     }
@@ -125,10 +128,9 @@ void BaseOrchestrator::log_event(std::string message, Node* node, int arg, bool 
     std::cout << std::endl; 
     std::cout << "---------------------------------------------"; 
     std::cout << std::endl; 
+
+    std::cout << "protocol_event ";
     print_time();
-
-    std::cout << " "; 
-
 
     if (node != nullptr){
         auto& data = topo.get_data(node);
@@ -204,12 +206,11 @@ void BaseOrchestrator::process_on_peer(Node* node){
 
         auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
 
-        auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
-        auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
-
-
+        // auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
+        // auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
         // log_event("releasing a high prio buffer of size ", queue_depth_high, false);
         // log_event("releasing a low prio buffer of size ", queue_depth_low, false);
+
         log_event("end gw buffering", peer);
 
         peer_buffer->stop_buffering();

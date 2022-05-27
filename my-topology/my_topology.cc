@@ -8,6 +8,8 @@
 #include <algorithm>    
 #include <stack> 
 #include "utility.h"
+#include <chrono>
+#include <ctime>  
 
 static class MyTopologyClass : public TclClass {
 public:
@@ -106,7 +108,7 @@ int MyTopology::command(int argc, const char*const* argv){
             orch.start_migration();
 
             stat_recorder = new StatRecorder(); 
-            stat_recorder->interval = 0.0001; 
+            stat_recorder->interval = 0.000001; 
             stat_recorder->start(); 
 
             return TCL_OK; 
@@ -215,7 +217,6 @@ void MyTopology::start_tcp_app(Node* n1){
     agent->set_traffic_class(2);
     agent->node = n1;
 
-    std::cout << "data[n1].pointer: " << data[n1].pointer << std::endl; 
     tcl_command({sim_ptr, "attach-agent",
                  data[n1].pointer, 
                  data[n1].tcp});
@@ -636,18 +637,6 @@ std::vector<Node*> MyTopology::get_all_nodes(Node* root){
     return get_subtree_nodes(root, true, true);
 }
 
-void MyTopology::collect_recurring_stats(){
-    // std::cout << "MyTopology::collect_recurring_stats" << std::endl; 
-    auto mig_root_peer = get_peer(mig_root);
-
-    for(auto& node: get_internals(mig_root_peer)){
-        auto pb = (PriorityBuffer*)(data[node].get_nf("pribuf"));
-        // std::cout << "node: " << node << std::endl; 
-        pb->record_buffer_size(); 
-    } 
-}
-
-
 void MyTopology::print_stats(){
 
     std::cout << "----------------------------------" << std::endl;
@@ -708,9 +697,10 @@ void StatRecorder::record_stats(){
 
     for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
         for(auto& node: topo.get_internals(root)){
+
             auto pb = (PriorityBuffer*)(topo.get_data(node).get_nf("pribuf"));
-            int high_prio_buf = pb->get_buffer_size_highprio(); 
-            int low_prio_buf = pb->get_buffer_size_lowprio(); 
+            int high_prio_buf = pb->hp_q->length(); 
+            int low_prio_buf = pb->lp_q->length(); 
 
             auto m = (Monitor*)(topo.get_data(node).get_nf("monitr"));
             int packet_count = m->get_packet_count(); 
@@ -767,7 +757,10 @@ void StatRecorder::handle(Event* event){
     record_stats(); 
 
     auto& topo = MyTopology::instance(); 
-    if(topo.is_migration_finished){
+    auto now = Scheduler::instance().clock(); 
+    auto stat_record_finish = topo.migration_finish_time + record_after_finish;
+
+    if(topo.is_migration_finished && now > stat_record_finish){
         return; 
     } else {
         Event* e = new Event; 

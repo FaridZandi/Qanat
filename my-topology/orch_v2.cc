@@ -89,6 +89,7 @@ void OrchestratorV2::start_vm_migration(Node* vm){
         set_node_state(parent_gw, MigState::PreMig);
         set_peer_state(parent_gw, MigState::PreMig);
         log_event("start gw precopy", parent_gw);
+        log_event("start gw precopy", topo.get_peer(parent_gw));
     }
 
     buffer_on_peer(vm);
@@ -136,9 +137,11 @@ void OrchestratorV2::try_parent_migration(Node* node){
 
 
 void OrchestratorV2::start_gw_snapshot(Node* gw){
+    auto& topo = MyTopology::instance();
     set_node_state(gw, MigState::InMig);
     
     log_event("end gw precopy", gw);
+    log_event("end gw precopy", topo.get_peer(gw));
 
     log_event("start gw migration", gw);
 
@@ -155,7 +158,7 @@ void OrchestratorV2::gw_snapshot_send_ack_from_peer(Node* gw){
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer of gw sends the S_ack to gw
     initiate_data_transfer(
-        peer, 100, 
+        peer, 100,
         [](Node* n){
             BaseOrchestrator::instance().gw_snapshot_ack_rcvd(n);
         }
@@ -223,7 +226,7 @@ bool OrchestratorV2::all_children_migrated(Node* node){
 
 std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
     return {
-        {"buffer", 100000},
+        {"buffer", 2400},
         {"rate_limiter", 1000000},
         {"delayer", 0.000005},
         {"tunnel_manager", 0},
@@ -233,10 +236,9 @@ std::list<nf_spec> OrchestratorV2::get_vm_nf_list(){
 
 std::list<nf_spec> OrchestratorV2::get_gw_nf_list(){
     return {
-        {"priority_buffer", 100000},
-        {"rate_limiter", 1000000},
-        {"monitor", 0},
+        {"priority_buffer", 2400},
         {"delayer", 0.000005},
+        {"monitor", 0},
         {"tunnel_manager", 0},
         {"router", 0}
     };

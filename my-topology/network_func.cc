@@ -222,6 +222,10 @@ Monitor::~Monitor(){
 }
 
 bool Monitor::recv(Packet* p, Handler* h){
+    if (should_ignore(p)){
+        return true; 
+    }
+    
     StatefulNF::recv(p, h); 
 
     log_packet("recved packet here");
@@ -348,98 +352,125 @@ void Buffer::print_info(){
 PriorityBuffer::PriorityBuffer(TopoNode* toponode, int chain_pos, int size) 
     : NF(toponode, chain_pos) {
 
-    pq1 = new PacketQueue;
-    pq2 = new PacketQueue;
-    buffering = false; 
-    this->size_ = size; 
+    lp_q = new PacketQueue;
+    hp_q = new PacketQueue;
+
+    buffering_ = false; 
+    busy_ = false; 
+
+    size_ = size; 
+    rate_ = 868055;
 }
 
 PriorityBuffer::~PriorityBuffer(){
-    delete pq1;
-    delete pq2; 
+    delete lp_q; 
+    delete hp_q; 
 }
+
 
 bool PriorityBuffer::recv(Packet* p, Handler* h){
     hdr_ip* iph = hdr_ip::access(p);
-    int prev_hop, prev_addr, prev_uid;
-    int queue_number;
-    PacketQueue* pq;
-
-    log_packet("recved packet here with class: ", iph->traffic_class);
+    log_packet("recved packet with class: ", iph->traffic_class);
 
     if (should_ignore(p)){
         return true;
     }   
 
-    if(buffering){
-        auto& topo = MyTopology::instance();
+    if(buffering_ or busy_){
+        int queue_number;
+        PacketQueue* pq;
 
+        auto& topo = MyTopology::instance();
         auto peer = topo.get_peer(toponode_->node);
 
-        // std::cout << iph->prev_hop << " " << peer->address() << std::endl; 
-
         if (iph->prev_hop == peer->address()){
+            // if the packet is coming from the peer, 
+            // it means that it has been tunnelled, so it 
+            // should be processed with high priority. 
             queue_number = 1;
-            pq = pq1;
+            pq = hp_q;
         } else {
-            pq = pq2;
+            // otherwise, the packet will be processed with 
+            // a low priority. These are the packets coming from 
+            // "above" in the tree. 
             queue_number = 2;
-        }
-        // std::cout << prev_hop <<  " || Q: " << queue_number << std::endl;
-        if(pq->length() == size_){
-            // TODO: drop the packet (free the memory, etc.) 
-            log_packet("Buffer is full. Dropping packet on Q: ", queue_number);
-        } else {
-            // std::cout << "going to buffer" << std::endl;
+            pq = lp_q;
+        }  
+
+        if (pq->length() < size_){
             pq->enque(p);
-            // std::string message = "Buffering the packet in Q " 
-            //                         + std::to_string(queue_number) 
-            //                         + ". New Q length:"
-            //                         + std::to_string(pq->length());
-            // std::cout << message << std::endl;
-            // log_packet(message);
+
+            log_packet("Enqueued the packet in queue:", queue_number);
+            log_packet("The new queue size is: ", pq->length());
+        } else {
+            log_packet("Queue is full. dropping the packet on: ", queue_number);
         }
+
         return false;
     } else {     
-        log_packet("Letting the packet pass through.");   
+        log_packet("Letting the packet pass through.");  
+
+        busy_ = true; 
+        sched_next_send(); 
+
         return true; 
     }
 }
 
+
+double PriorityBuffer::get_interval(){
+    double wait = 1.0 / rate_;
+    return wait;  
+}
+
+void PriorityBuffer::sched_next_send(){
+    Event* e = new Event; 
+    auto& sched = Scheduler::instance();
+    sched.schedule(this, e, get_interval());
+}
+
+void PriorityBuffer::handle(Event* event){
+    busy_ = false; 
+    send_if_possible();
+}
+
 void PriorityBuffer::start_buffering(){
-    buffering = true;
-}
-
-int PriorityBuffer::get_buffer_size_highprio(){
-    return pq1->length(); 
-}
-
-int PriorityBuffer::get_buffer_size_lowprio(){
-    return pq2->length(); 
+    buffering_ = true;
 }
 
 void PriorityBuffer::stop_buffering(){
-    buffering = false; 
-    while (pq1->length() > 0){
-        log_packet("releasing a packet from Q 1.");
-        send(pq1->deque());
+    buffering_ = false; 
+    send_if_possible(); 
+}
+
+void PriorityBuffer::send_if_possible(){
+    if (busy_){
+        return;
+    }
+     
+    if (hp_q->length() > 0){
+        busy_ = true; 
+        sched_next_send(); 
+
+        Packet* p = hp_q->deque();
+        send(p); 
+
+    } else if (lp_q->length() > 0) {
+        busy_ = true; 
+        sched_next_send(); 
+
+        Packet* p = lp_q->deque();
+        send(p); 
     } 
-    while (pq2->length() > 0){
-        log_packet("releasing a packet from Q 2.");
-        send(pq2->deque());
-    } 
+}
+
+void PriorityBuffer::set_rate(int rate){
+    rate_ = rate; 
 }
 
 std::string PriorityBuffer::get_type(){
     return "pribuf"; 
 }
-
-void PriorityBuffer::record_buffer_size(){
-    auto now = Scheduler::instance().clock();
-    pq1_sizes[now] = pq1->length(); 
-    pq2_sizes[now] = pq2->length(); 
-}
-
 
 void PriorityBuffer::print_info(){
     std::cout << "priority buffer on node " ;
@@ -448,13 +479,6 @@ void PriorityBuffer::print_info(){
     std::cout << " with size "; 
     std::cout << this->size_;
     std::cout << std::endl;  
-
-
-    for (auto flow : pq1_sizes){
-        auto key = flow.first;
-        std::cout << key << ": " << pq1_sizes[key] << " " << pq2_sizes[key] << std::endl; 
-    }
-
 }
 
 

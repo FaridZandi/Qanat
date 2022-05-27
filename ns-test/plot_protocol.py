@@ -15,13 +15,27 @@ file_path = "protocol.out"
 
 parser = ArgumentParser()
 parser.add_argument("-m", "--mode", dest="mode",
-                    help="operation mode", default="input", metavar="MODE")
+                    help="operation mode", default="file", metavar="MODE")
 
 parser.add_argument("-f", "--file", dest="filename", default="protocol.out",
                     help="read protocol log from", metavar="FILE")
 
-parser.add_argument("-o", "--output", dest="output", default="protocol",
-                    help="output png file", metavar="OUT")
+parser.add_argument("-r", "--reload",
+                    action="store_true", dest="reload",
+                    default=False,
+                    help="reload the dataset from the file")
+
+
+parser.add_argument("-d", "--datastore", 
+                    dest="datastore", default="data/protocol",
+                    help="store the data in the file for faster access", 
+                    metavar="DATASTORE")
+
+
+parser.add_argument("-p", "--plotsdir", 
+                    dest="plotsdir", default="plots",
+                    help="directory to store the plots in", 
+                    metavar="PLOTSDIR")
 
 parser.add_argument("-v", "--verbose",
                     action="store_true", dest="verbose", default=False,
@@ -39,114 +53,94 @@ def process_line(line):
 
         line = line.strip()
 
-        if not line.startswith("["):
+        if not line.startswith("protocol_event"):
             return 
 
         s = line.split(" ")
 
-        if len(s) > 1 and s[1] != "Buffer":
-            time_str = s[0]
-            time = float(time_str[1:-1]) * 1000
+        time_str = s[1]
+        time = float(time_str[1:-1]) * 1000
 
-            address_str = s[2]
-            address = address_str[1:-1]
-            
-            if address == 0 or address == "0":
-                return 
+        address_str = s[2]
+        address = address_str[1:-1]
+        
+        if address == 0 or address == "0":
+            return 
 
-            if address == "":
-                return 
+        if address == "":
+            return 
 
-            if time > max_time:
-                max_time = time 
+        if address not in times:
+            times[address] = {
+                "type" : "", 
+                "start_pre": 0,
+                "end_pre": 0,
+                "start_mig": 0,
+                "end_mig": 0,
+                "start_buf": 0,
+                "end_buf": 0,
+            }
 
-            if min_time > time:
-                min_time = time 
+        if s[3] == "start":
+            if s[4] == "vm":
+                if s[5] == "precopy":
+                    times[address]["type"] = "VM"
+                    times[address]["start_pre"] = time
 
-            if address not in times:
-                times[address] = {
-                    "type" : "", 
-                    "start_pre": 0,
-                    "end_pre": 0,
-                    "start_mig": 0,
-                    "end_mig": 0,
-                    "start_buf": 0,
-                    "end_buf": 0,
-                }
+                elif s[5] == "migration":
+                    times[address]["type"] = "VM"
+                    times[address]["start_mig"] = time
 
-            if s[3] == "start":
-                if s[4] == "vm":
-                    if s[5] == "precopy":
-                        times[address]["type"] = "VM"
-                        times[address]["start_pre"] = time
-
-                    elif s[5] == "migration":
-                        times[address]["type"] = "VM"
-                        times[address]["start_mig"] = time
-
-                    elif s[5] == "buffering":
-                        times[address]["type"] = "VM"
-                        times[address]["start_buf"] = time
-                        
-                elif s[4] == "gw":
-                    if s[5] == "precopy":
-                        times[address]["type"] = "GW"
-                        times[address]["start_pre"] = time
-
-                    if s[5] == "migration":
-                        times[address]["type"] = "GW"
-                        times[address]["start_mig"] = time
-
-                    elif s[5] == "buffering":
-                        times[address]["type"] = "GW"
-                        times[address]["start_buf"] = time
-                        
-                
+                elif s[5] == "buffering":
+                    times[address]["type"] = "VM"
+                    times[address]["start_buf"] = time
                     
-            elif s[3] == "end":
-                if s[4] == "vm":
-                    if s[5] == "precopy":
-                        times[address]["type"] = "VM"
-                        times[address]["end_pre"] = time
+            elif s[4] == "gw":
+                if s[5] == "precopy":
+                    times[address]["type"] = "GW"
+                    times[address]["start_pre"] = time
 
-                    elif s[5] == "migration":
-                        times[address]["type"] = "VM"
-                        times[address]["end_mig"] = time
+                if s[5] == "migration":
+                    times[address]["type"] = "GW"
+                    times[address]["start_mig"] = time
 
-                    elif s[5] == "buffering":
-                        times[address]["type"] = "VM"
-                        times[address]["end_buf"] = time
-                        
-                elif s[4] == "gw":
-                    if s[5] == "precopy":
-                        times[address]["type"] = "GW"
-                        times[address]["end_pre"] = time
+                elif s[5] == "buffering":
+                    times[address]["type"] = "GW"
+                    times[address]["start_buf"] = time
+                    
+            
+                
+        elif s[3] == "end":
+            if s[4] == "vm":
+                if s[5] == "precopy":
+                    times[address]["type"] = "VM"
+                    times[address]["end_pre"] = time
 
-                    if s[5] == "migration":
-                        times[address]["type"] = "GW"
-                        times[address]["end_mig"] = time
+                elif s[5] == "migration":
+                    times[address]["type"] = "VM"
+                    times[address]["end_mig"] = time
 
-                    elif s[5] == "buffering":
-                        times[address]["type"] = "GW"
-                        times[address]["end_buf"] = time
+                elif s[5] == "buffering":
+                    times[address]["type"] = "VM"
+                    times[address]["end_buf"] = time
+                    
+            elif s[4] == "gw":
+                if s[5] == "precopy":
+                    times[address]["type"] = "GW"
+                    times[address]["end_pre"] = time
+
+                if s[5] == "migration":
+                    times[address]["type"] = "GW"
+                    times[address]["end_mig"] = time
+
+                elif s[5] == "buffering":
+                    times[address]["type"] = "GW"
+                    times[address]["end_buf"] = time
 
     except Exception as e: 
         print(e)
         print("*", end="") 
 
-
-if args.mode == "file":
-    print("reading from", args.filename)
-    with open(args.filename) as f: 
-        for line in f.readlines(): 
-            process_line(line)
-
-elif args.mode == "input":
-    print("reading the log from input")
-    for line in sys.stdin:
-        process_line(line)
-
-print("done with processing the input")
 
 
 
@@ -156,32 +150,56 @@ df = pd.DataFrame(columns=[
     "end_mig", "start_buf", "end_buf"
 ])
 
+if args.reload: 
+    if args.mode == "file":
+        print("reading from", args.filename)
+        with open(args.filename) as f: 
+            for line in f.readlines(): 
+                process_line(line)
 
-for address in times: 
-    uid = int(address.split("-")[2])
+    elif args.mode == "input":
+        print("reading the log from input")
+        for line in sys.stdin:
+            process_line(line)
 
-    if uid < 10:
-        new_address = address[:-3] + "00" + address[-3:]
-    elif uid < 100:
-        new_address = address[:-4] + "0" + address[-4:]
+    print("done with getting the input")
 
-    # if times[address]["type"] == "VM":
-    #     address = VM + address.split("-")[2]
+    for address in times: 
+        uid = int(address.split("-")[2])
 
+        if uid < 10:
+            new_address = address[:-3] + "00" + address[-3:]
+        elif uid < 100:
+            new_address = address[:-4] + "0" + address[-4:]
 
-    df = df.append({
-        "address": new_address[:-2], 
-        "id": uid, 
-        "layer": int(address.split("-")[1]), 
-        "which_tree": int(address.split("-")[3]), 
-        "type": times[address]["type"], 
-        "start_pre": times[address]["start_pre"], 
-        "end_pre": times[address]["end_pre"], 
-        "start_mig": times[address]["start_mig"], 
-        "end_mig": times[address]["end_mig"], 
-        "start_buf": times[address]["start_buf"], 
-        "end_buf": times[address]["end_buf"],
-    }, ignore_index=True)
+        # if times[address]["type"] == "VM":
+        #     address = VM + address.split("-")[2]
+
+        df = df.append({
+            "address": new_address[:-2], 
+            "id": uid, 
+            "layer": int(address.split("-")[1]), 
+            "which_tree": int(address.split("-")[3]), 
+            "type": times[address]["type"], 
+            "start_pre": times[address]["start_pre"], 
+            "end_pre": times[address]["end_pre"], 
+            "start_mig": times[address]["start_mig"], 
+            "end_mig": times[address]["end_mig"], 
+            "start_buf": times[address]["start_buf"], 
+            "end_buf": times[address]["end_buf"],
+        }, ignore_index=True)
+
+    df.to_csv(args.datastore + ".csv")
+else: 
+    df = pd.read_csv(args.datastore + ".csv")
+
+max_time = max(df.end_mig.max(), df.end_pre.max(), df.end_buf.max()) 
+
+min_time = min(
+    df.start_mig[df.start_mig > 0].min(),
+    df.start_pre[df.start_pre > 0].min(),
+    df.start_buf[df.start_buf > 0].min()
+)
 
 df["len_pre"] = df["end_pre"] - df["start_pre"]  
 df["len_mig"] = df["end_mig"] - df["start_mig"]  
@@ -194,7 +212,7 @@ df["start_buf"] = df["start_buf"] - min_time
 max_time -= min_time
 min_time = 0
 
-for i in range(1): 
+for i in range(3): 
 
     if i == 0: 
         half_df = df[df["which_tree"] == 0]
@@ -246,11 +264,12 @@ for i in range(1):
     plt.ylabel("Node (type - layer - id)")
     
     if i == 0: 
-        name = args.output + "_src"
+        name = args.plotsdir + "/protocol_src"
     if i == 1: 
-        name = args.output + "_dst"
+        name = args.plotsdir + "/protocol_dst"
     if i == 2: 
-        name = args.output + "_all"
+        name = args.plotsdir + "/protocol_all"
 
     plt.savefig(name+".png", dpi=300, bbox_inches='tight')
-    print("MAX time:", max_time )
+    print("min time:", min_time )
+    print("max time:", max_time )

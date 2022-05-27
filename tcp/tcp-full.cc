@@ -465,6 +465,7 @@ FullTcpAgent::bufferempty()
 	if (is_finish_callback_set){
 		finish_notify_callback(node);
 	} else {
+		std::cout << "flow_stats ";
 		std::cout << "[" <<  Scheduler::instance().clock() << "]";
 		std::cout << " flow_end " << fid_ ;
 		std::cout << " retrans " << retrans_count;

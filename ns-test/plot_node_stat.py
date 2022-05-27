@@ -31,6 +31,11 @@ parser.add_argument("-d", "--datastore",
                     help="store the data in the file for faster access", 
                     metavar="DATASTORE")
 
+parser.add_argument("-c", "--protocol", 
+                    dest="protocol", default="data/protocol",
+                    help="the data for the protocol", 
+                    metavar="PROTOCOL")
+
 
 parser.add_argument("-p", "--plotsdir", 
                     dest="plotsdir", default="plots",
@@ -40,14 +45,7 @@ parser.add_argument("-p", "--plotsdir",
 args = parser.parse_args()
 
 
-
-df = pd.DataFrame(columns=[
-    "uid", "time", 
-    "high_prio_buf", 
-    "low_prio_buf", 
-    "packet_count", 
-])
-
+data = []
 
 if args.reload:
     with open(args.filename) as f:
@@ -57,8 +55,6 @@ if args.reload:
                     # ignore the lines not starting with stat_recorder
                     continue
 
-                
-            
                 line = line.strip()
                 s = line.split(" ")
 
@@ -66,51 +62,101 @@ if args.reload:
                 uid = int(uid_brak[1:-1])
 
                 time_brak = s[2]
-                time = round(float(time_brak[1:-1]),6)
+                time = float(time_brak[1:-1]) * 1000
 
-                high_prio_buf = s[3]
-                low_prio_buf = s[4]
-                packet_count = s[5]
+                high_prio_buf = int(s[3])
+                low_prio_buf = int(s[4])
+                packet_count = int(s[5])
 
-                df = df.append({
+                data.append({
                     "uid":uid, 
                     "time":time, 
                     "high_prio_buf":high_prio_buf, 
                     "low_prio_buf":low_prio_buf, 
                     "packet_count":packet_count, 
-                },ignore_index=True)
+                })
 
-                # print(df.size)
+                if len(data) % 1000 == 0:
+                    print ("loaded", len(data), "data points")
 
         except Exception as e:
             print(e)
 
+    df = pd.DataFrame(data)
     df.to_csv(args.datastore + ".csv")
 else: 
     df = pd.read_csv(args.datastore + ".csv")
 
-print(df)
+df['low_prio_buf'] = df['low_prio_buf'].rolling(100).max()
+df['high_prio_buf'] = df['high_prio_buf'].rolling(100).max()
 
-nodes = df.uid.unique()
-node_count = len(nodes)
+df = df.iloc[::100, :]
+print(df.size)
 
-print("node_count", node_count)
+protocol_df = pd.read_csv(args.protocol + ".csv")
+protocol_df["len_pre"] = protocol_df["end_pre"] - protocol_df["start_pre"]  
+protocol_df["len_mig"] = protocol_df["end_mig"] - protocol_df["start_mig"]  
+protocol_df["len_buf"] = protocol_df["end_buf"] - protocol_df["start_buf"]  
+print(protocol_df)
 
 
-for measure in ["packet_count", "high_prio_buf", "low_prio_buf"]:
+
+
+
+def plot_bar(ax, bar_len, bar_start, color): 
+    if bar_len == 0: 
+        return 
+
+    y_lim = ax.get_ylim()
+
+    ax.barh(
+        y = -y_lim[1] / 10, 
+        width=bar_len,
+        left=bar_start,
+        color=color,
+        height=y_lim[1] / 10,
+    )
+
+def plot_node(node, ax): 
+
+    node_df = df[df.uid == node]
+    sns.lineplot(ax=ax, x=node_df.time, y=node_df[measure])
+    ax.set_title("node: " + str(node))
+
+    proto = protocol_df[protocol_df.id == node].iloc[0]
+    plot_bar(ax, proto.len_pre, proto.start_pre, "orange")
+    plot_bar(ax, proto.len_mig, proto.start_mig, "red")
+    plot_bar(ax, proto.len_buf, proto.start_buf, "gray")
+
+
+def plot_measure(measure, nodes, prefix):
+
+    fig, axes = plt.subplots(len(nodes), 1, sharey=True)
+    fig.set_size_inches(6, len(nodes) * 3)
+
     plot_index = 0 
-
-    fig, axes = plt.subplots(node_count, 1, sharey=True, sharex=True)
-
     for node in nodes:
-        node_df = df[df.uid == node]
-        sns.lineplot(ax=axes[plot_index], x=node_df.time, y=node_df[measure])
-        axes[plot_index].set_title("node: " + str(node))
+        print("drawing subplot", plot_index + 1)
+        plot_node(node, axes[plot_index])       
         plot_index += 1 
 
-    plot_path = "{}/{}.png".format(args.plotsdir, measure)
+
+    plot_path = "{}/{}_{}.png".format(args.plotsdir, prefix, measure)
+    print("saving", plot_path)
+    plt.tight_layout()
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
 
 
+
+
+
+for measure in ["low_prio_buf"]: #["packet_count", "low_prio_buf", "high_prio_buf"]:
+    nodes = df.uid.unique()
+
+    src_nodes = nodes[0:(len(nodes) // 2)]
+    dst_nodes = nodes[(len(nodes) // 2):]
+
+    plot_measure(measure, src_nodes, "src")
+    plot_measure(measure, dst_nodes, "dst")
 
 

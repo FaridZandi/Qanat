@@ -181,30 +181,31 @@ public:
 
     virtual bool recv(Packet* p, Handler* h);
 
-    virtual void handle(Event* event){};
+    virtual void handle(Event* event);
 
     void start_buffering();
 
     void stop_buffering();
 
-    int get_buffer_size_highprio(); 
-    
-    int get_buffer_size_lowprio();
-
     virtual std::string get_type(); 
 
     virtual void print_info(); 
 
-    virtual void record_buffer_size(); 
+    void set_rate(int rate); 
+
+    PacketQueue* hp_q;        // high priority queue 
+    PacketQueue* lp_q;        // low priority queue 
+
 protected:
+
+    void sched_next_send(); 
+    double get_interval(); 
+    void send_if_possible(); 
+
     int size_; 
-    bool buffering; 
-
-    PacketQueue* pq1;
-    PacketQueue* pq2;
-
-    std::map<double, int> pq1_sizes;
-    std::map<double, int> pq2_sizes;
+    bool buffering_; 
+    bool busy_; 
+    int rate_; 
 };
 
 

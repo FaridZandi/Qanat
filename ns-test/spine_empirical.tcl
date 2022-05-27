@@ -246,22 +246,28 @@ set t [new MyTopology]
 
 $t set_simulator $ns
 
-set child_count 20
+set child_count 2
 set VM_link_rate 10
 
-for { set x 0} { $x < $child_count} { incr x } {
-    set ss($x) [$ns node]
-    $ns duplex-link $ss($x) $s(0) [set VM_link_rate]Gb [expr $host_delay] $switchAlg
-    $t add_node_to_source $ss($x)
+for {set i 0} {$i < $topology_spt} {incr i} {
+    for {set x 0} { $x < $child_count} { incr x } {
+        puts [expr $child_count * $i + $x]
+        set ss([expr $child_count * $i + $x]) [$ns node]
+        $ns duplex-link $ss([expr $child_count * $i + $x]) $s($i) [set VM_link_rate]Gb [expr $host_delay] $switchAlg
+        $t add_node_to_source $ss([expr $child_count * $i + $x])
+    }
 }
 
-for { set x 0} { $x < $child_count} { incr x } {
-    set dvm($x) [$ns node]
-    $ns duplex-link $dvm($x) $ds(0) [set VM_link_rate]Gb [expr $host_delay] $switchAlg
-    $t add_node_to_dest $dvm($x)
+for {set i 0} {$i < $topology_spt} {incr i} {
+    for {set x 0} { $x < $child_count} { incr x } {
+        puts [expr $child_count * $i + $x]
+        set dvm([expr $child_count * $i + $x]) [$ns node]
+        $ns duplex-link $dvm([expr $child_count * $i + $x]) $ds($i) [set VM_link_rate]Gb [expr $host_delay] $switchAlg
+        $t add_node_to_dest $dvm([expr $child_count * $i + $x])
+    }
 }
 
-$t make_tree 1 18
+$t make_tree 2 2 2 
 $t duplicate_tree
 $t print_graph
 
@@ -278,7 +284,7 @@ while {1} {
 
 
 $ns at 0.01 "$t setup_nodes"
-$ns at 1 "$t start_migration"
+$ns at 2 "$t start_migration"
 
 #############  Agents ################
 set lambda [expr ($link_rate*$load*1000000000)/($meanFlowSize*8.0/1460*1500)]
@@ -315,7 +321,7 @@ set init_fid 0
 set j 0 
 foreach leaf $logical_leaves {
     puts $leaf
-    for {set i 40} {$i < 80} {incr i} {
+    for {set i $topology_spt} {$i < [expr 2*$topology_spt]} {incr i} {
         if {$i != $j} {
             set agtagr($i,$j) [new Agent_Aggr_pair]
             $agtagr($i,$j) setup $s($i) $leaf "$i $j" $connections_per_pair $init_fid "TCP_pair"

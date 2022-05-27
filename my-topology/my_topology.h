@@ -50,7 +50,6 @@ public:
      */
     void process_packet(Packet* p, Handler*h, Node* node);
 
-    void collect_recurring_stats();
     void print_stats();
     void setup_nth_layer_tunnel(Node* vm, int n); 
     Node* get_nth_parent(Node* node, int n);
@@ -115,6 +114,7 @@ public:
     
     MigrationManager* mig_manager_; 
 
+    double migration_finish_time; 
 private:
 
     void tcl_command(const std::list<std::string> & myArguments);
@@ -169,6 +169,15 @@ struct Stat {
     int packet_count; 
 };
 
+/*
+   each buffer in each interval 
+        max buffer size 
+        avg buffer size 
+        min buffer size 
+        buffer enque count
+        beffer deque count
+*/
+
 class StatRecorder : public Handler{
 public: 
     StatRecorder(); 
@@ -181,7 +190,9 @@ public:
 
     double interval; 
 
-    std::map<int, std::map<double, Stat> > stats; 
+    std::map<int, std::map<double, Stat> > stats;
+
+    static constexpr double record_after_finish = 1;  
 };
 
 #endif

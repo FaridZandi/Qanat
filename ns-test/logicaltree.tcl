@@ -40,7 +40,7 @@ $t set_simulator $ns
 set LAT 5us
 # set QTYPE DropTail 
 set QTYPE MyQueue
-set child_count 5
+set child_count 50
 
 Queue set limit_ 200
 
@@ -117,11 +117,11 @@ $sink2 listen
 
  
 # $t make_tree 4 1 1 1
-# $t make_tree 2 2 2
+$t make_tree 2 2 2
 # $t make_tree 3 2 1
 # $t make_tree 3 1 3 1 3
 # $t make_tree 4 1 1 1
-$t make_tree 1 1
+# $t make_tree 1 1
 $t duplicate_tree
 $t print_graph
 
