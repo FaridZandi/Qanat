@@ -13,6 +13,7 @@ MigrationManager::MigrationManager(){
 		tunnels[i].valid = false;
 	}
 	verbose = MyTopology::verbose_mig;
+	active_tunnels = 0;  
 }
 
 MigrationManager::~MigrationManager(){
@@ -37,6 +38,8 @@ int MigrationManager::activate_tunnel(Node* in, Node* out,
 
 	// std::cout << "tunnel uid: " << td.uid << std::endl;
 	return td.uid; 
+
+
 }
 
 
@@ -70,6 +73,7 @@ void MigrationManager::add_tunnel(tunnel_data tunnel){
 	for(int i = 0; i < MigrationManager::tunnel_count; i++){
 		if (not tunnels[i].valid){
 			tunnels[i] = tunnel;
+			active_tunnels ++; 
             return; 
         }
 	}
@@ -210,7 +214,7 @@ bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
 
 	log_packet(p);
 
-    for(int i = 0; i < MigrationManager::tunnel_count; i++){ 
+    for(int i = 0; i < MigrationManager::active_tunnels; i++){ 
 		auto td = tunnels[i]; 
 		Tunnel_Point tp = packet_match(td, p, n); 
 		

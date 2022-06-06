@@ -5,7 +5,7 @@ import numpy as np
 from matplotlib.patches import Patch
 from argparse import ArgumentParser
 import sys
-
+import os 
 
 times = {}
 min_time = 10000
@@ -14,28 +14,19 @@ max_time = 0
 file_path = "protocol.out"
 
 parser = ArgumentParser()
+
 parser.add_argument("-m", "--mode", dest="mode",
                     help="operation mode", default="file", metavar="MODE")
 
-parser.add_argument("-f", "--file", dest="filename", default="protocol.out",
-                    help="read protocol log from", metavar="FILE")
+parser.add_argument("-d", "--directory", 
+                    dest="directory", required=True,
+                    help="the directory to perform the processing", 
+                    metavar="Directory")
 
 parser.add_argument("-r", "--reload",
                     action="store_true", dest="reload",
                     default=False,
                     help="reload the dataset from the file")
-
-
-parser.add_argument("-d", "--datastore", 
-                    dest="datastore", default="data/protocol",
-                    help="store the data in the file for faster access", 
-                    metavar="DATASTORE")
-
-
-parser.add_argument("-p", "--plotsdir", 
-                    dest="plotsdir", default="plots",
-                    help="directory to store the plots in", 
-                    metavar="PLOTSDIR")
 
 parser.add_argument("-v", "--verbose",
                     action="store_true", dest="verbose", default=False,
@@ -44,7 +35,20 @@ parser.add_argument("-v", "--verbose",
 args = parser.parse_args()
 
 
-def process_line(line):
+def setup_directories():
+    data_dir = args.directory + "/" + "data"
+    os.system('mkdir -p ' + data_dir)
+
+    plots_dir = args.directory + "/" + "plots"
+    os.system('mkdir -p ' + plots_dir)
+    
+    protocol_plots_dir = plots_dir + "/" + "protocol"
+    os.system('mkdir -p ' + protocol_plots_dir)
+
+setup_directories()
+
+
+def process_line(line): 
     global times, min_time, max_time, args
 
     try: 
@@ -142,18 +146,13 @@ def process_line(line):
         print("*", end="") 
 
 
-
-
-df = pd.DataFrame(columns=[
-    "address", "id", "layer", "which_tree", 
-    "type", "start_pre", "end_pre", "start_mig", 
-    "end_mig", "start_buf", "end_buf"
-])
+# load the data
 
 if args.reload: 
     if args.mode == "file":
-        print("reading from", args.filename)
-        with open(args.filename) as f: 
+        log_file = args.directory + "/" + "logFile.tr"
+        print("reading from", log_file)
+        with open(log_file) as f: 
             for line in f.readlines(): 
                 process_line(line)
 
@@ -163,6 +162,12 @@ if args.reload:
             process_line(line)
 
     print("done with getting the input")
+
+    df = pd.DataFrame(columns=[
+        "address", "id", "layer", "which_tree", 
+        "type", "start_pre", "end_pre", "start_mig", 
+        "end_mig", "start_buf", "end_buf"
+    ])
 
     for address in times: 
         uid = int(address.split("-")[2])
@@ -189,11 +194,24 @@ if args.reload:
             "end_buf": times[address]["end_buf"],
         }, ignore_index=True)
 
-    df.to_csv(args.datastore + ".csv")
-else: 
-    df = pd.read_csv(args.datastore + ".csv")
 
-max_time = max(df.end_mig.max(), df.end_pre.max(), df.end_buf.max()) 
+    df["len_pre"] = df["end_pre"] - df["start_pre"]  
+    df["len_mig"] = df["end_mig"] - df["start_mig"]  
+    df["len_buf"] = df["end_buf"] - df["start_buf"]  
+
+    data_path = args.directory + "/data/protocol.csv" 
+    df.to_csv(data_path)
+else: 
+    data_path = args.directory + "/data/protocol.csv" 
+    df = pd.read_csv(data_path)
+
+
+# process the data 
+
+max_time = max(
+    df.end_mig.max(), 
+    df.end_pre.max(), 
+    df.end_buf.max()) 
 
 min_time = min(
     df.start_mig[df.start_mig > 0].min(),
@@ -201,16 +219,14 @@ min_time = min(
     df.start_buf[df.start_buf > 0].min()
 )
 
-df["len_pre"] = df["end_pre"] - df["start_pre"]  
-df["len_mig"] = df["end_mig"] - df["start_mig"]  
-df["len_buf"] = df["end_buf"] - df["start_buf"]  
-
 df["start_pre"] = df["start_pre"] - min_time  
 df["start_mig"] = df["start_mig"] - min_time  
 df["start_buf"] = df["start_buf"] - min_time  
 
 max_time -= min_time
 min_time = 0
+
+# plot the protocol 
 
 for i in range(3): 
 
@@ -263,12 +279,15 @@ for i in range(3):
     plt.xlabel("Simulation Time (ms)")
     plt.ylabel("Node (type - layer - id)")
     
+    plots_dir = args.directory + "/" + "plots"
+    protocol_plots_dir = plots_dir + "/" + "protocol"    
+    
     if i == 0: 
-        name = args.plotsdir + "/protocol_src"
+        name = protocol_plots_dir + "/protocol_src"
     if i == 1: 
-        name = args.plotsdir + "/protocol_dst"
+        name = protocol_plots_dir + "/protocol_dst"
     if i == 2: 
-        name = args.plotsdir + "/protocol_all"
+        name = protocol_plots_dir + "/protocol_all"
 
     plt.savefig(name+".png", dpi=300, bbox_inches='tight')
     print("min time:", min_time )

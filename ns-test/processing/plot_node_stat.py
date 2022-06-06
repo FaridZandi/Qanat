@@ -6,14 +6,14 @@ from matplotlib.patches import Patch
 from argparse import ArgumentParser
 import sys
 import seaborn as sns
-
+import os 
 
 parser = ArgumentParser()
 
-parser.add_argument("-f", "--file", dest="filename",
-                    default="protocol.out", 
-                    help="read protocol log from", 
-                    metavar="FILE")
+parser.add_argument("-d", "--directory", 
+                    dest="directory", required=True,
+                    help="the directory to perform the processing", 
+                    metavar="Directory")
 
 parser.add_argument("-v", "--verbose",
                     action="store_true", 
@@ -26,29 +26,32 @@ parser.add_argument("-r", "--reload",
                     help="reload the dataset from the file")
 
 
-parser.add_argument("-d", "--datastore", 
-                    dest="datastore", default="data/node_stat",
-                    help="store the data in the file for faster access", 
-                    metavar="DATASTORE")
-
-parser.add_argument("-c", "--protocol", 
-                    dest="protocol", default="data/protocol",
-                    help="the data for the protocol", 
-                    metavar="PROTOCOL")
-
-
-parser.add_argument("-p", "--plotsdir", 
-                    dest="plotsdir", default="plots",
-                    help="directory to store the plots in", 
-                    metavar="PLOTSDIR")
-
 args = parser.parse_args()
+
+
+def setup_directories():
+    data_dir = args.directory + "/" + "data"
+    os.system('mkdir -p ' + data_dir)
+
+    plots_dir = args.directory + "/" + "plots"
+    os.system('mkdir -p ' + plots_dir)
+    
+    nodes_plots_dir = plots_dir + "/" + "nodes"
+    os.system('mkdir -p ' + nodes_plots_dir)
+
+
+setup_directories() 
+
+
+# load the data
 
 
 data = []
 
 if args.reload:
-    with open(args.filename) as f:
+    log_file = args.directory + "/" + "logFile.tr"
+
+    with open(log_file) as f:
         try: 
             for line in f.readlines():
                 if not line.startswith("stat_recorder"):
@@ -76,31 +79,30 @@ if args.reload:
                     "packet_count":packet_count, 
                 })
 
-                if len(data) % 1000 == 0:
+                if len(data) % 10000 == 0:
                     print ("loaded", len(data), "data points")
 
         except Exception as e:
             print(e)
 
     df = pd.DataFrame(data)
-    df.to_csv(args.datastore + ".csv")
+    data_path = args.directory + "/data/nodes.csv" 
+    df.to_csv(data_path)
 else: 
-    df = pd.read_csv(args.datastore + ".csv")
+    print("Loading the data from the file")
+    data_path = args.directory + "/data/nodes.csv" 
+    df = pd.read_csv(data_path)
+    print("Loading data from the file finished")
 
+# sample the protocol df enteries to plot them 
 df['low_prio_buf'] = df['low_prio_buf'].rolling(100).max()
 df['high_prio_buf'] = df['high_prio_buf'].rolling(100).max()
-
 df = df.iloc[::100, :]
 print(df.size)
 
-protocol_df = pd.read_csv(args.protocol + ".csv")
-protocol_df["len_pre"] = protocol_df["end_pre"] - protocol_df["start_pre"]  
-protocol_df["len_mig"] = protocol_df["end_mig"] - protocol_df["start_mig"]  
-protocol_df["len_buf"] = protocol_df["end_buf"] - protocol_df["start_buf"]  
+# load the protocol data for drawing the colored bars
+protocol_df = pd.read_csv(args.directory + "/data/protocol.csv") 
 print(protocol_df)
-
-
-
 
 
 def plot_bar(ax, bar_len, bar_start, color): 
@@ -140,17 +142,18 @@ def plot_measure(measure, nodes, prefix):
         plot_node(node, axes[plot_index])       
         plot_index += 1 
 
+    plots_dir = args.directory + "/" + "plots"
+    nodes_plots_dir = plots_dir + "/" + "nodes"
+    plot_path = "{}/{}_{}.png".format(nodes_plots_dir, prefix, measure)
 
-    plot_path = "{}/{}_{}.png".format(args.plotsdir, prefix, measure)
+
     print("saving", plot_path)
     plt.tight_layout()
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
 
 
 
-
-
-for measure in ["low_prio_buf"]: #["packet_count", "low_prio_buf", "high_prio_buf"]:
+for measure in ["low_prio_buf", "packet_count", "low_prio_buf", "high_prio_buf"]:
     nodes = df.uid.unique()
 
     src_nodes = nodes[0:(len(nodes) // 2)]

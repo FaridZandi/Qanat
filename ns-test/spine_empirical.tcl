@@ -9,7 +9,7 @@ if {$argc != 43} {
 }
 
 
-set tf [open out.tr w]
+# set tf [open out.tr w]
 # $ns trace-all $tf
 
 set sim_end [lindex $argv 0]
@@ -368,10 +368,7 @@ puts "Simulation started!"
 
 proc finish {} {
         puts "simulation finished"
-        global ns tf t
         $t print_stats
-        # $ns flush-trace
-        close $tf
         exit 0
 }
 

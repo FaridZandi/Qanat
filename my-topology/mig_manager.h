@@ -119,6 +119,9 @@ protected:
     static int tunnel_uid_counter;
 	static const int tunnel_count = 100; 
 
+    // temp. remove this later. 
+    int active_tunnels; 
+
     bool verbose;
 };
 
