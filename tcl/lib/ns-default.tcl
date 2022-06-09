@@ -1731,7 +1731,12 @@ Agent/PBC set modulationScheme 0
 MyTopology set verbose_ false
 MyTopology set verbose_mig_ false
 MyTopology set verbose_nf_ false
+MyTopology set process_after_migration_ false
+MyTopology set enable_prioritization_ false
+MyTopology set stat_record_interval_ 0.0001
+
 MyTopology set vm_precopy_size_ 100000000
 MyTopology set vm_snapshot_size_ 10000000
 MyTopology set gw_snapshot_size_ 1000000
 MyTopology set parallel_mig_ 2
+MyTopology set orch_type_ 0

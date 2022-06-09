@@ -58,13 +58,15 @@ public:
     Node* get_peer(Node* n); 
     std::vector<Node*> get_children(Node* n); 
     Node* get_node_by_address(int addr);
-    std::vector<int> get_path(Node* n1, path_mode pm, bool clear_cache = false);
     Node* get_mig_root(); 
     std::vector<Node*>& get_used_nodes();
     
     std::vector<Node*> get_leaves(Node* root); 
     std::vector<Node*> get_internals(Node* root); 
     std::vector<Node*> get_all_nodes(Node* root); 
+
+    std::vector<int> get_path(Node* n1, path_mode pm);
+    void clear_path_cache(); 
 
     /**
      * set the node pointer for all the classfiers 
@@ -99,23 +101,36 @@ public:
 
     void print_graph(bool print_state = false);
 
-
+    // variables bound with the Tcl script.
     static int verbose;  
     static int verbose_mig; 
     static int verbose_nf; 
+    static int process_after_migration; 
 
     static int vm_precopy_size; 
     static int vm_snapshot_size; 
     static int gw_snapshot_size; 
 
+    static double stat_record_interval;
+    
     static int parallel_mig; 
+    
+    static int orch_type; 
 
+    static int enable_prioritization; 
+
+
+
+    // migration-related variables
     bool is_migration_finished;
+    double migration_finish_time; 
     
     MigrationManager* mig_manager_; 
-
-    double migration_finish_time; 
 private:
+
+
+    std::map<std::pair<Node*, path_mode>, std::vector<int> > path_cache;
+                    
 
     void tcl_command(const std::list<std::string> & myArguments);
     

@@ -1,5 +1,5 @@
 #include "orchestrator.h"
-#include "orch_v2.h"
+#include "orch_bottom_up.h"
 #include "my_topology.h"
 #include "node.h"
 #include "utility.h"
@@ -8,9 +8,22 @@
 
 
 BaseOrchestrator& BaseOrchestrator::instance(){
-    // return OrchestratorV1::instance(); 
-    return OrchestratorV2::instance(); 
-    // return Orchestrator::instance(); 
+    auto& topo = MyTopology::instance();
+    if(topo.orch_type == 1) {
+        return OrchBottomUp::instance(); 
+    } else if (topo.orch_type == 2) {
+        // return OrchTopDown::instance(); 
+    } else if (topo.orch_type == 3) {
+        // return OrchRandom::instance(); 
+    } else {
+        std::cout << "Please specify the orchestrator type you wish to use.";
+        std::cout << std::endl; 
+
+        std::cout << "Exitting..."; 
+        std::cout << std::endl; 
+
+        exit(1); 
+    }
 };
 
 BaseOrchestrator::BaseOrchestrator(){
@@ -73,16 +86,14 @@ void BaseOrchestrator::setup_nodes(){
 void BaseOrchestrator::migration_finished(){
     auto& topo = MyTopology::instance();   
     topo.is_migration_finished = true;
-    topo.get_path(NULL, PATH_MODE_SENDER, true);
+    topo.clear_path_cache(); 
     topo.migration_finish_time = Scheduler::instance().clock(); 
-
-    // topo.print_stats();
-
 }
 
 void BaseOrchestrator::initiate_data_transfer(
                             Node* node, int size, 
                             void (*callback) (Node*)){
+                                
     auto& topo = MyTopology::instance();
 
     topo.connect_agents(node, topo.get_peer(node));
@@ -256,13 +267,4 @@ void BaseOrchestrator::set_peer_state(Node* node, MigState state){
     auto peer = topo.get_peer(node);
     mig_state[peer] = state; 
 }
-
-Orchestrator::Orchestrator() {
-    
-}
-
-Orchestrator::~Orchestrator(){
-
-}
-
 

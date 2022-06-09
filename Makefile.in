@@ -166,7 +166,7 @@ OBJ_CC = \
 	my-topology/network_func.o \
 	my-topology/mig_manager.o \
 	my-topology/topo_node.o \
-	my-topology/orch_v2.o \
+	my-topology/orch_bottom_up.o \
 	my-topology/orchestrator.o \
 	my-topology/my_topology.o \
 	my-queue/my-queue.o \

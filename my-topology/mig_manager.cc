@@ -262,11 +262,17 @@ void MigrationManager::add_to_path(Packet* p, int addr){
 
 
 void MigrationManager::set_prio(Packet* p, int prio){
+	auto& topo = MyTopology::instance();
 	hdr_ip* iph = hdr_ip::access(p); 
-	if (prio == 1){
-		iph->is_high_prio = true;
+
+	if (topo.enable_prioritization){
+		if (prio == 1){
+			iph->is_high_prio = true;
+		} else {
+			iph->is_high_prio = false; 
+		}
 	} else {
-		iph->is_high_prio = false; 
+		// do nothing
 	}
 }
 
@@ -319,7 +325,7 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// Original source will be recovered, but instead
 	// of the original destination, the new destination
 	// will be assigned to the packet. 
-		
+	
 	set_prio(p, 0); 
 
     return true; 

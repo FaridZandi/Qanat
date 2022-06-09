@@ -97,7 +97,7 @@ else:
 # sample the protocol df enteries to plot them 
 df['low_prio_buf'] = df['low_prio_buf'].rolling(100).max()
 df['high_prio_buf'] = df['high_prio_buf'].rolling(100).max()
-df = df.iloc[::100, :]
+# df = df.iloc[::100, :]
 print(df.size)
 
 # load the protocol data for drawing the colored bars

@@ -81,31 +81,4 @@ protected:
 };
 
 
-// Main Orchestrator class. To implement the real protocol.
-class Orchestrator : public BaseOrchestrator {
-public: 
-    // Singleton access to the orchestrator
-	static Orchestrator& instance() {
-        static Orchestrator instance; 
-        return instance; 
-	}
-    
-    Orchestrator(); 
-    virtual ~Orchestrator(); 
-
-    virtual void start_migration(){};
-    virtual void vm_precopy_finished(Node* node){};
-    virtual void vm_migration_finished(Node* node){};
-    virtual void gw_snapshot_sent(Node* node){}; 
-    virtual void gw_diff_sent(Node* node){}; 
-    virtual void gw_sent_last_packet(Node* node1, Node* node2){}; 
-    virtual void gw_received_last_packet(Node* node){}; 
-    virtual void setup_nodes(){}; 
-    virtual void start_background_traffic(){};
-};
-
-
-
-
-
 #endif

@@ -662,6 +662,7 @@ bool RouterNF::recv(Packet* p, Handler* h){
         for (int i = 0; i <= iph->gw_path_pointer; i++){
             std::cout << iph->gw_path[i] << " "; 
         }
+        std::cout << "packet dst: " << iph->dst_.addr_;
         std::cout << std::endl; 
     }
 	

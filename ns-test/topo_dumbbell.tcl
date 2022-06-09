@@ -31,7 +31,11 @@ MyTopology set gw_snapshot_size_ 1000000
 
 MyTopology set parallel_mig_ $parallel_mig
 
+# 1: bottom-up, 2: top-down, 3: random
+MyTopology set orch_type_ 1 
 
+MyTopology set process_after_migration_ 0
+MyTopology set enable_prioritization_ 1
 
 
 set t [new MyTopology]

@@ -66,10 +66,12 @@ if args.reload:
                 if event == "flow_start":
                     fid = int(line.split(" ")[3])
                     size = int(float(line.split(" ")[5]))
+                    traffic_type = line.split(" ")[7]
 
                     flows[fid] = {
                         "start": time, 
                         "size": size,
+                        "type": traffic_type,
                         "src": 0,
                         "dst": 0,
                         "end": 0, 
@@ -86,6 +88,7 @@ if args.reload:
                     dst = int(s[9])
                     start = flows[fid]["start"]
                     size = flows[fid]["size"]
+                    traffic_type = flows[fid]["type"]
                     fct = round(time - start, 6)
 
                     flows[fid] = {
@@ -96,6 +99,7 @@ if args.reload:
                         "end": time, 
                         "ret": ret, 
                         "fct": fct,
+                        "type": traffic_type,
                         "avg_rate": size / fct  
                     }
 
@@ -130,6 +134,13 @@ def plot_dst_hist(df):
     sns.histplot(df, x="dst")
     flows_plots_dir = args.directory + "/plots/flows/"
     plt.savefig(flows_plots_dir + "dst_hist.png", dpi=300)
+    plt.clf()
+
+# plot a histogram of the dst nodes
+def plot_src_hist(df): 
+    sns.histplot(df, x="src")
+    flows_plots_dir = args.directory + "/plots/flows/"
+    plt.savefig(flows_plots_dir + "src_hist.png", dpi=300)
     plt.clf()
 
 # plot the fcts over time
@@ -185,7 +196,7 @@ def plot_throughput_over_time_2(df):
     destinations = df.dst.unique() 
     for dst in [1234]: # destinations + [1234]:
         print("plotting the throughput for dst", dst)
-        interval = 0.01 
+        interval = 0.001 
         max_time = df.end.max()
         min_time = df.start.min()
         timeslots = int((max_time) / interval) + 1
@@ -221,6 +232,7 @@ def plot_throughput_over_time_2(df):
 
 
 plot_fct_hist(df)
+plot_src_hist(df) 
 plot_dst_hist(df) 
 plot_fct_over_time(df)
 # plot_throughput_over_time_1(df)

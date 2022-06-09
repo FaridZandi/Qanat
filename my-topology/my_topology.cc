@@ -29,6 +29,10 @@ int MyTopology::vm_precopy_size = 0;
 int MyTopology::vm_snapshot_size = 0;
 int MyTopology::gw_snapshot_size = 0;
 int MyTopology::parallel_mig = 0;
+int MyTopology::orch_type = 0;
+int MyTopology::enable_prioritization = 0;
+int MyTopology::process_after_migration = 0;
+double MyTopology::stat_record_interval = 0;
 
 
 MyTopology::MyTopology(){
@@ -40,6 +44,10 @@ MyTopology::MyTopology(){
     bind("vm_snapshot_size_", &vm_snapshot_size); 
     bind("gw_snapshot_size_", &gw_snapshot_size);
     bind("parallel_mig_", &parallel_mig);
+    bind("process_after_migration_", &process_after_migration);
+    bind("enable_prioritization_", &enable_prioritization);
+    bind("orch_type_", &orch_type);
+    bind("stat_record_interval_", &stat_record_interval);
 
     is_migration_finished = false; 
 
@@ -103,14 +111,15 @@ int MyTopology::command(int argc, const char*const* argv){
             orch.setup_nodes();
             return TCL_OK; 
 
+        } else if (strcmp(argv[1], "start_stat_record") == 0){
+            stat_recorder = new StatRecorder(); 
+            stat_recorder->interval = stat_record_interval; 
+            stat_recorder->start(); 
+            return TCL_OK; 
+
         } else if (strcmp(argv[1], "start_migration") == 0){
             auto& orch = BaseOrchestrator::instance();
             orch.start_migration();
-
-            stat_recorder = new StatRecorder(); 
-            stat_recorder->interval = 0.000001; 
-            stat_recorder->start(); 
-
             return TCL_OK; 
 
         } else if (strcmp(argv[1], "print_nodes") == 0) {
@@ -510,23 +519,19 @@ std::vector<Node*>& MyTopology::get_used_nodes(){
 }
 
 
-std::vector<int> MyTopology::get_path(Node* n1, path_mode pm, bool clear_cache){
-    static std::map<std::pair<Node*, path_mode>, 
-                    std::vector<int> > cache;
+std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
 
-    if (clear_cache){
-        cache.clear();
-        return std::vector<int>(); 
-    }
+    auto dest = std::make_pair(n1, pm); 
 
-    if (cache.find(std::make_pair(n1, pm)) != cache.end()) {
-        return cache[std::make_pair(n1, pm)]; 
+    if (path_cache.find(dest) != path_cache.end()) {
+        return path_cache[dest]; 
     }
 
     std::vector<int> result; 
 
     if (n1 != nullptr){
-
+        // if the migration is finished, we should send the 
+        // traffic to the destination zone directly. 
         if (is_migration_finished){
             n1 = get_peer(n1);
         }
@@ -544,12 +549,23 @@ std::vector<int> MyTopology::get_path(Node* n1, path_mode pm, bool clear_cache){
     if(pm == PATH_MODE_RECEIVER) { 
         std::reverse(result.begin(),
                      result.end());
-    }
+    }  
 
-    cache[std::make_pair(n1, pm)] = result; 
+    // print the path to the node the first time it is requested
+    std::cout << "path to " << uid(n1) << ": ";
+    for (auto n: result){
+        std::cout << n << " ";
+    }
+    std::cout << std::endl;
+
+    // store the path in the cache and return it
+    path_cache[dest] = result; 
     return result; 
 }
 
+void MyTopology::clear_path_cache(){
+    path_cache.clear(); 
+}
 
 void MyTopology::make_peers(int n1, int n2){
     data[node[n1]].peer = n2; 
@@ -643,7 +659,9 @@ void MyTopology::print_stats(){
     std::cout << "--------------Stats---------------" << std::endl;
     std::cout << "----------------------------------" << std::endl;
 
-    stat_recorder->print_stats(); 
+    if (stat_recorder != nullptr){
+        stat_recorder->print_stats();
+    }
 
     std::cout << "----------------------------------" << std::endl;
     std::cout << "----------------------------------" << std::endl;

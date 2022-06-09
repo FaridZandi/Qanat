@@ -6,7 +6,7 @@ connections_per_pair = 1
 meanFlowSize = 1138*1460
 paretoShape = 1.05
 flow_cdf = 'CDF_dctcp.tcl'
-sim_end = 100
+sim_end = 100000
 
 enableMultiPath = 1
 perflowMP = 0
@@ -35,6 +35,8 @@ pias_thresh_4 = 1989*1460
 pias_thresh_5 = 1999*1460
 pias_thresh_6 = 2001*1460
 
-topology_spt = 10
+topology_spt = 16
 topology_tors = 2
-topology_spines = 1
+topology_spines = 3
+
+stat_record_interval = 0.001

@@ -282,6 +282,7 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 		if (strcmp(argv[1], "advance-bytes") == 0) {
+			std::cout<< "advance-bytes by " << atoi(argv[2]) << " on flow " << fid_ << std::endl;
 			advance_bytes(atoi(argv[2]));
 			return (TCL_OK);
 		}
@@ -922,10 +923,11 @@ FullTcpAgent::calPrio(int prio) {
 void
 FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reason, Packet *p)
 {
-	// std::cout << "going to send a packet FullTcpAgent::sendpacket" << std::endl; 
+	// std::cout << "FullTcpAgent::sendpacket on flow " << fid_ << " from " << this->here_.addr_ << " to " << this->dst_.addr_ << std::endl;
 	
 	// std::cout << "traffic class of this agent: ";
 	// std::cout << this << " is " << this->traffic_class_ << std::endl; 
+
 
 	if (!p) p = allocpkt();
 	hdr_tcp *tcph = hdr_tcp::access(p);
@@ -939,7 +941,11 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	
 	// Sepehr: if not background traffic, set it to high priority #FIXME
 	if (iph->traffic_class == 2) {
-		iph->is_high_prio = true;
+		auto& topo = MyTopology::instance(); 
+		
+		if (topo.enable_prioritization){
+			iph->is_high_prio = true;
+		}
 	}
 
 	if (this->traffic_class_ == 1){
@@ -966,9 +972,9 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 			// both src and dst are logical nodes 
 			// currently not supported 
 
-			std::cout << "class 1 traffic should not be ";
-			std::cout << "sent between two logical nodes"; 
-			std::cout << std::endl; 
+			// std::cout << "class 1 traffic should not be ";
+			// std::cout << "sent between two logical nodes"; 
+			// std::cout << std::endl; 
 
 		} else if (dst_node != nullptr) {
 			// either of src and dst are logical nodes
