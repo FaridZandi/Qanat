@@ -59,6 +59,8 @@ void BaseOrchestrator::setup_nodes(){
         for(auto& node: topo.get_internals(root)){     
             topo.get_data(node).mode = OpMode::GW;
             for (nf_spec& nfs: get_gw_nf_list()){
+                std::cout << "Adding nf: " << nfs.type << " to ";
+                std::cout << " uid: " << topo.get_data(node).uid << std::endl;
                 topo.get_data(node).add_nf(nfs.type, nfs.parameter);
             }
         }

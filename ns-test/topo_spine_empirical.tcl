@@ -3,7 +3,7 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 52} {
+if {$argc != 55} {
     puts "wrong number of arguments $argc"
     exit 0
 }
@@ -73,9 +73,13 @@ set dst_zone_delay [lindex $argv 47]
 set enable_bg_traffic [lindex $argv 48]
 set vm_flow_size [lindex $argv 49]
 set enable_rt_dv [lindex $argv 50]
+set b_factor_1 [lindex $argv 51]
+set b_factor_2 [lindex $argv 52]
+set b_factor_3 [lindex $argv 53]
+
 
 ### result file
-set flowlog [open [lindex $argv 51] w]
+set flowlog [open [lindex $argv 54] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -184,7 +188,12 @@ Queue/RED set deque_prio_ $deque_prio_
 
 ############## Multipathing ###########################
 if {$enableMultiPath == 1} {
-    $ns rtproto DV
+    if {$enable_rt_dv == 1} {
+        puts "setting RT-DV"
+        $ns rtproto DV
+    } else {
+        puts "not setting RT-DV"
+    }
     Agent/rtProto/DV set advertInterval	[expr 2*$sim_end]
     Node set multiPath_ 1
     if {$perflowMP != 0} {
@@ -210,15 +219,13 @@ MyTopology set orch_type_ $orch_type
 MyTopology set enable_prioritization_ $enable_prioritization
 MyTopology set process_after_migration_ 0
 
+puts "setting stat record interval: $stat_record_interval"
+
 set t [new MyTopology]
 $t set_simulator $ns
 set vm_link_rate 10
 
 ############# Topoplgy #########################
-
-set b_factor_1 2
-set b_factor_2 2
-set b_factor_3 2
 
 puts "servers per rack = $topology_spt"
 puts "total number of racks = $topology_tors"
@@ -350,9 +357,11 @@ while {1} {
     set logical_leaves_counter [expr {$logical_leaves_counter + 1}];
 }
 
+
+$ns at 4 "$t start_stat_record"
+
 if { $run_migration == "yes" } {
     puts "migration mode: migration will be run." 
-    $ns at 4 "$t start_stat_record"
     $ns at 4.5 "$t start_migration"
 } elseif { $run_migration == "no" } {
     puts "migration mode: migration will not be run. to study normal-mode operation, without migration." 
@@ -469,6 +478,6 @@ proc finish {} {
         exit 0
 }
 
-$ns at $sim_end "finish"
+$ns at 1000 "finish"
 
 $ns run

@@ -48,6 +48,8 @@ if args.reload:
 
     log_file = args.directory + "/" + "logFile.tr"
 
+    loaded_flows = 0
+
     with open(log_file) as f:
         try: 
             for line in f.readlines():
@@ -103,9 +105,10 @@ if args.reload:
                         "avg_rate": size / fct  
                     }
 
-                if len(flows) % 1000 == 0: 
-                    print("seen", len(flows), "flowes")
-                    # print(flows[len(flows) - 1])
+                    loaded_flows += 1
+
+                    if loaded_flows % 1000 == 0: 
+                        print("loaded", loaded_flows, "flows")
 
         except Exception as e:
             print(e)

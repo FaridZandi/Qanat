@@ -116,12 +116,15 @@ public:
     void print_state();
 
     void update_highest_seq(Packet* p); 
+
+    int get_ooo_packet_count();
     
 protected: 
     std::map<std::string, std::string> state; 
-    
+
     std::map<int, int> highest_seq;
     std::map<int, int> ooo_packets;
+    int total_ooo_packets; 
 };
 
 

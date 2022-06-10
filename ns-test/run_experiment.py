@@ -62,7 +62,7 @@ def setup_exp(exp):
 	elif exp["run_migration"] == "skip":
 		mig_str = "skipmig"
 
-	directory_name = 'exps/%s/%s_P%d_L%d_O%d_MS%s_A%s_OR%d_Pr%s' % (
+	directory_name = 'exps/%s/%s_P%d_L%d_O%d_MS%s_A%s_OR%d_Pr%s_Sd%d_Dd%d' % (
 		exp["exp_name"], 
 
 		mig_str,
@@ -73,6 +73,8 @@ def setup_exp(exp):
 		exp["sourceAlg"],
 		exp["orch_type"],
 		str(exp["enable_prioritization"]),
+		int(exp["src_zone_delay"] * 1000000),
+		int(exp["dst_zone_delay"] * 1000000),
 	)
 
 	directory_name = directory_name.lower()
@@ -116,16 +118,16 @@ def setup_exp(exp):
 			+ str(pias_thresh_4)+' '\
 			+ str(pias_thresh_5)+' '\
 			+ str(pias_thresh_6)+' '\
-			+ str(topology_spt)+' '\
-			+ str(topology_tors)+' '\
-			+ str(topology_spines)+' '\
+			+ str(exp["dc_size"][2])+' '\
+			+ str(exp["dc_size"][1])+' '\
+			+ str(exp["dc_size"][0])+' '\
 			+ str(exp["oversub"])+' '\
 			+ str(mig_sizes[0] * 1000000)+' '\
 			+ str(mig_sizes[1] * 1000000)+' '\
 			+ str(mig_sizes[2] * 1000000)+' '\
 			+ str(exp["parallel_mig"])+' '\
 			+ str(exp["run_migration"])+' '\
-			+ str(stat_record_interval)+' '\
+			+ str(exp["stat_record_interval"])+' '\
 			+ str(exp["orch_type"])+' '\
 			+ str(exp["enable_prioritization"])+' '\
 			+ str(exp["src_zone_delay"])+' '\
@@ -133,6 +135,9 @@ def setup_exp(exp):
 			+ str(exp["enable_bg_traffic"])+' '\
 			+ str(exp["vm_flow_size"])+' '\
 			+ str(exp["enable_rt_dv"])+' '\
+			+ str(exp["tree_shape"][0])+' '\
+			+ str(exp["tree_shape"][1])+' '\
+			+ str(exp["tree_shape"][2])+' '\
 			+ str('./'+directory_name+'/flow.tr')+'  >'\
 			+ str('./'+directory_name+'/logFile.tr')
 	else: 
@@ -160,7 +165,7 @@ if __name__ == "__main__":
 			"exp_name": ["mig_effect"],
 			"mig_sizes": [(200, 100, 10)],
 			"parallel_mig": [2], 
-			"load": [0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+			"load": [0.6, 0.7, 0.8, 0.9, 1.0],
 			"oversub": [2.0],
 			"sourceAlg":['TCP'],
 			"network_topo": ["datacenter"], # "dumbell" 
@@ -172,11 +177,13 @@ if __name__ == "__main__":
 			###########################################################
 			"enable_rt_dv": [1], # 0: disable, 1: enable
 			"enable_bg_traffic": [1], # 0: disable, 1: enable
-			"stat_record_interval": [0.001], # in seconds
+			"stat_record_interval": [0.0001], # in seconds
 			"src_zone_delay": [0.00001], # in seconds
 			"dst_zone_delay": [0.00002], # in seconds 
 			"sim_end": [100000], # number of flows
-			"vm_flow_size": [1000000], # in packets
+			"vm_flow_size": [1000000], # in packets,
+			"dc_size": [(2, 2, 16)], # (spines, bg_tors, spt)
+			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		} 
 
 	elif exp_name == "test":
@@ -190,18 +197,19 @@ if __name__ == "__main__":
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
 			"enable_prioritization": [1], # 0: disable, 1: enable
-			"stat_record_interval": [0.1],
 			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
 			###########################################################
 			########| don't make a list out of the following |#########
 			###########################################################
-			"enable_rt_dv": [0], # 0: disable, 1: enable
+			"enable_rt_dv": [1], # 0: disable, 1: enable
 			"enable_bg_traffic": [1], # 0: disable, 1: enable
-			"stat_record_interval": [0.1], # in seconds
+			"stat_record_interval": [0.0001], # in seconds
 			"src_zone_delay": [0.00001], # in seconds
 			"dst_zone_delay": [0.00002], # in seconds
-			"sim_end": [20], # number of flows
-			"vm_flow_size": [10], # in packets
+			"sim_end": [500], # number of flows
+			"vm_flow_size": [300000], # in packets
+			"dc_size": [(1, 1, 5)], # (spines, bg_tors, spt)
+			"tree_shape": [(1, 1, 2)], #branching factors of the tree
 		} 
 
 

@@ -1,3 +1,4 @@
+from ast import Expression
 import pandas as pd 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -54,7 +55,7 @@ if args.reload:
     with open(log_file) as f:
         try: 
             for line in f.readlines():
-                if not line.startswith("stat_recorder"):
+                if not line.startswith("node_stats_recorder"):
                     # ignore the lines not starting with stat_recorder
                     continue
 
@@ -70,13 +71,15 @@ if args.reload:
                 high_prio_buf = int(s[3])
                 low_prio_buf = int(s[4])
                 packet_count = int(s[5])
+                ooo_packets = int(s[6])
 
                 data.append({
-                    "uid":uid, 
-                    "time":time, 
-                    "high_prio_buf":high_prio_buf, 
-                    "low_prio_buf":low_prio_buf, 
-                    "packet_count":packet_count, 
+                    "uid": uid, 
+                    "time": time, 
+                    "high_prio_buf": high_prio_buf, 
+                    "low_prio_buf": low_prio_buf, 
+                    "packet_count": packet_count, 
+                    "ooo_packets": ooo_packets,
                 })
 
                 if len(data) % 10000 == 0:
@@ -125,11 +128,13 @@ def plot_node(node, ax):
     sns.lineplot(ax=ax, x=node_df.time, y=node_df[measure])
     ax.set_title("node: " + str(node))
 
-    proto = protocol_df[protocol_df.id == node].iloc[0]
-    plot_bar(ax, proto.len_pre, proto.start_pre, "orange")
-    plot_bar(ax, proto.len_mig, proto.start_mig, "red")
-    plot_bar(ax, proto.len_buf, proto.start_buf, "gray")
-
+    try:
+        proto = protocol_df[protocol_df.id == node].iloc[0]
+        plot_bar(ax, proto.len_pre, proto.start_pre, "orange")
+        plot_bar(ax, proto.len_mig, proto.start_mig, "red")
+        plot_bar(ax, proto.len_buf, proto.start_buf, "gray")
+    except Exception as e:
+        pass
 
 def plot_measure(measure, nodes, prefix):
 
@@ -153,7 +158,7 @@ def plot_measure(measure, nodes, prefix):
 
 
 
-for measure in ["low_prio_buf", "packet_count", "low_prio_buf", "high_prio_buf"]:
+for measure in ["low_prio_buf", "packet_count", "ooo_packets", "high_prio_buf"]:
     nodes = df.uid.unique()
 
     src_nodes = nodes[0:(len(nodes) // 2)]

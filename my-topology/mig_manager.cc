@@ -379,8 +379,10 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
             td.to->get_classifier()->recv(p, h);
             return false;  
 
-        } else if (dir == Direction::Incoming){ 
-            iph->dst_.addr_ = td.to->address(); 
+        } else if (dir == Direction::Incoming){
+			hdr_tcp* tcph = hdr_tcp::access(p);
+			std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
+			iph->dst_.addr_ = td.to->address(); 
             iph->prio_ = 15;
             return true;         
         }
@@ -464,5 +466,4 @@ void EfficentMigrationManager::add_tunnel(tunnel_data tunnel){
 	rules[t_out][t_from] = Tunnel_Point::Tunnel_Out;
 	rules[t_from][0] = Tunnel_Point::Tunnel_From; 
 	rules[t_to][t_to] = Tunnel_Point::Tunnel_To; 
-
 }

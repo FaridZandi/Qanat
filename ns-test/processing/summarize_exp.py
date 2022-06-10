@@ -51,6 +51,8 @@ if args.reload:
         exp_info["cc_protocol"] = file_name_split[5][1:]
         exp_info["orch_type"] = file_name_split[6][2:]
         exp_info["prioritization"] = bool(file_name_split[7][2:])
+        exp_info["src_zone_delay"] = int(file_name_split[8][2:])
+        exp_info["dst_zone_delay"] = int(file_name_split[9][2:])
 
 
         # load the data files 
@@ -91,12 +93,17 @@ if args.reload:
         else: 
             exp_info["total_mig_time"] = 0
         
-        # 
+        # OoO delivery 
+
+        # Buffer sizes
+
+        # Per-Packet delay 
+
+        # per-packet buffering time 
 
 
 
-
-
+        
 
 
         # add the exp info to the dataframe

@@ -11,6 +11,7 @@
 #include <chrono>
 #include <ctime>  
 
+
 static class MyTopologyClass : public TclClass {
 public:
 	MyTopologyClass() : TclClass("MyTopology") {}
@@ -653,6 +654,14 @@ std::vector<Node*> MyTopology::get_all_nodes(Node* root){
     return get_subtree_nodes(root, true, true);
 }
 
+
+void MyTopology::start_recording_stats(int fid,
+                                       FullTcpAgent* agent){
+    stat_recorder->tracked_fids.push_back(fid); 
+    stat_recorder->fid_agent_map[fid] = agent;
+}
+
+
 void MyTopology::print_stats(){
 
     std::cout << "----------------------------------" << std::endl;
@@ -722,24 +731,52 @@ void StatRecorder::record_stats(){
 
             auto m = (Monitor*)(topo.get_data(node).get_nf("monitr"));
             int packet_count = m->get_packet_count(); 
+            auto ooo_packet_count = m->get_ooo_packet_count(); 
 
             auto uid = topo.uid(node); 
             auto now = Scheduler::instance().clock();
 
-            stats[uid][now] = {
+
+            node_stats[uid][now] = {
                 high_prio_buf, 
                 low_prio_buf, 
-                packet_count
+                packet_count,
+                ooo_packet_count,
             }; 
         } 
+    }
+
+    for(auto& fid: tracked_fids){
+        auto agent = fid_agent_map[fid];
+        auto now = Scheduler::instance().clock();
+
+        auto packets_received = agent->get_packets_received_count();
+        auto total_in_flight_time = agent->get_total_in_flight_time();
+        auto total_buffered_time = agent->get_total_buffered_time();
+
+        double average_in_flight_time = 0;
+        if (packets_received > 0){
+            average_in_flight_time = total_in_flight_time / packets_received;
+        }
+
+        double average_buffered_time = 0;
+        if (packets_received > 0){
+            average_buffered_time = total_buffered_time / packets_received;
+        }
+        
+        flow_stats[fid][now] = {
+            packets_received,
+            average_in_flight_time,
+            average_buffered_time,
+        };
     }
 }
 
 
 void StatRecorder::print_stats(){
-    for (auto& node_stat: stats){
+    for (auto& node_stat: node_stats){
         for (auto& stat: node_stat.second){
-            std::cout << "stat_recorder ";
+            std::cout << "node_stats_recorder ";
             std::cout << "[";
             std::cout << node_stat.first; 
             std::cout << "]";
@@ -757,10 +794,39 @@ void StatRecorder::print_stats(){
             std::cout << stat.second.low_prio_buf;
             std::cout << " ";
             std::cout << stat.second.packet_count;
+            std::cout << " ";
+            std::cout << stat.second.ooo_packet_count;
             
             std::cout << std::endl; 
         }
     }
+
+
+    for (auto& flow_stat: flow_stats){
+        for (auto& stat: flow_stat.second){
+            std::cout << "flow_stats_recorder ";
+            std::cout << "[";
+            std::cout << flow_stat.first; 
+            std::cout << "]";
+
+            std::cout << " ";
+
+            std::cout << "[";
+            std::cout << stat.first; 
+            std::cout << "]";
+
+            std::cout << " ";
+
+            std::cout << stat.second.received_packet_count;
+            std::cout << " ";
+            std::cout << int(stat.second.average_in_flight_time * 1000000);
+            std::cout << " ";
+            std::cout << int(stat.second.average_buffered_time * 1000000);
+            
+            std::cout << std::endl; 
+        }
+    }
+
 }
 
 void StatRecorder::start(){

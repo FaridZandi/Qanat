@@ -87,7 +87,9 @@ public:
         	delack_timer_(this), flags_(0),
         	state_(TCPS_CLOSED), recent_ce_(FALSE),
 		  last_state_(TCPS_CLOSED), rq_(rcv_nxt_), last_ack_sent_(-1),
-		  informpacer(0),m_bPFC(0),traffic_class_(1), retrans_count(0) {}
+		  informpacer(0),m_bPFC(0),traffic_class_(1), retrans_count(0), 
+		  is_recording_stat(false), packets_received_stat(0),
+		  packets_total_in_flight_stat(0), packets_total_buffered_stat(0){}
 		// Mohammad: added informpacer
 
 	~FullTcpAgent() { cancel_timers(); rq_.clear(); }
@@ -104,7 +106,18 @@ public:
 	virtual void set_traffic_class(int);
 	virtual int get_traffic_class(void);
 
-	int retrans_count; 
+	int retrans_count; // Farid
+	bool is_recording_stat; // Farid
+	int packets_received_stat; // Farid
+	double packets_total_in_flight_stat; // Farid
+	double packets_total_buffered_stat; // Farid
+
+	int get_packets_received_count(); // Farid
+	double get_total_in_flight_time(); // Farid
+	double get_total_buffered_time(); // Farid
+
+
+
 protected:
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);
@@ -264,6 +277,8 @@ protected:
 	
 	double recent_;		// ts on SYN written by peer
 	double recent_age_;	// my time when recent_ was set
+
+
 
 	/*
 	 * setting iw, specific to tcp-full, called

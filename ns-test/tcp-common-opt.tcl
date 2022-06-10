@@ -196,6 +196,8 @@ TCP_pair instproc start { nr_bytes } {
         set traffic_type "unset"
         if {$is_single_flow} {
             set traffic_type "vm_traffic" 
+            # $tcps record_stat;
+            $tcpr record_stat;
         } else {
             set traffic_type "bg_traffic" 
         }

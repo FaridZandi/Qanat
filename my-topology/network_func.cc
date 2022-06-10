@@ -92,6 +92,8 @@ StatefulNF::StatefulNF(TopoNode* toponode, int chain_pos)
 
     is_loading = false; 
     is_recording = false; 
+
+    total_ooo_packets = 0;
 }
 
 StatefulNF::~StatefulNF(){
@@ -186,15 +188,34 @@ void StatefulNF::update_highest_seq(Packet* p){
 
     auto fid = iph->fid_; 
     auto seqno = tcph->seqno();
+    auto reason = tcph->reason();
+
+    if(fid == 0){
+        return;
+    }
 
     if(highest_seq.find(fid) == highest_seq.end()){
         highest_seq[fid] = 0; 
         ooo_packets[fid] = 0; 
     }
 
-    if(seqno < highest_seq[fid]){
+    
+
+    if(seqno < highest_seq[fid] and reason == 0){
+        std::cout << "on node " << toponode_->node->address() << ": ";
+        std::cout << "highest_seq[" << fid << "] = " << highest_seq[fid];
+        std::cout << " seqno = " << seqno << std::endl;
+        std::cout << "reason = " << tcph->reason() << std::endl;
+        
         ooo_packets[fid] ++; 
+        total_ooo_packets ++;
     }
+
+    highest_seq[fid] = std::max(highest_seq[fid], seqno);
+}
+
+int StatefulNF::get_ooo_packet_count(){
+    return total_ooo_packets; 
 }
 
 bool StatefulNF::is_stateful(){
@@ -214,6 +235,7 @@ void StatefulNF::print_state(){
 
 Monitor::Monitor(TopoNode* toponode, int chain_pos) 
     : StatefulNF(toponode, chain_pos) {
+        // std::cout << "initializing packet count on node " << toponode_->node->address() << std::endl; 
         state["packet_count"] = "0"; 
 }
 
@@ -387,18 +409,27 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
             // if the packet is coming from the peer, 
             // it means that it has been tunnelled, so it 
             // should be processed with high priority. 
+
             queue_number = 1;
             pq = hp_q;
+            
+            // queue_number = 2;
+            // pq = lp_q;
         } else {
             // otherwise, the packet will be processed with 
             // a low priority. These are the packets coming from 
             // "above" in the tree. 
+
             queue_number = 2;
             pq = lp_q;
+
+            // queue_number = 1;
+            // pq = hp_q;
         }  
 
         if (pq->length() < size_){
             pq->enque(p);
+            iph->time_enter_buffer = Scheduler::instance().clock();
 
             log_packet("Enqueued the packet in queue:", queue_number);
             log_packet("The new queue size is: ", pq->length());
@@ -416,7 +447,6 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
         return true; 
     }
 }
-
 
 double PriorityBuffer::get_interval(){
     double wait = 1.0 / rate_;
@@ -447,12 +477,18 @@ void PriorityBuffer::send_if_possible(){
     if (busy_){
         return;
     }
-     
+
+    auto now = Scheduler::instance().clock();
+
     if (hp_q->length() > 0){
         busy_ = true; 
         sched_next_send(); 
 
-        Packet* p = hp_q->deque();
+        Packet* p = hp_q->deque();        
+        hdr_ip* iph = hdr_ip::access(p);
+        iph->time_buffered += (now - iph->time_enter_buffer);
+        iph->time_enter_buffer = -1;
+
         send(p); 
 
     } else if (lp_q->length() > 0) {
@@ -460,6 +496,10 @@ void PriorityBuffer::send_if_possible(){
         sched_next_send(); 
 
         Packet* p = lp_q->deque();
+        hdr_ip* iph = hdr_ip::access(p);
+        iph->time_buffered += (now - iph->time_enter_buffer);
+        iph->time_enter_buffer = -1;
+
         send(p); 
     } 
 }

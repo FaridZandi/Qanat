@@ -270,6 +270,15 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			// std::cout << "going to reset the connection" << std::endl;
 			reset();
 			return (TCL_OK);
+		} 
+		if (strcmp(argv[1], "record_stat") == 0) {
+			std::cout << "record_stat for flow " << fid_ << std::endl;
+			is_recording_stat = true; 
+
+			auto& topo = MyTopology::instance();
+			topo.start_recording_stats(fid_, this);
+
+			return (TCL_OK);
 		}
 	}
 	if (argc == 3) {
@@ -937,7 +946,9 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	// change the traffic class for determining whether 
 	// it should be bufferred or not
 	iph->traffic_class = this->traffic_class_;
-	iph->is_tcp_traffic = true; 
+	iph->is_tcp_traffic = true;
+
+	iph->time_sent = Scheduler::instance().clock(); 
 	
 	// Sepehr: if not background traffic, set it to high priority #FIXME
 	if (iph->traffic_class == 2) {
@@ -949,6 +960,7 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	}
 
 	if (this->traffic_class_ == 1){
+		
 		auto& topo = MyTopology::instance(); 
 
 		auto src_node = topo.get_node_by_address(this->here_.addr_);
@@ -1795,6 +1807,27 @@ FullTcpAgent::set_initial_window()
 	TcpAgent::set_initial_window();
 }       
 
+
+
+int FullTcpAgent::get_packets_received_count() {
+	int tmp = packets_received_stat; 
+	packets_received_stat = 0;
+	return tmp;
+} // Farid
+
+double FullTcpAgent::get_total_in_flight_time(){
+	double tmp = packets_total_in_flight_stat;
+	packets_total_in_flight_stat = 0;
+	return tmp;
+} //Farid
+
+double FullTcpAgent::get_total_buffered_time(){
+	double tmp = packets_total_buffered_stat;
+	packets_total_buffered_stat = 0;
+	return tmp;
+} //Farid
+
+
 /*
  * main reception path - 
  * called from the agent that handles the data path below in its muxing mode
@@ -1821,9 +1854,28 @@ FullTcpAgent::recv(Packet *pkt, Handler*)
 		prob_mode_ = false;
 		prob_count_ = 0;
 
+	hdr_ip *iph = hdr_ip::access(pkt);	// TCP header
 	hdr_tcp *tcph = hdr_tcp::access(pkt);	// TCP header
 	hdr_cmn *th = hdr_cmn::access(pkt);	// common header (size, etc)
 	hdr_flags *fh = hdr_flags::access(pkt);	// flags (CWR, CE, bits)
+
+	if (iph->time_sent != -1){
+
+		double now = Scheduler::instance().clock();
+		auto in_flight_time = now - iph->time_sent;
+		auto time_buffered = iph->time_buffered;
+		
+		packets_received_stat ++;
+		packets_total_in_flight_stat += in_flight_time;
+		packets_total_buffered_stat += time_buffered;
+		
+		// if (time_buffered != 0){
+		// 	std::cout << "packet " << tcph->seqno() << " "; 
+		// 	std::cout << "in_flight_time: " << int(in_flight_time * 1000000) << "us ";
+		// 	std::cout << "time_buffered: " << int(time_buffered * 1000000) << "us ";
+		// 	std::cout << "on flow " << fid_ << std::endl;
+		// }
+	}
 
 	int needoutput = FALSE;
 	int ourfinisacked = FALSE;

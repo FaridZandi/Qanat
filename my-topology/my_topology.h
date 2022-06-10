@@ -21,6 +21,7 @@ class Tcl;
 class TclObject;
 class MigrationManager; 
 class StatRecorder;
+class FullTcpAgent;
 
 enum path_mode{
     PATH_MODE_SENDER,
@@ -50,6 +51,7 @@ public:
      */
     void process_packet(Packet* p, Handler*h, Node* node);
 
+    void start_recording_stats(int fid, FullTcpAgent* agent); 
     void print_stats();
     void setup_nth_layer_tunnel(Node* vm, int n); 
     Node* get_nth_parent(Node* node, int n);
@@ -178,20 +180,18 @@ private:
 
 
 
-struct Stat {
+struct NodeStat {
     int high_prio_buf; 
     int low_prio_buf; 
     int packet_count; 
+    int ooo_packet_count;
 };
 
-/*
-   each buffer in each interval 
-        max buffer size 
-        avg buffer size 
-        min buffer size 
-        buffer enque count
-        beffer deque count
-*/
+struct FlowStat{
+    int received_packet_count;
+    double average_in_flight_time;
+    double average_buffered_time; 
+};
 
 class StatRecorder : public Handler{
 public: 
@@ -205,7 +205,11 @@ public:
 
     double interval; 
 
-    std::map<int, std::map<double, Stat> > stats;
+    std::map<int, std::map<double, NodeStat> > node_stats;
+    std::map<int, std::map<double, FlowStat> > flow_stats;
+
+    std::vector<int> tracked_fids;
+    std::map<int, FullTcpAgent* > fid_agent_map; 
 
     static constexpr double record_after_finish = 1;  
 };
