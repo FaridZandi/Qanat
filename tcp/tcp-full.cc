@@ -291,7 +291,7 @@ FullTcpAgent::command(int argc, const char*const* argv)
 			return (TCL_OK);
 		}
 		if (strcmp(argv[1], "advance-bytes") == 0) {
-			std::cout<< "advance-bytes by " << atoi(argv[2]) << " on flow " << fid_ << std::endl;
+			// std::cout<< "advance-bytes by " << atoi(argv[2]) << " on flow " << fid_ << std::endl;
 			advance_bytes(atoi(argv[2]));
 			return (TCL_OK);
 		}
@@ -954,10 +954,15 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	if (iph->traffic_class == 2) {
 		auto& topo = MyTopology::instance(); 
 		
-		if (topo.enable_prioritization){
+		if (topo.prioritization_level == 2) {
+			iph->is_very_high_prio = true;
+		} else if (topo.prioritization_level == 1) {
 			iph->is_high_prio = true;
+		} else {
+			// nothing
 		}
 	}
+
 
 	if (this->traffic_class_ == 1){
 		

@@ -110,6 +110,8 @@ struct hdr_ip {
 	int gw_path_pointer; // Farid
 	int traffic_class; // Sepehr
 	bool is_high_prio; // Sepehr
+	bool is_very_high_prio; // Farid
+
 	bool is_tcp_traffic; // Farid
 
 	double time_sent; // Farid

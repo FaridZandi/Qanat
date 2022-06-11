@@ -478,6 +478,7 @@ Agent::initpkt(Packet* p) const
 	iph->state_dst = -1; // Farid 
 	iph->prev_hop = -1; // Farid 
 	iph->is_high_prio = false; // Sepehr
+	iph->is_very_high_prio = false; // Sepehr
 	iph->is_tcp_traffic = false;
 	 
 	iph->time_sent = -1; 

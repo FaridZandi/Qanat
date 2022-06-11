@@ -119,7 +119,7 @@ public:
     
     static int orch_type; 
 
-    static int enable_prioritization; 
+    static int prioritization_level; 
 
 
 

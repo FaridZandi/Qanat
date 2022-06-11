@@ -1732,7 +1732,7 @@ MyTopology set verbose_ false
 MyTopology set verbose_mig_ false
 MyTopology set verbose_nf_ false
 MyTopology set process_after_migration_ false
-MyTopology set enable_prioritization_ false
+MyTopology set prioritization_level_ 2
 MyTopology set stat_record_interval_ 0.0001
 
 MyTopology set vm_precopy_size_ 100000000

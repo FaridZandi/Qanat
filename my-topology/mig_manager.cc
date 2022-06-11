@@ -265,14 +265,12 @@ void MigrationManager::set_prio(Packet* p, int prio){
 	auto& topo = MyTopology::instance();
 	hdr_ip* iph = hdr_ip::access(p); 
 
-	if (topo.enable_prioritization){
-		if (prio == 1){
+	if (prio == 1) {
+		if (topo.prioritization_level > 0) {
 			iph->is_high_prio = true;
-		} else {
-			iph->is_high_prio = false; 
-		}
+		} 
 	} else {
-		// do nothing
+		iph->is_high_prio = false; 
 	}
 }
 
@@ -383,14 +381,16 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 			hdr_tcp* tcph = hdr_tcp::access(p);
 			std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
 			iph->dst_.addr_ = td.to->address(); 
-            iph->prio_ = 15;
+			set_prio(p, 1); 
             return true;         
         }
     }
 }
 
-bool MigrationManager::handle_packet_to(tunnel_data td, Packet*p, 
-										Handler* h, Node* n){
+bool MigrationManager::handle_packet_to(tunnel_data td, 
+										Packet*p, 
+										Handler* h,
+										Node* n){
 
 	// Turn on the tunnel flag, to differentiate it 
 	// from the traffic that had directly been sent

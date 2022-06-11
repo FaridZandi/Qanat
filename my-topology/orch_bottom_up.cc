@@ -30,8 +30,6 @@ int get_random_transfer_size(int mean, int range_p){
 }
 
 
-
-
 void OrchBottomUp::start_migration(){
     std::srand(123);
 

@@ -199,13 +199,11 @@ void StatefulNF::update_highest_seq(Packet* p){
         ooo_packets[fid] = 0; 
     }
 
-    
-
     if(seqno < highest_seq[fid] and reason == 0){
-        std::cout << "on node " << toponode_->node->address() << ": ";
-        std::cout << "highest_seq[" << fid << "] = " << highest_seq[fid];
-        std::cout << " seqno = " << seqno << std::endl;
-        std::cout << "reason = " << tcph->reason() << std::endl;
+        // std::cout << "on node " << toponode_->node->address() << ": ";
+        // std::cout << "highest_seq[" << fid << "] = " << highest_seq[fid];
+        // std::cout << " seqno = " << seqno << std::endl;
+        // std::cout << "reason = " << tcph->reason() << std::endl;
         
         ooo_packets[fid] ++; 
         total_ooo_packets ++;

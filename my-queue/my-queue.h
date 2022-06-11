@@ -18,6 +18,7 @@ class MyQueue : public Queue {
 	void enque(Packet*);
 	Packet* deque();
 
-	PacketQueue *q1_;   // First  FIFO queue
-	PacketQueue *q2_;   // Second FIFO queue
+	PacketQueue *q1_;   // low priority queue
+	PacketQueue *q2_;   // high priority queue
+	PacketQueue *q3_;   // very high priority queue
 };

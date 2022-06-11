@@ -67,7 +67,7 @@ set parallel_mig [lindex $argv 41]
 set run_migration [lindex $argv 42]
 set stat_record_interval [lindex $argv 43]
 set orch_type [lindex $argv 44]
-set enable_prioritization [lindex $argv 45]
+set prioritization [lindex $argv 45]
 set src_zone_delay [lindex $argv 46]
 set dst_zone_delay [lindex $argv 47]
 set enable_bg_traffic [lindex $argv 48]
@@ -216,7 +216,7 @@ MyTopology set gw_snapshot_size_ $gw_snapshot_size
 MyTopology set parallel_mig_ $parallel_mig
 MyTopology set stat_record_interval_ $stat_record_interval
 MyTopology set orch_type_ $orch_type
-MyTopology set enable_prioritization_ $enable_prioritization
+MyTopology set prioritization_level_ $prioritization
 MyTopology set process_after_migration_ 0
 
 puts "setting stat record interval: $stat_record_interval"

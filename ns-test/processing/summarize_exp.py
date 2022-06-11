@@ -50,7 +50,7 @@ if args.reload:
         exp_info["gw_snapshot_size"] = int(migration_sizes.split("-")[2])
         exp_info["cc_protocol"] = file_name_split[5][1:]
         exp_info["orch_type"] = file_name_split[6][2:]
-        exp_info["prioritization"] = bool(file_name_split[7][2:])
+        exp_info["prioritization"] = int(file_name_split[7][2:])
         exp_info["src_zone_delay"] = int(file_name_split[8][2:])
         exp_info["dst_zone_delay"] = int(file_name_split[9][2:])
 
@@ -77,22 +77,25 @@ if args.reload:
         exp_info["bg_ret"] = bg_flows["ret"].mean()
 
         # total migration time 
-        if exp_info["migration_status"] == "mig":
-            protocol_start = max(
-                df_protocol.end_mig.max(), 
-                df_protocol.end_pre.max(), 
-                df_protocol.end_buf.max()
-            ) 
+        try: 
+            if exp_info["migration_status"] == "mig":
+                protocol_end = max(
+                    df_protocol.end_mig.max(), 
+                    df_protocol.end_pre.max(), 
+                    df_protocol.end_buf.max()
+                ) 
 
-            protocol_end = min(
-                df_protocol.start_mig[df_protocol.start_mig > 0].min(),
-                df_protocol.start_pre[df_protocol.start_pre > 0].min(),
-                df_protocol.start_buf[df_protocol.start_buf > 0].min()
-            )
-            exp_info["total_mig_time"] = protocol_end - protocol_start
-        else: 
-            exp_info["total_mig_time"] = 0
-        
+                protocol_start = min(
+                    df_protocol.start_mig[df_protocol.start_mig > 0].min(),
+                    df_protocol.start_pre[df_protocol.start_pre > 0].min(),
+                    df_protocol.start_buf[df_protocol.start_buf > 0].min()
+                )
+                exp_info["total_mig_time"] = protocol_end - protocol_start
+            else: 
+                exp_info["total_mig_time"] = 0
+        except Exception as e: 
+            pass 
+    
         # OoO delivery 
 
         # Buffer sizes
@@ -102,13 +105,12 @@ if args.reload:
         # per-packet buffering time 
 
 
-
-        
-
-
         # add the exp info to the dataframe
         df = df.append(exp_info, ignore_index=True)
 
+
+    # sort the datafram
+    df = df.sort_values(by=["migration_status", "parallel_mig", "load", "oversub", "vm_precopy_size", "vm_snapshot_size", "gw_snapshot_size", "cc_protocol", "orch_type", "prioritization", "src_zone_delay", "dst_zone_delay"])
     data_path = args.directory + "/summary.csv" 
     df.to_csv(data_path)
 else: 

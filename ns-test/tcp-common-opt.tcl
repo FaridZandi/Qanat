@@ -188,7 +188,7 @@ TCP_pair instproc start { nr_bytes } {
     }
 
     # puts "tcp_pair start: $id" 
-    puts "tcp_pair flow_gen: $flow_gen" 
+    puts "flow_gen: $flow_gen" 
 
     $self setfid $flow_gen
 
@@ -202,7 +202,7 @@ TCP_pair instproc start { nr_bytes } {
             set traffic_type "bg_traffic" 
         }
 
-        puts "stats: [$ns now] start grp $group_id fid $flow_gen $nr_bytes bytes"
+        # puts "stats: [$ns now] start grp $group_id fid $flow_gen $nr_bytes bytes"
         puts "flow_stats \[[$ns now]\] flow_start $flow_gen bytes $nr_bytes type $traffic_type"
     }
 
@@ -251,7 +251,7 @@ TCP_pair instproc fin_notify {} {
 
     $self flow_finished
 
-    puts "tcp_pair fin_notify: [$ns now] $pair_id $bytes"
+    # puts "tcp_pair fin_notify: [$ns now] $pair_id $bytes"
 
     #Shuang
     set old_rttimes $rttimes
@@ -285,7 +285,7 @@ TCP_pair instproc flow_finished {} {
     $self set bps [expr $bytes * 8.0 / $dt ]
 
     if { $debug_mode == 1 } {
-	    puts "stats: $ct fin grp $group_id fid $id fldur $dt sec $bps bps"
+	    # puts "stats: $ct fin grp $group_id fid $id fldur $dt sec $bps bps"
     }
 }
 
@@ -298,7 +298,7 @@ Agent/TCP/FullTcp instproc done_data {} {
     global ns sink
     $self instvar ctrl
 
-    puts "[$ns now] $self fin-ack received";
+    # puts "[$ns now] $self fin-ack received";
 
     if { [info exists ctrl] } {
 	    $ctrl fin_notify

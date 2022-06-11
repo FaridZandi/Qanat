@@ -239,6 +239,6 @@ plot_src_hist(df)
 plot_dst_hist(df) 
 plot_fct_over_time(df)
 # plot_throughput_over_time_1(df)
-plot_throughput_over_time_2(df)
+# plot_throughput_over_time_2(df)
 
 # print (df[df["dst"] == 41])

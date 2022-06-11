@@ -31,7 +31,7 @@ int MyTopology::vm_snapshot_size = 0;
 int MyTopology::gw_snapshot_size = 0;
 int MyTopology::parallel_mig = 0;
 int MyTopology::orch_type = 0;
-int MyTopology::enable_prioritization = 0;
+int MyTopology::prioritization_level = 0;
 int MyTopology::process_after_migration = 0;
 double MyTopology::stat_record_interval = 0;
 
@@ -46,7 +46,7 @@ MyTopology::MyTopology(){
     bind("gw_snapshot_size_", &gw_snapshot_size);
     bind("parallel_mig_", &parallel_mig);
     bind("process_after_migration_", &process_after_migration);
-    bind("enable_prioritization_", &enable_prioritization);
+    bind("prioritization_level_", &prioritization_level);
     bind("orch_type_", &orch_type);
     bind("stat_record_interval_", &stat_record_interval);
 

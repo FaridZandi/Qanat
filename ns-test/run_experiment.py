@@ -72,7 +72,7 @@ def setup_exp(exp):
 		str(mig_sizes[0]) + "-" + str(mig_sizes[1]) + "-" + str(mig_sizes[2]),
 		exp["sourceAlg"],
 		exp["orch_type"],
-		str(exp["enable_prioritization"]),
+		str(exp["prioritization"]),
 		int(exp["src_zone_delay"] * 1000000),
 		int(exp["dst_zone_delay"] * 1000000),
 	)
@@ -129,7 +129,7 @@ def setup_exp(exp):
 			+ str(exp["run_migration"])+' '\
 			+ str(exp["stat_record_interval"])+' '\
 			+ str(exp["orch_type"])+' '\
-			+ str(exp["enable_prioritization"])+' '\
+			+ str(exp["prioritization"])+' '\
 			+ str(exp["src_zone_delay"])+' '\
 			+ str(exp["dst_zone_delay"])+' '\
 			+ str(exp["enable_bg_traffic"])+' '\
@@ -160,17 +160,21 @@ if __name__ == "__main__":
 
 	exp_name = sys.argv[1]
 
-	if exp_name == "mig_effect":
+	configs = None
+
+	if exp_name == "prio_effect":
 		configs = {
-			"exp_name": ["mig_effect"],
+			"exp_name": ["prio_effect"],
 			"mig_sizes": [(200, 100, 10)],
 			"parallel_mig": [2], 
-			"load": [0.6, 0.7, 0.8, 0.9, 1.0],
+			"load": [0.6, 0.7, 0.8],
 			"oversub": [2.0],
 			"sourceAlg":['TCP'],
+			"src_zone_delay": [0.000005], # in seconds
+			"dst_zone_delay": [0.000005], # in seconds 
 			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["yes", "no"], # "no", "skip"
-			"enable_prioritization": [1], # 0: disable, 1: enable
+			"run_migration": ["yes"], # "no", "skip"
+			"prioritization": [0,1,2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
 			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
 			###########################################################
 			########| don't make a list out of the following |#########
@@ -178,8 +182,6 @@ if __name__ == "__main__":
 			"enable_rt_dv": [1], # 0: disable, 1: enable
 			"enable_bg_traffic": [1], # 0: disable, 1: enable
 			"stat_record_interval": [0.0001], # in seconds
-			"src_zone_delay": [0.00001], # in seconds
-			"dst_zone_delay": [0.00002], # in seconds 
 			"sim_end": [100000], # number of flows
 			"vm_flow_size": [1000000], # in packets,
 			"dc_size": [(2, 2, 16)], # (spines, bg_tors, spt)
@@ -189,14 +191,16 @@ if __name__ == "__main__":
 	elif exp_name == "test":
 		configs = {
 			"exp_name": ["test"],
-			"mig_sizes": [(1, 1, 1)],
-			"parallel_mig": [2], 
-			"load": [0.1],
+			"mig_sizes": [(10, 10, 10)],
+			"parallel_mig": [1], 
+			"load": [0.4, 0.6, 0.8],
 			"oversub": [2.0],
 			"sourceAlg":['TCP'],
+			"src_zone_delay": [0.00001], # in seconds
+			"dst_zone_delay": [0.00002], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
-			"enable_prioritization": [1], # 0: disable, 1: enable
+			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
 			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
 			###########################################################
 			########| don't make a list out of the following |#########
@@ -204,14 +208,15 @@ if __name__ == "__main__":
 			"enable_rt_dv": [1], # 0: disable, 1: enable
 			"enable_bg_traffic": [1], # 0: disable, 1: enable
 			"stat_record_interval": [0.0001], # in seconds
-			"src_zone_delay": [0.00001], # in seconds
-			"dst_zone_delay": [0.00002], # in seconds
-			"sim_end": [500], # number of flows
+			"sim_end": [10000], # number of flows
 			"vm_flow_size": [300000], # in packets
-			"dc_size": [(1, 1, 5)], # (spines, bg_tors, spt)
-			"tree_shape": [(1, 1, 2)], #branching factors of the tree
+			"dc_size": [(1, 1, 8)], # (spines, bg_tors, spt)
+			"tree_shape": [(1, 2, 2)], #branching factors of the tree
 		} 
 
+	if not configs:
+		print "No configs found for experiment: ", exp_name
+		exit(0)
 
 	# Add all possible experiments to the queue
 	keys, values = zip(*configs.items())
