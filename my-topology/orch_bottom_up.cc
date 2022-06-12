@@ -68,20 +68,18 @@ void OrchBottomUp::start_vm_precopy(Node* vm){
 
     set_node_state(vm, MigState::PreMig);
     set_peer_state(vm, MigState::OutOfService);
-
     log_event("start vm precopy", vm);
-
     initiate_data_transfer(
         vm, get_random_transfer_size(MyTopology::vm_precopy_size, 10), 
         [](Node* n){
-            BaseOrchestrator::instance().vm_precopy_finished(n);
+            auto& orch = OrchBottomUp::instance();
+            orch.vm_precopy_finished(n);
         }
     );
 }
 
 void OrchBottomUp::vm_precopy_finished(Node* vm){
     log_event("end vm precopy", vm);
-
     start_vm_migration(vm); 
 }; 
 
@@ -95,6 +93,7 @@ void OrchBottomUp::start_vm_migration(Node* vm){
     
     auto& topo = MyTopology::instance();
     auto parent_gw = topo.get_nth_parent(vm,1);
+
     if (mig_state[parent_gw] == MigState::Normal){
         set_node_state(parent_gw, MigState::PreMig);
         set_peer_state(parent_gw, MigState::PreMig);
@@ -111,7 +110,8 @@ void OrchBottomUp::start_vm_migration(Node* vm){
     initiate_data_transfer(
         vm, get_random_transfer_size(MyTopology::vm_snapshot_size, 10), 
         [](Node* n){
-            BaseOrchestrator::instance().vm_migration_finished(n);
+            auto& orch = OrchBottomUp::instance();
+            orch.vm_migration_finished(n);
         }
     );
 }
@@ -120,13 +120,9 @@ void OrchBottomUp::start_vm_migration(Node* vm){
 void OrchBottomUp::vm_migration_finished(Node* vm){
     set_node_state(vm, MigState::Migrated);
     set_peer_state(vm, MigState::Normal);
-
     log_event("end vm migration", vm);
-
     process_on_peer(vm); 
-    
     try_parent_migration(vm); 
-
     dequeue_next_vm();
 }
 
@@ -158,7 +154,8 @@ void OrchBottomUp::start_gw_snapshot(Node* gw){
     initiate_data_transfer(
         gw, get_random_transfer_size(MyTopology::gw_snapshot_size, 10), 
         [](Node* n){
-            BaseOrchestrator::instance().gw_snapshot_send_ack_from_peer(n);
+            auto& orch = OrchBottomUp::instance();
+            orch.gw_snapshot_send_ack_from_peer(n);
         }
     );
 }
@@ -167,10 +164,14 @@ void OrchBottomUp::start_gw_snapshot(Node* gw){
 void OrchBottomUp::gw_snapshot_send_ack_from_peer(Node* gw){
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer of gw sends the S_ack to gw
+
+    log_event("send snapshot ack from", peer);
+
     initiate_data_transfer(
         peer, 100,
         [](Node* n){
-            BaseOrchestrator::instance().gw_snapshot_ack_rcvd(n);
+            auto& orch = OrchBottomUp::instance();
+            orch.gw_snapshot_ack_rcvd(n);
         }
     );    
 }
@@ -179,11 +180,14 @@ void OrchBottomUp::gw_snapshot_ack_rcvd(Node* gw){
     // here Node gw is the gw at the destination
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer is gw at the source
+    log_event("snapshot ack recvd in", peer);
+
     // source node sends the ack 0f S_ack to its peer
     initiate_data_transfer(
         peer, 100, 
         [](Node* n){
-            BaseOrchestrator::instance().gw_start_processing_buffer_on_peer(n);
+            auto& orch = OrchBottomUp::instance();
+            orch.gw_start_processing_buffer_on_peer(n);
         }
     ); 
     // start to send the data through the lower priority tunnel
@@ -204,7 +208,6 @@ void OrchBottomUp::gw_start_processing_buffer_on_peer(Node* gw){
 
     if (gw == topo.get_mig_root()){
         log_event("migration finished", gw);
-
         migration_finished();
     } else {
         try_parent_migration(gw); 
@@ -249,7 +252,7 @@ std::list<nf_spec> OrchBottomUp::get_vm_nf_list(){
 std::list<nf_spec> OrchBottomUp::get_gw_nf_list(){
     return {
         {"priority_buffer", 2400},
-        {"delayer", 0.0001},
+        {"delayer", 0.00005},
         {"monitor", 0},
 
         //Must have these two NFs at the end of the list

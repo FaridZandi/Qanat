@@ -298,56 +298,94 @@ void Monitor::print_info(){
 
 Buffer::Buffer(TopoNode* toponode, int chain_pos, int size) 
     : NF(toponode, chain_pos) {
-
     pq = new PacketQueue;
-    buffering = false; 
-    this->size_ = size; 
+
+    buffering_ = false; 
+    busy_ = false; 
+    size_ = size; 
+    rate_ = 868055;
 }
 
 Buffer::~Buffer(){
-    delete pq; 
+    delete pq;
 }
+
 
 bool Buffer::recv(Packet* p, Handler* h){
     hdr_ip* iph = hdr_ip::access(p);
-
-    log_packet("recved packet here with class: ", iph->traffic_class);
+    log_packet("recved packet with class: ", iph->traffic_class);
 
     if (should_ignore(p)){
         return true;
-    }
+    }   
 
-    if(buffering){
-        if(pq->length() == size_){
-            // TODO: drop the packet (free the memory, etc.) 
-            log_packet("Buffer is full. Dropping packet.");
-        } else {
+    if(buffering_ or busy_){
+        auto& topo = MyTopology::instance();
+        auto peer = topo.get_peer(toponode_->node);
+
+        if (pq->length() < size_){
             pq->enque(p);
-            log_packet("Buffering the packet. New Q length:", pq->length());
+            iph->time_enter_buffer = Scheduler::instance().clock();
+            log_packet("The new queue size is: ", pq->length());
+        } else {
+            log_packet("Queue is full. dropping the packet ");
         }
+
         return false;
     } else {     
-        log_packet("Letting the packet pass through.");   
+        log_packet("Letting the packet pass through.");  
+        busy_ = true; 
+        sched_next_send(); 
         return true; 
     }
 }
 
-void Buffer::start_buffering(){
-    buffering = true;
+double Buffer::get_interval(){
+    double wait = 1.0 / rate_;
+    return wait;  
 }
 
-int Buffer::get_buffer_size(){
-    return pq->length(); 
+void Buffer::sched_next_send(){
+    Event* e = new Event; 
+    auto& sched = Scheduler::instance();
+    sched.schedule(this, e, get_interval());
+}
+
+void Buffer::handle(Event* event){
+    busy_ = false; 
+    send_if_possible();
+}
+
+void Buffer::start_buffering(){
+    buffering_ = true;
 }
 
 void Buffer::stop_buffering(){
-    buffering = false; 
+    buffering_ = false; 
+    send_if_possible(); 
+}
 
-    while (pq->length() > 0){
-        log_packet("releasing a packet here.");
-        send(pq->deque());
+void Buffer::send_if_possible(){
+    if (busy_){
+        return;
+    }
+
+    auto now = Scheduler::instance().clock();
+
+    if (pq->length() > 0){
+        busy_ = true; 
+        sched_next_send(); 
+
+        Packet* p = pq->deque();        
+        hdr_ip* iph = hdr_ip::access(p);
+        iph->time_buffered += (now - iph->time_enter_buffer);
+        iph->time_enter_buffer = -1;
+        send(p); 
     } 
+}
 
+void Buffer::set_rate(int rate){
+    rate_ = rate; 
 }
 
 std::string Buffer::get_type(){
@@ -377,7 +415,6 @@ PriorityBuffer::PriorityBuffer(TopoNode* toponode, int chain_pos, int size)
 
     buffering_ = false; 
     busy_ = false; 
-
     size_ = size; 
     rate_ = 868055;
 }
@@ -407,22 +444,14 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
             // if the packet is coming from the peer, 
             // it means that it has been tunnelled, so it 
             // should be processed with high priority. 
-
             queue_number = 1;
             pq = hp_q;
-            
-            // queue_number = 2;
-            // pq = lp_q;
         } else {
             // otherwise, the packet will be processed with 
             // a low priority. These are the packets coming from 
             // "above" in the tree. 
-
             queue_number = 2;
             pq = lp_q;
-
-            // queue_number = 1;
-            // pq = hp_q;
         }  
 
         if (pq->length() < size_){
@@ -607,9 +636,12 @@ DelayerNF::~DelayerNF(){
 }
 
 bool DelayerNF::recv(Packet* p, Handler* h){
-
     log_packet("recved a packet here.");
     
+    if (should_ignore(p)){
+        return true;
+    }
+
     Scheduler::instance().schedule(this, p, delay);
 
     return false; 

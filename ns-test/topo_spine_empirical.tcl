@@ -388,8 +388,9 @@ set init_fid 0
 
 
 # set up dummay warmup flows between all the vms 
-# couldn't route properly without this step 
-# might be my mistake. Maybe try removing this step.
+# couldn't route properly without this step.
+# (might be my mistake. This problem was not supposed to happen with 
+# RTProtoDV in use. Maybe works without this as well. Try Removing this)
 puts "Setting up warmup flows to make routes ..."; 
 
 set start_server_index 0

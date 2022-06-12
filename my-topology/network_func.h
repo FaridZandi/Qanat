@@ -155,24 +155,29 @@ public:
 
     virtual bool recv(Packet* p, Handler* h);
 
-    virtual void handle(Event* event){};
+    virtual void handle(Event* event);
 
     void start_buffering();
 
     void stop_buffering();
 
-    int get_buffer_size(); 
-    
     virtual std::string get_type(); 
 
     virtual void print_info(); 
 
+    void set_rate(int rate); 
+
+    PacketQueue* pq;
 
 protected:
-    int size_; 
+    void sched_next_send(); 
+    double get_interval(); 
+    void send_if_possible(); 
 
-    bool buffering; 
-    PacketQueue* pq;
+    int size_; 
+    bool buffering_; 
+    bool busy_; 
+    int rate_; 
 };
 
 

@@ -240,7 +240,7 @@ void MyTopology::start_tcp_app(Node* n1){
 }
 
 void MyTopology::connect_agents(Node* n1, Node* n2){
-    static int connection_counter = 10000;    
+    static int connection_counter = 1000000;    
 
     auto conn_c = std::to_string(connection_counter); 
 
@@ -251,6 +251,12 @@ void MyTopology::connect_agents(Node* n1, Node* n2){
     tcl_command({data[n2].tcp, "listen"});
     tcl_command({data[n1].tcp, "set", "fid_", conn_c});
     tcl_command({data[n2].tcp, "set", "fid_", conn_c});
+
+    // stat_recorder->tracked_fids.push_back(connection_counter);
+    // auto r_agent = (FullTcpAgent*)TclObject::lookup(
+    //     data[n2].tcp.c_str()
+    // );
+    // stat_recorder->fid_agent_map[connection_counter] = r_agent;
 
     connection_counter++;
 }

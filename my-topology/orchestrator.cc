@@ -1,5 +1,6 @@
 #include "orchestrator.h"
 #include "orch_bottom_up.h"
+#include "orch_top_down.h"
 #include "my_topology.h"
 #include "node.h"
 #include "utility.h"
@@ -9,10 +10,11 @@
 
 BaseOrchestrator& BaseOrchestrator::instance(){
     auto& topo = MyTopology::instance();
+
     if(topo.orch_type == 1) {
         return OrchBottomUp::instance(); 
     } else if (topo.orch_type == 2) {
-        // return OrchTopDown::instance(); 
+        return OrchTopDown::instance(); 
     } else if (topo.orch_type == 3) {
         // return OrchRandom::instance(); 
     } else {
@@ -93,12 +95,17 @@ void BaseOrchestrator::migration_finished(){
 }
 
 void BaseOrchestrator::initiate_data_transfer(
-                            Node* node, int size, 
-                            void (*callback) (Node*)){
+                        Node* node, int size, 
+                        void (*callback) (Node*)){
                                 
     auto& topo = MyTopology::instance();
 
     topo.connect_agents(node, topo.get_peer(node));
+
+    std::cout << "Initiating data transfer from " << topo.uid(node) << " to ";
+    std::cout << topo.uid(topo.get_peer(node));
+    std::cout << " of size " << size << std::endl;
+
 
     auto tcp_name = topo.get_data(node).tcp.c_str();
     Agent* agent = (Agent*)TclObject::lookup(tcp_name);
@@ -128,9 +135,7 @@ void BaseOrchestrator::tunnel_subtree_tru_parent(Node* node){
             set_peer_state(parent, MigState::PreMig);
             log_event("start gw precopy", parent);
             log_event("start gw precopy", topo.get_peer(parent));
-
         }
-
     }
 }
 
@@ -205,27 +210,13 @@ void BaseOrchestrator::process_on_peer(Node* node){
     auto peer_data = topo.get_data(peer);
 
     if (topo.get_data(node).mode == VM){
-
         auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
-
-        auto queue_depth = peer_buffer->get_buffer_size();
-
-        // log_event("releasing a buffer of size ", queue_depth, false);
         log_event("end vm buffering", peer);
-
         peer_buffer->stop_buffering();
-
+        
     } else if (topo.get_data(node).mode == GW){
-
         auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
-
-        // auto queue_depth_high = peer_buffer->get_buffer_size_highprio();
-        // auto queue_depth_low = peer_buffer->get_buffer_size_lowprio();
-        // log_event("releasing a high prio buffer of size ", queue_depth_high, false);
-        // log_event("releasing a low prio buffer of size ", queue_depth_low, false);
-
         log_event("end gw buffering", peer);
-
         peer_buffer->stop_buffering();
     }
 }

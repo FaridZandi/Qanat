@@ -165,16 +165,16 @@ if __name__ == "__main__":
 	if exp_name == "prio_effect":
 		configs = {
 			"exp_name": ["prio_effect"],
-			"mig_sizes": [(200, 100, 10)],
+			"mig_sizes": [(100, 100, 30)],
 			"parallel_mig": [2], 
-			"load": [0.6, 0.7, 0.8],
+			"load": [0.4, 0.5, 0.6, 0.7, 0.8],
 			"oversub": [2.0],
 			"sourceAlg":['TCP'],
 			"src_zone_delay": [0.000005], # in seconds
 			"dst_zone_delay": [0.000005], # in seconds 
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
-			"prioritization": [0,1,2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
 			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
 			###########################################################
 			########| don't make a list out of the following |#########
@@ -191,7 +191,7 @@ if __name__ == "__main__":
 	elif exp_name == "test":
 		configs = {
 			"exp_name": ["test"],
-			"mig_sizes": [(10, 10, 10)],
+			"mig_sizes": [(10, 100, 100)],
 			"parallel_mig": [1], 
 			"load": [0.4, 0.6, 0.8],
 			"oversub": [2.0],
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 			########| don't make a list out of the following |#########
 			###########################################################
 			"enable_rt_dv": [1], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"enable_bg_traffic": [0], # 0: disable, 1: enable
 			"stat_record_interval": [0.0001], # in seconds
 			"sim_end": [10000], # number of flows
 			"vm_flow_size": [300000], # in packets

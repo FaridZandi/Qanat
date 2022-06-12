@@ -167,6 +167,7 @@ OBJ_CC = \
 	my-topology/mig_manager.o \
 	my-topology/topo_node.o \
 	my-topology/orch_bottom_up.o \
+	my-topology/orch_top_down.o \
 	my-topology/orchestrator.o \
 	my-topology/my_topology.o \
 	my-queue/my-queue.o \

@@ -9,6 +9,10 @@ import sys
 import seaborn as sns
 import os 
 
+
+off_time_threshold = 100 
+
+
 parser = ArgumentParser()
 
 parser.add_argument("-d", "--directory", 
@@ -28,7 +32,6 @@ parser.add_argument("-r", "--reload",
 
 
 args = parser.parse_args()
-
 
 def setup_directories():
     data_dir = args.directory + "/" + "data"
@@ -96,20 +99,38 @@ else:
     print("Loading data from the file finished")
 
 
-df['packets_received'] = df['packets_received'].rolling(10).max()
+
+
+df['packets_received_orig'] = df['packets_received']
+df['packets_received'] = df['packets_received'].rolling(100).mean()
 df['average_in_flight_time'] = df['average_in_flight_time'].rolling(10).max()
 df['average_buffered_time'] = df['average_buffered_time'].rolling(10).max()
 
 
 def plot_flow(fid, ax): 
-    flow_df = df[df.fid == fid]
+    flow_df = df[df.fid == fid].copy()
+
+    flow_df['consec_grp'] = (flow_df.packets_received_orig.diff(1) != 0).astype('int').cumsum()
+    consec = pd.DataFrame({
+        'begin_time' : flow_df.groupby('consec_grp').time.first(), 
+        'end_time' : flow_df.groupby('consec_grp').time.last(),
+        'consecutive' : flow_df.groupby('consec_grp').size()
+    }).reset_index(drop=True)
+
+    off_times = consec[consec.consecutive > off_time_threshold]
+    # print(off_times)
+
     sns.lineplot(ax=ax, x=flow_df.time, y=flow_df[measure])
+
+    for i, row in off_times.iterrows():
+        ax.axvspan(row.begin_time, row.end_time, alpha=0.5, color='gray')
+
     ax.set_title("flow: " + str(fid))
 
 def plot_measure(measure):
  
     fids = df.fid.unique()
-    fig, axes = plt.subplots(len(fids), 1, sharey=True)
+    fig, axes = plt.subplots(len(fids), 1, sharex=True, sharey=True)
     fig.set_size_inches(6, len(fids) * 3)
 
     plot_index = 0 
