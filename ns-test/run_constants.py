@@ -40,3 +40,27 @@ topology_tors = 2
 topology_spines = 3
 
 stat_record_interval = 0.001
+
+#===========
+# The following constants are only for remote runs
+#===========
+
+# Repo constants
+REPO_DIR = '~/ns-allinone-2.34/'
+
+# Remote machines 
+USER = 'nsuser'
+# USER = 'sepehr'
+
+MACHINES = [
+            # '10.70.10.101',
+            # '10.70.10.102',
+            '10.70.10.104',
+            '10.70.10.105',
+            '10.70.10.106',
+            '10.70.10.107',
+            '10.70.10.108',
+            '10.70.10.109',
+            '10.70.10.110',
+            ]
+master_machine = '10.70.10.101'

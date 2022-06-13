@@ -1,28 +1,30 @@
 import sys
 sys.dont_write_bytecode = True
 
+from fabric import Connection
 import itertools
 import threading
 import os
-import Queue
+import queue
 from run_constants import * 
 
 
 # setup basics 
 
-q = Queue.Queue()
+exp_q = queue.Queue()
 
 threads = []
-number_worker_threads = 10
+number_worker_threads = 8
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
+REMOTE_RUN = True
 
-ns_path = 'ns'
+ns_path = '../ns'
 if DEBUG_VALGRIND:
-	ns_path = 'valgrind -s --track-origins=yes --leak-check=full ns'
+	ns_path = 'valgrind -s --track-origins=yes --leak-check=full ../ns'
 if DEBUG_GDB:
-	ns_path = 'gdb -ex "run" --args ns'
+	ns_path = 'gdb -ex "run" --args ../ns'
 
 
 # helper functions
@@ -35,25 +37,46 @@ def process_results(exp_directory):
 def worker():
 	while True:
 		try:
-			j = q.get(block = 0)
-		except Queue.Empty:
+			exp = exp_q.get(block = 0)
+		except queue.Empty:
 			return
 
-		command = j[0]
-		directory_name = j[1]
+		command, directory_name, exp_name = setup_exp(exp)
 
+		os.system('mkdir -p ' + "exps/%s/" % exp_name)
 		os.system('mkdir -p ' + directory_name)
 
 		os.system(command)
 
 		process_results(directory_name)
 
+def remote_worker(m_ip):
+	conn = Connection('{}@{}'.format(USER, m_ip))
+	while True:
+		try:
+			exp = exp_q.get(block = 0)
+		except queue.Empty:
+			return
+
+		command, directory_name, exp_name = setup_exp(exp)
+		script_dir = '/home/{}/ns-allinone-2.34/ns-2.34/ns-test'.format(USER)
+		with conn.cd(script_dir):
+			conn.run('mkdir -p ' + "exps/%s/" % exp_name)
+			conn.run('mkdir -p ' + directory_name)
+			conn.run(command)
+			zipped_file = '{}.tar.gz'.format(directory_name.split('/')[-1])
+			cmd = 'tar -czvf {} {}/*'.format(zipped_file, directory_name)
+			conn.run(cmd)
+			# download the log files to the local machine
+			conn.get(script_dir+"/"+zipped_file)
+		# process them locally
+		os.system('tar -xzvf {} && rm {}'.format(zipped_file, zipped_file))
+		process_results(directory_name)
 
 def setup_exp(exp):
 
 	mig_sizes = exp["mig_sizes"]
-
-	os.system('mkdir -p ' + "exps/%s/" % exp["exp_name"])
+	exp_name = exp["exp_name"]
 
 	if exp["run_migration"] == "yes":
 		mig_str = "mig"
@@ -142,10 +165,9 @@ def setup_exp(exp):
 			+ str('./'+directory_name+'/logFile.tr')
 	else: 
 		sim_script = "topo_dumbbell.tcl"
-		print "implement dumbbell script"
+		print("implement dumbbell script")
 
-	q.put([cmd, directory_name])
-
+	return (cmd, directory_name, exp_name)
 
 # main 
 if __name__ == "__main__":
@@ -155,7 +177,7 @@ if __name__ == "__main__":
 
 	#check if enough arguments are given
 	if len(sys.argv) < 2:
-		print "Usage: python run_exp.py <exp_name>"
+		print("Usage: python run_exp.py <exp_name>")
 		exit(0)
 
 	exp_name = sys.argv[1]
@@ -215,20 +237,28 @@ if __name__ == "__main__":
 		} 
 
 	if not configs:
-		print "No configs found for experiment: ", exp_name
+		print("No configs found for experiment: ", exp_name)
 		exit(0)
 
 	# Add all possible experiments to the queue
 	keys, values = zip(*configs.items())
 	permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
 	for exp in permutations_dicts:
-		setup_exp(exp)
+		exp_q.put(exp)
 
 	# Start threads to process jobs
-	for i in range(number_worker_threads):
-		t = threading.Thread(target = worker)
-		threads.append(t)
-		t.start()
+	if REMOTE_RUN:
+		for i in range(number_worker_threads):
+			for m_ip in MACHINES:
+				args = (m_ip,)
+				t = threading.Thread(target = remote_worker, args=args)
+				threads.append(t)
+				t.start()
+	else:
+		for i in range(number_worker_threads):
+			t = threading.Thread(target = worker)
+			threads.append(t)
+			t.start()
 
 	# Join all completed threads
 	for t in threads:

@@ -42,3 +42,21 @@ LATEST INFORMATION:
 If you find ns useful, you may also wish to look at nam, the network
 animator <http://www.isi.edu/nsnam/nam>.
 
+## Run in parallel on remote machines
+-------------------------------------
+(NOTE: `run_experiment.py` should be called with `python3` and `fabric` is a requirement that should be installed with `pip`.)  
+
+The ns2 installation is available on machines sim-[01-10] (except sim-03).  
+It is installed on user `nsuser` with the same password.  
+
+The list of machines can be updated from the file `ns-2.34/ns-test/run_constants.py`.
+The simplest way to run what you have developed on any machine is as follows:  
+Let's say that you are developing your codes under your user on a machine.
+You can call the `sync_repo_and_make` command inside the main function of `ns-2.34/ns-test/my_fabric.py`.
+This would copy your developed code on all the machines listed in the constants file and tries to make them on those remote machines.
+After that, you can simply run the `run_experiment.py` with the flag `REMOTE_RUN = True` to distribute the experiments on those machines. Each thread waits for its result and at the end of each run it sends back all the logs to the machine that you have initiated the run.
+Finally, it processes them locally and you can access the results on that machine.
+
+WARNING: Just in case that the remote commands did not work from your user, try to run command `copy-ssh-id` using `my_fabric.py` so that those remote machines can have your ssh credentials.
+Next, if this also didn't work, directly work and develop under user `nsuser`. Finally, you can always revert to the normal local run by disabling the `REMOTE_RUN` flag.
+
