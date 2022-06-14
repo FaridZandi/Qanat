@@ -140,7 +140,10 @@ struct edv {
 };
 
 class REDQueue : public Queue {
+	
 	friend class RPQ;
+	friend class MyREDQueue; // Sorry for this :(
+
  public:	
 	/*	REDQueue();*/
 	REDQueue(const char * = "Drop");

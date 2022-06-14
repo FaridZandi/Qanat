@@ -346,10 +346,11 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 			if (node_state == MigState::Normal or node_state == MigState::PreMig){
 				return true; 
 			} else {	
-				// hdr_tcp* tcph = hdr_tcp::access(p);
-				// std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
+				hdr_tcp* tcph = hdr_tcp::access(p);
+				std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
 				iph->dst_.addr_ = td.to->address(); 
 				set_high_prio(p); 
+				MyTopology::instance().inc_tunnelled_packets();
 				return true; 	
 			}        
         }

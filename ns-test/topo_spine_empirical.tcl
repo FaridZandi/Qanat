@@ -138,17 +138,12 @@ if {$ackRatio > 2} {
     Agent/TCP/FullTcp set spa_thresh_ [expr ($ackRatio - 1) * $pktSize]
 }
 
-if {[string compare $sourceAlg "DCTCP-Sack"] == 0} {
+if {[string compare $sourceAlg "DCTCP"] == 0} {
     Agent/TCP set ecnhat_ true
     Agent/TCPSink set ecnhat_ true
     Agent/TCP set ecnhat_g_ $DCTCP_g
     Agent/TCP set lldct_ false
-
-} elseif {[string compare $sourceAlg "LLDCT-Sack"] == 0} {
-    Agent/TCP set ecnhat_ true
-    Agent/TCPSink set ecnhat_ true
-    Agent/TCP set ecnhat_g_ $DCTCP_g;
-    Agent/TCP set lldct_ true
+    
 } elseif {[string compare $sourceAlg "TCP"] == 0} {
     Agent/TCP set ecnhat_ false
     Agent/TCPSink set ecnhat_ false

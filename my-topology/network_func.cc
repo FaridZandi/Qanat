@@ -426,6 +426,9 @@ PriorityBuffer::PriorityBuffer(TopoNode* toponode, int chain_pos, int size)
     busy_ = false; 
     size_ = size; 
     rate_ = 868055;
+
+    max_high_prio_buf_size = 0; 
+    max_low_prio_buf_size = 0; 
 }
 
 PriorityBuffer::~PriorityBuffer(){
@@ -465,6 +468,19 @@ bool PriorityBuffer::recv(Packet* p, Handler* h){
 
         if (pq->length() < size_){
             pq->enque(p);
+            
+            auto q_size = pq->length();
+            
+            if (queue_number == 1){
+                if (q_size > max_high_prio_buf_size){
+                    max_high_prio_buf_size = q_size;
+                }
+            } else {
+                if (q_size > max_low_prio_buf_size){
+                    max_low_prio_buf_size = q_size;
+                }
+            }
+
             iph->time_enter_buffer = Scheduler::instance().clock();
 
             log_packet("Enqueued the packet in queue:", queue_number);

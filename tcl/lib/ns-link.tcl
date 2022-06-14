@@ -221,7 +221,7 @@ SimpleLink instproc init { src dst bw delay q {lltype "DelayLink"} } {
             	$self enable-src-rt $src $dst $head_
         	}
 	}
-	puts "$src $dst $head_ $queue_ $link_ $ttl_ [$dst entry]"
+	# puts "$src $dst $head_ $queue_ $link_ $ttl_ [$dst entry]"
 }
 
 SimpleLink instproc enable-src-rt {src dst head} {

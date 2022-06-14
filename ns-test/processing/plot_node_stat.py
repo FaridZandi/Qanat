@@ -139,7 +139,7 @@ def plot_node(node, ax):
 def plot_measure(measure, nodes, prefix):
 
     fig, axes = plt.subplots(len(nodes), 1, sharey=True)
-    fig.set_size_inches(6, len(nodes) * 3)
+    fig.set_size_inches(12, len(nodes) * 3)
 
     plot_index = 0 
     for node in nodes:

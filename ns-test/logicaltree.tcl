@@ -18,9 +18,7 @@ proc finish {} {
         exit 0
 }
 
-set UDP_INTERARRIVAL 0.000005
-set QT MyQueue
-set BW 10Gb
+
 
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
@@ -39,8 +37,10 @@ MyTopology set orch_type_ [lindex $argv 0]
 set t [new MyTopology]
 $t set_simulator $ns
 
+set UDP_INTERARRIVAL 0.000005
+set BW 10Gb
 set LAT 5us
-set QTYPE $QT 
+set QTYPE MyQueue
 set child_count 100
 
 Queue set limit_ 400

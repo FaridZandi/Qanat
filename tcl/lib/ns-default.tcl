@@ -1740,3 +1740,128 @@ MyTopology set vm_snapshot_size_ 10000000
 MyTopology set gw_snapshot_size_ 1000000
 MyTopology set parallel_mig_ 2
 MyTopology set orch_type_ 0
+
+
+
+# Queue/MyREDQueue set bytes_ true ;		# default changed on 10/11/2004.
+# Queue/MyREDQueue set queue_in_bytes_ true ;	# default changed on 10/11/2004.
+# # Queue/MyREDQueue set thresh_ 5
+# Queue/MyREDQueue set thresh_ 0
+# # Queue/MyREDQueue/thresh_ was changed on 12/29/01, for automatic configuration.
+# # Queue/MyREDQueue set maxthresh_ 15
+# Queue/MyREDQueue set maxthresh_ 0
+# # Queue/MyREDQueue/maxthresh_ was changed on 12/29/01, for automatic configuration.
+# Queue/MyREDQueue set thresh_queue_ [Queue set limit_]
+# # Note from Sally: I don't see that thresh_queue_ is used for anything.
+# Queue/MyREDQueue set maxthresh_queue_ [Queue set limit_]
+# # Note from Sally: I don't see that maxthresh_queue_ is used for anything.
+# Queue/MyREDQueue set mean_pktsize_ 500
+# Queue/MyREDQueue set idle_pktsize_ 100
+# # Queue/MyREDQueue set q_weight_ 0.002
+# Queue/MyREDQueue set q_weight_ -1
+# # Queue/MyREDQueue/q_weight_ was changed on 12/29/01, for automatic configuration.
+# Queue/MyREDQueue set wait_ true
+# Queue/MyREDQueue set linterm_ 10
+# Queue/MyREDQueue set mark_p_ 0.1
+# Queue/MyREDQueue set use_mark_p_ true
+# # Queue/MyREDQueue/use_mark_p_ was added on 11/23/05.
+# # Queue/MyREDQueue/use_mark_p_ was changed to true on 12/22/05.
+# Queue/MyREDQueue set setbit_ false
+# Queue/MyREDQueue set gentle_ true
+# ### Queue/MyREDQueue/gentle_ was changed from false to true on Apr 23, 2001.
+# Queue/MyREDQueue set drop_tail_ true
+# Queue/MyREDQueue set drop_front_ false
+# Queue/MyREDQueue set drop_rand_ false
+# Queue/MyREDQueue set doubleq_ false
+# Queue/MyREDQueue set ns1_compat_ false
+# Queue/MyREDQueue set dqthresh_ 50
+# Queue/MyREDQueue set ave_ 0.0
+# Queue/MyREDQueue set prob1_ 0.0
+# Queue/MyREDQueue set curq_ 0
+# Queue/MyREDQueue set cur_max_p_ 0
+# Queue/MyREDQueue set summarystats_ false
+# ### Adaptive MyREDQueue.
+# Queue/MyREDQueue set alpha_ 0.01
+# Queue/MyREDQueue set beta_ 0.9 
+# Queue/MyREDQueue set adaptive_ 0
+# Queue/MyREDQueue set interval_ 0.5
+# Queue/MyREDQueue set targetdelay_ 0.005
+# Queue/MyREDQueue set top_ 0.5
+# Queue/MyREDQueue set bottom_ 0
+# ### Queue/MyREDQueue/bottom_ was changed from 0.01 to 0 on June 23, 2004,
+# ###   for automatic configuration.
+# Queue/MyREDQueue set cautious_ 0
+# Queue/MyREDQueue set feng_adaptive_ 0
+# # Mohammad: Phantom Queue extensions
+# Queue/MyREDQueue set pq_enable_ 0
+# Queue/MyREDQueue set pq_mode_ 0
+# Queue/MyREDQueue set pq_drainrate_ 0 ; # need to set this when PQ is enabled
+#                                 # always in bps
+# Queue/MyREDQueue set pq_thresh_ 0
+# # Shuang: priority dropping/deque extensions
+# Queue/MyREDQueue set drop_prio_ 0
+# Queue/MyREDQueue set deque_prio_ 0
+
+
+
+
+
+
+Queue/MyOtherREDQueue set bytes_ true ;		# default changed on 10/11/2004.
+Queue/MyOtherREDQueue set queue_in_bytes_ true ;	# default changed on 10/11/2004.
+# Queue/MyOtherREDQueue set thresh_ 5
+Queue/MyOtherREDQueue set thresh_ 0
+# Queue/MyOtherREDQueue/thresh_ was changed on 12/29/01, for automatic configuration.
+# Queue/MyOtherREDQueue set maxthresh_ 15
+Queue/MyOtherREDQueue set maxthresh_ 0
+# Queue/MyOtherREDQueue/maxthresh_ was changed on 12/29/01, for automatic configuration.
+Queue/MyOtherREDQueue set thresh_queue_ [Queue set limit_]
+# Note from Sally: I don't see that thresh_queue_ is used for anything.
+Queue/MyOtherREDQueue set maxthresh_queue_ [Queue set limit_]
+# Note from Sally: I don't see that maxthresh_queue_ is used for anything.
+Queue/MyOtherREDQueue set mean_pktsize_ 500
+Queue/MyOtherREDQueue set idle_pktsize_ 100
+# Queue/MyOtherREDQueue set q_weight_ 0.002
+Queue/MyOtherREDQueue set q_weight_ -1
+# Queue/MyOtherREDQueue/q_weight_ was changed on 12/29/01, for automatic configuration.
+Queue/MyOtherREDQueue set wait_ true
+Queue/MyOtherREDQueue set linterm_ 10
+Queue/MyOtherREDQueue set mark_p_ 0.1
+Queue/MyOtherREDQueue set use_mark_p_ true
+# Queue/MyOtherREDQueue/use_mark_p_ was added on 11/23/05.
+# Queue/MyOtherREDQueue/use_mark_p_ was changed to true on 12/22/05.
+Queue/MyOtherREDQueue set setbit_ false
+Queue/MyOtherREDQueue set gentle_ true
+### Queue/MyOtherREDQueue/gentle_ was changed from false to true on Apr 23, 2001.
+Queue/MyOtherREDQueue set drop_tail_ true
+Queue/MyOtherREDQueue set drop_front_ false
+Queue/MyOtherREDQueue set drop_rand_ false
+Queue/MyOtherREDQueue set doubleq_ false
+Queue/MyOtherREDQueue set ns1_compat_ false
+Queue/MyOtherREDQueue set dqthresh_ 50
+Queue/MyOtherREDQueue set ave_ 0.0
+Queue/MyOtherREDQueue set prob1_ 0.0
+Queue/MyOtherREDQueue set curq_ 0
+Queue/MyOtherREDQueue set cur_max_p_ 0
+Queue/MyOtherREDQueue set summarystats_ false
+### Adaptive MyOtherREDQueue.
+Queue/MyOtherREDQueue set alpha_ 0.01
+Queue/MyOtherREDQueue set beta_ 0.9 
+Queue/MyOtherREDQueue set adaptive_ 0
+Queue/MyOtherREDQueue set interval_ 0.5
+Queue/MyOtherREDQueue set targetdelay_ 0.005
+Queue/MyOtherREDQueue set top_ 0.5
+Queue/MyOtherREDQueue set bottom_ 0
+### Queue/MyOtherREDQueue/bottom_ was changed from 0.01 to 0 on June 23, 2004,
+###   for automatic configuration.
+Queue/MyOtherREDQueue set cautious_ 0
+Queue/MyOtherREDQueue set feng_adaptive_ 0
+# Mohammad: Phantom Queue extensions
+Queue/MyOtherREDQueue set pq_enable_ 0
+Queue/MyOtherREDQueue set pq_mode_ 0
+Queue/MyOtherREDQueue set pq_drainrate_ 0 ; # need to set this when PQ is enabled
+                                # always in bps
+Queue/MyOtherREDQueue set pq_thresh_ 0
+# Shuang: priority dropping/deque extensions
+Queue/MyOtherREDQueue set drop_prio_ 0
+Queue/MyOtherREDQueue set deque_prio_ 0

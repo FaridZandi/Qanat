@@ -782,8 +782,12 @@ void StatRecorder::record_stats(){
         for(auto& node: topo.get_internals(root)){
 
             auto pb = (PriorityBuffer*)(topo.get_data(node).get_nf("pribuf"));
-            int high_prio_buf = pb->hp_q->length(); 
-            int low_prio_buf = pb->lp_q->length(); 
+            int high_prio_buf = pb->max_high_prio_buf_size; 
+            int low_prio_buf = pb->max_low_prio_buf_size; 
+
+            pb->max_high_prio_buf_size = pb->hp_q->length(); 
+            pb->max_low_prio_buf_size = pb->lp_q->length();
+
 
             auto m = (Monitor*)(topo.get_data(node).get_nf("monitr"));
             int packet_count = m->get_packet_count(); 

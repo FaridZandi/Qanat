@@ -102,7 +102,7 @@ else:
 
 
 df['packets_received_orig'] = df['packets_received']
-df['packets_received'] = df['packets_received'].rolling(10).mean()
+# df['packets_received'] = df['packets_received'].rolling(10).mean()
 df['average_in_flight_time'] = df['average_in_flight_time'].rolling(10).max()
 df['average_buffered_time'] = df['average_buffered_time'].rolling(10).max()
 
@@ -131,7 +131,7 @@ def plot_measure(measure):
  
     fids = df.fid.unique()
     fig, axes = plt.subplots(len(fids), 1, sharex=True, sharey=True)
-    fig.set_size_inches(6, len(fids) * 3)
+    fig.set_size_inches(12, len(fids) * 3)
 
     plot_index = 0 
     for fid in fids:

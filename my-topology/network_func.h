@@ -208,6 +208,9 @@ public:
     PacketQueue* hp_q;        // high priority queue 
     PacketQueue* lp_q;        // low priority queue 
 
+    int max_high_prio_buf_size; 
+    int max_low_prio_buf_size; 
+    
 protected:
 
     void sched_next_send(); 

@@ -248,8 +248,7 @@ void OrchRandom::start_vm_migration(Node* vm){
     set_node_state(vm, MigState::InMig);
     set_peer_state(vm, MigState::Buffering);
 
-    auto& topo = MyTopology::instance();
-    auto parent_gw = topo.get_nth_parent(vm,1);
+    MyTopology::instance().setup_nth_layer_tunnel(vm, 1);
 
     buffer_on_peer(vm);
     

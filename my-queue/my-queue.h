@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include "queue.h"
+#include "red.h"
 #include "address.h"
 #include <sstream>
 
@@ -22,3 +23,39 @@ class MyQueue : public Queue {
 	PacketQueue *q2_;   // high priority queue
 	PacketQueue *q3_;   // very high priority queue
 };
+
+
+
+class MyREDQueue : public Queue {
+ public:
+	MyREDQueue();
+
+ protected:
+	void enque(Packet*);
+	Packet* deque();
+
+	PacketQueue *q1_;   // low priority queue
+	PacketQueue *q2_;   // high priority queue
+	PacketQueue *q3_;   // very high priority queue
+};
+
+
+
+
+
+class MyOtherREDQueue: public REDQueue {
+public :
+	MyOtherREDQueue();
+	
+protected: 
+
+	void enque(Packet* p);
+	Packet* deque();
+
+	PacketQueue* q1_;
+	PacketQueue* q2_;
+	PacketQueue* q3_;
+
+};
+
+
