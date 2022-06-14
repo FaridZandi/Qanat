@@ -13,10 +13,6 @@
 
 #define NOW Scheduler::instance().clock()
 
-const std::string BW = "5Mb"; 
-const std::string DELAY = "3ms";
-const std::string QUEUE_T = "DropTail";
-
 class Tcl;
 class TclObject;
 class MigrationManager; 
@@ -35,6 +31,11 @@ public:
     MyTopology(); 
     virtual ~MyTopology();
 
+    static MyTopology& instance() {
+		return (*instance_);
+	}
+
+    MigrationManager& mig_manager();
 
     /**
      * @brief will process this packet at this node. 
@@ -51,9 +52,26 @@ public:
      */
     void process_packet(Packet* p, Handler*h, Node* node);
 
+    /**
+     * set the node pointer for all the classfiers 
+     * of all the nodes in the topology. This is 
+     * necessary for the packets to be preclassified
+     * and processed at the nodes. 
+     */
+    void introduce_nodes_to_classifiers();
+
+    
+    void inc_tunnelled_packets(); 
+    void migration_finished(); 
+    void sent_traffic_to_dest(); 
+    
     void start_recording_stats(int fid, FullTcpAgent* agent); 
     void print_stats();
     void setup_nth_layer_tunnel(Node* vm, int n); 
+
+    Node* get_first_child(Node* node);
+    Node* get_next_sibling(Node* node);
+
     Node* get_nth_parent(Node* node, int n);
     TopoNode& get_data(Node* node); 
     int uid(Node* node); 
@@ -69,31 +87,6 @@ public:
 
     std::vector<int> get_path(Node* n1, path_mode pm);
     void clear_path_cache(); 
-
-    /**
-     * set the node pointer for all the classfiers 
-     * of all the nodes in the topology. This is 
-     * necessary for the packets to be preclassified
-     * and processed at the nodes. 
-     */
-    void introduce_nodes_to_classifiers();
-
-
-    /**
-     * @brief globally accesible singeleton topology. 
-     * 
-     * @return the reference to this instance.
-     */
-    static MyTopology& instance() {
-		return (*instance_);
-	}
-
-    /**
-     * @brief access the migration manager of this topology
-     * 
-     * @return MigrationManager& the instance 
-     */
-    MigrationManager& mig_manager();
 
 	virtual int command(int argc, const char*const* argv);
 
@@ -121,12 +114,14 @@ public:
 
     static int prioritization_level; 
 
-
-
     // migration-related variables
+    bool is_migration_started; 
     bool is_migration_finished;
     double migration_finish_time; 
-    
+    bool is_sent_traffic_to_dest;
+
+    int tunnelled_packets; 
+
     MigrationManager* mig_manager_; 
 private:
 
@@ -152,6 +147,11 @@ private:
                                          bool include_internals ); 
 
 
+    void print_tree_node(std::string prefix, Node* this_node, bool isLast, bool print_state);
+
+    void print_nodes();
+
+    
     // Migration 
     Node* mig_root; 
     
@@ -171,10 +171,6 @@ private:
     static int toponode_uid_counter; 
     
     StatRecorder* stat_recorder; 
-
-    void print_tree_node(std::string prefix, Node* this_node, bool isLast, bool print_state);
-
-    void print_nodes();
 
 };
 
@@ -203,14 +199,18 @@ public:
     void start();
     virtual void handle(Event* event);
 
-    double interval; 
-
     std::map<int, std::map<double, NodeStat> > node_stats;
     std::map<int, std::map<double, FlowStat> > flow_stats;
-
-    std::vector<int> tracked_fids;
     std::map<int, FullTcpAgent* > fid_agent_map; 
+    std::vector<int> tracked_fids;
+    std::map<double, int> tunnelled_packets;
 
+
+    // the interval of recording stats 
+    double interval; 
+
+    // how much should the stat-recorder continue 
+    // to record after the migration is finished.
     static constexpr double record_after_finish = 1;  
 };
 

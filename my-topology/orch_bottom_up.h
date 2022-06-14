@@ -32,7 +32,11 @@ public:
     virtual std::list<nf_spec> get_vm_nf_list();
     virtual std::list<nf_spec> get_gw_nf_list();
 
-private: 
+private:    
+
+    void tunnel_subtree_tru_parent(Node* node);
+
+    void migration_finished();
 
     void dequeue_next_vm();  
     bool all_children_migrated(Node* node); 

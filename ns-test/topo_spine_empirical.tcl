@@ -207,7 +207,7 @@ set myAgent "Agent/TCP/FullTcp";
 
 
 ############# Tree Structure ##############
-MyTopology set verbose_ 0
+MyTopology set verbose_ 1
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
 MyTopology set vm_precopy_size_ $vm_precopy_size

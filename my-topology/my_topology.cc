@@ -50,13 +50,17 @@ MyTopology::MyTopology(){
     bind("orch_type_", &orch_type);
     bind("stat_record_interval_", &stat_record_interval);
 
+    is_migration_started = false;
     is_migration_finished = false; 
+    is_sent_traffic_to_dest = false;
 
     mig_manager_ = new MigrationManager(); 
     instance_ = this; 
 
     mig_root = nullptr; 
     stat_recorder = nullptr; 
+
+    tunnelled_packets = 0; 
 }
 
 MyTopology::~MyTopology(){
@@ -121,6 +125,7 @@ int MyTopology::command(int argc, const char*const* argv){
         } else if (strcmp(argv[1], "start_migration") == 0){
             auto& orch = BaseOrchestrator::instance();
             orch.start_migration();
+            is_migration_started = true; 
             return TCL_OK; 
 
         } else if (strcmp(argv[1], "print_nodes") == 0) {
@@ -429,15 +434,43 @@ std::vector<Node*> MyTopology::get_subtree_nodes(
     return subtree_nodes; 
 }
 
+Node* MyTopology::get_first_child(Node* n){
+    auto children = data[n].children;
+    return node[children[0]];
+}
+
+
+Node* MyTopology::get_next_sibling(Node* n){
+
+    auto node_id = data[n].uid;
+
+    int parent_pid = data[n].first_parent();
+    if (parent_pid == -1){
+        return nullptr;
+    } 
+
+    auto children = data[node[parent_pid]].children;
+    
+    for (int i = 0; i < children.size(); i++){
+        if (children[i] == node_id){
+            if (i == children.size() - 1){
+                return nullptr;
+            } else {
+                return node[children[i+1]];
+            }
+        }
+    }
+}
 
 Node* MyTopology::get_nth_parent(Node* this_node, int n){
     auto nth_parent = this_node;
-
+    // std::cout << "getting the " << n << "th parent of " << data[nth_parent].uid << std::endl;
     for (int i = 0; i < n; i++){
+        // std::cout << i << "th parent: " << data[nth_parent].uid << std::endl;
         int parent_id = data[nth_parent].first_parent(); 
         nth_parent = node[parent_id];
     } 
-
+    // std::cout << "returning " << nth_parent << std::endl;
     return nth_parent; 
 }
 
@@ -504,7 +537,20 @@ Node* MyTopology::get_node_by_address(int addr){
     }
 }
 
+void MyTopology::inc_tunnelled_packets(){
+    tunnelled_packets ++;
+}
 
+void MyTopology::migration_finished(){
+    is_migration_finished = true;
+    migration_finish_time = Scheduler::instance().clock();
+}
+
+void MyTopology::sent_traffic_to_dest(){
+    is_sent_traffic_to_dest = true;
+    clear_path_cache(); 
+}
+     
 TopoNode& MyTopology::get_data(Node* node){
     return data[node];
 } 
@@ -539,7 +585,7 @@ std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
     if (n1 != nullptr){
         // if the migration is finished, we should send the 
         // traffic to the destination zone directly. 
-        if (is_migration_finished){
+        if (is_sent_traffic_to_dest){
             n1 = get_peer(n1);
         }
 
@@ -728,6 +774,10 @@ void StatRecorder::record_stats(){
     auto mig_root = topo.get_mig_root(); 
     auto mig_root_peer = topo.get_peer(mig_root);
 
+    auto now = Scheduler::instance().clock();
+
+
+    // record the stats for the internal nodes of the tree 
     for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
         for(auto& node: topo.get_internals(root)){
 
@@ -740,7 +790,6 @@ void StatRecorder::record_stats(){
             auto ooo_packet_count = m->get_ooo_packet_count(); 
 
             auto uid = topo.uid(node); 
-            auto now = Scheduler::instance().clock();
 
 
             node_stats[uid][now] = {
@@ -752,9 +801,9 @@ void StatRecorder::record_stats(){
         } 
     }
 
+    // record the stats for the VM flows 
     for(auto& fid: tracked_fids){
         auto agent = fid_agent_map[fid];
-        auto now = Scheduler::instance().clock();
 
         auto packets_received = agent->get_packets_received_count();
         auto total_in_flight_time = agent->get_total_in_flight_time();
@@ -776,6 +825,9 @@ void StatRecorder::record_stats(){
             average_buffered_time,
         };
     }
+
+    // record the number of tunnelled packets
+    tunnelled_packets[now] = MyTopology::instance().tunnelled_packets;
 }
 
 
@@ -831,6 +883,19 @@ void StatRecorder::print_stats(){
             
             std::cout << std::endl; 
         }
+    }
+
+    for (auto& t: tunnelled_packets){
+        std::cout << "tunnelled_packets_recorder ";
+        std::cout << "[";
+        std::cout << t.first; 
+        std::cout << "]";
+
+        std::cout << " ";
+    
+        std::cout << t.second;
+
+        std::cout << std::endl;
     }
 
 }

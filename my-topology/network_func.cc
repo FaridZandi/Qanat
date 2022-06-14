@@ -82,6 +82,11 @@ bool NF::log_packet(std::string message, int arg){
     }
 }
 
+MigState NF::get_node_state(){
+    auto& orch = BaseOrchestrator::instance(); 
+    auto node_state = orch.get_mig_state(toponode_->node); 
+    return node_state; 
+}
 
 /**********************************************************
  * StatefulNF Implementation                              *  
@@ -245,8 +250,12 @@ bool Monitor::recv(Packet* p, Handler* h){
     if (should_ignore(p)){
         return true; 
     }
-    
-    StatefulNF::recv(p, h); 
+
+    // if the node is in the normal mode, packet is processed
+    // otherwise, just let the packet pass through.
+    if (get_node_state() != MigState::Normal){
+        return true; 
+    }
 
     log_packet("recved packet here");
 
@@ -642,9 +651,14 @@ bool DelayerNF::recv(Packet* p, Handler* h){
         return true;
     }
 
-    Scheduler::instance().schedule(this, p, delay);
-
-    return false; 
+    // if the node is in the normal mode, delay is applied
+    // otherwise, just let the packet pass through.
+    if (get_node_state() == MigState::Normal){
+        Scheduler::instance().schedule(this, p, delay);
+        return false; 
+    } else {
+        return true; 
+    }
 }
 
 void DelayerNF::handle(Event* event){
@@ -678,11 +692,36 @@ TunnelManagerNF::~TunnelManagerNF(){
 bool TunnelManagerNF::recv(Packet* p, Handler* h){
     log_packet("recved a packet here.");
 
+    if (should_ignore(p)){
+        return true;
+    }
+
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 
 
     auto ret = mig_manager.pre_classify(p, h, toponode_->node);
-    return ret;
+
+    if (! ret) return false; 
+
+    // if top-down approach or random
+    if (topo.orch_type == 2 or topo.orch_type == 3) {
+        // if in the destination tree 
+        if (topo.get_data(toponode_->node).which_tree == 1){
+            if (get_node_state() != MigState::Normal and topo.is_migration_started){
+                convert_path(p);
+                auto this_node = toponode_->node;
+                auto peer = topo.get_peer(this_node);
+                add_to_path(p, peer->address());
+                set_high_prio(p); 
+                topo.inc_tunnelled_packets();
+            }
+        }
+    }
+    
+    // anyhow, the priority tag is removed from the packet. 
+    unset_high_prio(p); 
+
+    return true;
 }
 
 std::string TunnelManagerNF::get_type(){
@@ -714,18 +753,13 @@ bool RouterNF::recv(Packet* p, Handler* h){
 
     hdr_ip* iph = hdr_ip::access(p);
     
-
-    // std::cout << "original packet dst: " << iph->dst_.addr_ << std::endl; 
-	
     if (iph->gw_path_pointer != -1){
-        
         auto ptr = iph->gw_path_pointer;
         iph->prev_hop = iph->dst_.addr_; 
         iph->dst_.addr_ = iph->gw_path[ptr]; 
         iph->gw_path_pointer --; 
     }
 
-	// std::cout << "new packet dst: " << iph->dst_.addr_ << std::endl; 
 
     if (verbose) {
         std::cout << "packet path: "; 
@@ -735,9 +769,6 @@ bool RouterNF::recv(Packet* p, Handler* h){
         std::cout << "packet dst: " << iph->dst_.addr_;
         std::cout << std::endl; 
     }
-	
-
-    
 
     return true;
 }

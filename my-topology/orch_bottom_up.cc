@@ -22,13 +22,28 @@ OrchBottomUp::~OrchBottomUp(){
 
 }
 
+void OrchBottomUp::tunnel_subtree_tru_parent(Node* node){
+    auto& topo = MyTopology::instance();
 
-int get_random_transfer_size(int mean, int range_p){
-    int r = (100 - range_p) + std::rand() % (2 * range_p);
-    int size = r * (mean / 100);
-    return size; 
+    if (topo.get_mig_root() == node){
+        topo.sent_traffic_to_dest(); 
+    } else {
+        // setup tunnels for all the nodes in one layer up. 
+        int node_layer = topo.get_data(node).layer_from_bottom;
+        auto parent = topo.get_nth_parent(node, 1); 
+
+        for(auto leaf: topo.get_leaves(node)){
+            topo.setup_nth_layer_tunnel(leaf, node_layer + 1);
+        }
+
+        if (mig_state[parent] == MigState::Normal){
+            set_node_state(parent, MigState::PreMig);
+            set_peer_state(parent, MigState::PreMig);
+            log_event("start gw precopy", parent);
+            log_event("start gw precopy", topo.get_peer(parent));
+        }
+    }
 }
-
 
 void OrchBottomUp::start_migration(){
     std::srand(123);
@@ -36,39 +51,33 @@ void OrchBottomUp::start_migration(){
     auto& topo = MyTopology::instance(); 
     auto mig_root = topo.get_mig_root(); 
 
-    if (topo.process_after_migration){
-        std::cout << "Processing after migration" << std::endl;
-        
-        for(auto& node: topo.get_all_nodes(mig_root)){    
-            set_node_state(node, MigState::Migrated);
-            set_peer_state(node, MigState::Normal);
-        }
+    std::cout << "start migration" << std::endl;
 
-        log_event("migration finished", mig_root);
-        migration_finished();
-    } else {
-        std::cout << "start migration" << std::endl;
+    std::cout << "VM migration Queue: ";
+    for (auto& leaf: topo.get_leaves(mig_root)){
+        vm_migration_queue.push(leaf);
+        std::cout << leaf->address() << " ";
+    }
+    std::cout << std::endl;
 
-        std::cout << "VM migration Queue: ";
-        for (auto& leaf: topo.get_leaves(mig_root)){
-            vm_migration_queue.push(leaf);
-            std::cout << leaf->address() << " ";
-        }
-        std::cout << std::endl;
+    for(auto& node: topo.get_all_nodes(mig_root)){    
+        set_node_state(node, MigState::Normal);
+        set_peer_state(node, MigState::OutOfService);
+    }
 
-        int parallel_migrations = MyTopology::parallel_mig; 
-        for(int i = 0; i < parallel_migrations; i++){
-            dequeue_next_vm();
-        }
+    int parallel_migrations = MyTopology::parallel_mig; 
+    std::cout << "Parallel migrations: " << parallel_migrations << std::endl;
+    for(int i = 0; i < parallel_migrations; i++){
+        dequeue_next_vm();
     }
 };
 
   
 void OrchBottomUp::start_vm_precopy(Node* vm){
-
     set_node_state(vm, MigState::PreMig);
     set_peer_state(vm, MigState::OutOfService);
     log_event("start vm precopy", vm);
+
     initiate_data_transfer(
         vm, get_random_transfer_size(MyTopology::vm_precopy_size, 10), 
         [](Node* n){
@@ -102,7 +111,7 @@ void OrchBottomUp::start_vm_migration(Node* vm){
     }
 
     buffer_on_peer(vm);
-    
+
     log_event("start vm migration", vm);
 
     // std::cout << "MyTopology::vm_snapshot_size: " << MyTopology::vm_snapshot_size << std::endl; 
@@ -133,10 +142,8 @@ void OrchBottomUp::try_parent_migration(Node* node){
 
     if (all_children_migrated(gw)){
         // log_event("all conditions ok to start migrating GW: ", gw->address()); 
-
         buffer_on_peer(gw);
         set_peer_state(gw, MigState::Buffering);
-
         start_gw_snapshot(gw); 
     }
 }
@@ -235,13 +242,16 @@ bool OrchBottomUp::all_children_migrated(Node* node){
     return true; 
 }
 
+void OrchBottomUp::migration_finished(){
+    auto& topo = MyTopology::instance();   
+    topo.migration_finished(); 
+}
 
 
 std::list<nf_spec> OrchBottomUp::get_vm_nf_list(){
     return {
         {"buffer", 2400},
-        {"rate_limiter", 1000000},
-        {"delayer", 0.000005},
+        {"delayer", 0.00005},
 
         //Must have these two NFs at the end of the list
         {"tunnel_manager", 0},
@@ -253,6 +263,8 @@ std::list<nf_spec> OrchBottomUp::get_gw_nf_list(){
     return {
         {"priority_buffer", 2400},
         {"delayer", 0.00005},
+
+        // gateways have monitoring NFs
         {"monitor", 0},
 
         //Must have these two NFs at the end of the list

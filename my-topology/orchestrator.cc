@@ -1,6 +1,7 @@
 #include "orchestrator.h"
 #include "orch_bottom_up.h"
 #include "orch_top_down.h"
+#include "orch_random.h"
 #include "my_topology.h"
 #include "node.h"
 #include "utility.h"
@@ -16,20 +17,20 @@ BaseOrchestrator& BaseOrchestrator::instance(){
     } else if (topo.orch_type == 2) {
         return OrchTopDown::instance(); 
     } else if (topo.orch_type == 3) {
-        // return OrchRandom::instance(); 
+        return OrchRandom::instance(); 
     } else {
         std::cout << "Please specify the orchestrator type you wish to use.";
         std::cout << std::endl; 
-
         std::cout << "Exitting..."; 
         std::cout << std::endl; 
-
         exit(1); 
     }
 };
 
 BaseOrchestrator::BaseOrchestrator(){
-    // parallel_migrations = MyTopology::parallel_mig; 
+    in_migration_vms = 0;
+    in_migration_nodes = 0;
+    in_migration_gws = 0;   
 }
 
 void BaseOrchestrator::setup_nodes(){
@@ -69,29 +70,6 @@ void BaseOrchestrator::setup_nodes(){
     }
 
     topo.introduce_nodes_to_classifiers(); 
-
-    // for(auto& node: topo.get_used_nodes()){
-    //     auto path = topo.get_path(node, PATH_MODE_RECEIVER);
-    //     std::cout << "to " << topo.uid(node) << ": ";
-    //     for (auto p : path){
-    //         std::cout << p << " ";
-    //     }
-    //     std::cout << std::endl; 
-
-    //     path = topo.get_path(node, PATH_MODE_SENDER);
-    //     std::cout << "from " << topo.uid(node) << ": ";
-    //     for (auto p : path){
-    //         std::cout << p << " ";
-    //     }
-    //     std::cout << std::endl; 
-    // }
-}
-
-void BaseOrchestrator::migration_finished(){
-    auto& topo = MyTopology::instance();   
-    topo.is_migration_finished = true;
-    topo.clear_path_cache(); 
-    topo.migration_finish_time = Scheduler::instance().clock(); 
 }
 
 void BaseOrchestrator::initiate_data_transfer(
@@ -116,28 +94,7 @@ void BaseOrchestrator::initiate_data_transfer(
 }
 
 
-void BaseOrchestrator::tunnel_subtree_tru_parent(Node* node){
-    auto& topo = MyTopology::instance();
 
-    if (topo.get_mig_root() == node){
-        //nothing  
-    } else {
-        // setup tunnels for all the nodes in one layer up. 
-        int node_layer = topo.get_data(node).layer_from_bottom;
-        auto parent = topo.get_nth_parent(node, 1); 
-
-        for(auto leaf: topo.get_leaves(node)){
-            topo.setup_nth_layer_tunnel(leaf, node_layer + 1);
-        }
-
-        if (mig_state[parent] == MigState::Normal){
-            set_node_state(parent, MigState::PreMig);
-            set_peer_state(parent, MigState::PreMig);
-            log_event("start gw precopy", parent);
-            log_event("start gw precopy", topo.get_peer(parent));
-        }
-    }
-}
 
 void BaseOrchestrator::log_event(std::string message, Node* node, int arg, bool print_tree){
     auto& topo = MyTopology::instance();

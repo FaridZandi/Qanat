@@ -11,6 +11,8 @@ class TopoNode;
 class PacketQueue; 
 class Node; 
 
+enum class MigState; 
+
 class NF : public Handler {
 public: 
     NF(TopoNode* toponode, int chain_pos); 
@@ -75,6 +77,8 @@ public:
 
     
 protected: 
+
+    MigState get_node_state(); 
 
     bool should_ignore(Packet* p); 
 

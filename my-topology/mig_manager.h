@@ -99,10 +99,6 @@ protected:
     
     void log_tunnel(tunnel_data td, Tunnel_Point tp, Packet* p);
 
-    void convert_path(Packet* p);
-    void add_to_path(Packet* p, int addr);
-    void set_prio(Packet* p, int prio);
-    int get_prio(Packet* p);
     int get_packet_dst(Packet* p);
     void set_packet_src(Packet* p, int src);
 

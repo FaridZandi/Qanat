@@ -1,5 +1,5 @@
-#ifndef orch_top_down_h
-#define orch_top_down_h
+#ifndef orch_random_h
+#define orch_random_h
 
 #include "orchestrator.h"
 #include "timer-handler.h"
@@ -9,16 +9,16 @@
 class Node; 
 
 // Test version of Orchestrator
-class OrchTopDown : public BaseOrchestrator {
+class OrchRandom : public BaseOrchestrator {
 public: 
     // Singleton access to the orchestrator
-	static OrchTopDown& instance() {
-        static OrchTopDown instance; 
+	static OrchRandom& instance() {
+        static OrchRandom instance; 
         return instance; 
 	}
     
-    OrchTopDown(); 
-    virtual ~OrchTopDown(); 
+    OrchRandom(); 
+    virtual ~OrchRandom(); 
 
     virtual void start_migration();
 
@@ -33,16 +33,15 @@ public:
 
 private: 
     void tunnel_subtree_tru_parent(Node* node);
-    void dequeue_next_gw();
-    void dequeue_next_vm();
+    void dequeue_next_node();
     bool all_children_migrated(Node* node); 
     void start_vm_precopy(Node* vm); 
     void start_vm_migration(Node* vm); 
     void start_gw_migration(Node* gw);
     void start_gw_snapshot(Node* gw);
-    void migrate_next_element(Node* gw);
     bool is_gateway(Node* node);
     void end_parent_precopy_if_needed(Node* gw);
+
 };
 
 

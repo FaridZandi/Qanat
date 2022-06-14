@@ -13,7 +13,7 @@ from run_constants import *
 q = Queue.Queue()
 
 threads = []
-number_worker_threads = 10
+number_worker_threads = 20
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
@@ -162,13 +162,13 @@ if __name__ == "__main__":
 
 	configs = None
 
-	if exp_name == "prio_effect":
+	if exp_name == "prio_effect_2":
 		configs = {
-			"exp_name": ["prio_effect"],
-			"mig_sizes": [(100, 100, 30)],
-			"parallel_mig": [2], 
-			"load": [0.4, 0.5, 0.6, 0.7, 0.8],
-			"oversub": [2.0],
+			"exp_name": [exp_name],
+			"mig_sizes": [(100, 100, 30), (100, 100, 10)],
+			"parallel_mig": [2, 4], 
+			"load": [0.2, 0.4, 0.6, 0.8],
+			"oversub": [1.0, 2.0, 4.0],
 			"sourceAlg":['TCP'],
 			"src_zone_delay": [0.000005], # in seconds
 			"dst_zone_delay": [0.000005], # in seconds 
@@ -188,30 +188,30 @@ if __name__ == "__main__":
 			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		} 
 
-	elif exp_name == "test":
+	elif exp_name == "orch_effect_3":
 		configs = {
-			"exp_name": ["test"],
-			"mig_sizes": [(10, 100, 100)],
-			"parallel_mig": [1], 
-			"load": [0.4, 0.6, 0.8],
-			"oversub": [2.0],
+			"exp_name": [exp_name],
+			"mig_sizes": [(100, 100, 20)],
+			"parallel_mig": [1, 2 ,4, 8], 
+			"load": [0.2],
+			"oversub": [1.0, 2.0, 4.0],
 			"sourceAlg":['TCP'],
-			"src_zone_delay": [0.00001], # in seconds
+			"src_zone_delay": [0.00002], # in seconds
 			"dst_zone_delay": [0.00002], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
-			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
 			###########################################################
 			########| don't make a list out of the following |#########
 			###########################################################
 			"enable_rt_dv": [1], # 0: disable, 1: enable
-			"enable_bg_traffic": [0], # 0: disable, 1: enable
-			"stat_record_interval": [0.0001], # in seconds
-			"sim_end": [10000], # number of flows
-			"vm_flow_size": [300000], # in packets
-			"dc_size": [(1, 1, 8)], # (spines, bg_tors, spt)
-			"tree_shape": [(1, 2, 2)], #branching factors of the tree
+			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"stat_record_interval": [0.001], # in seconds
+			"sim_end": [100000], # number of flows
+			"vm_flow_size": [200000], # in packets
+			"dc_size": [(1, 6, 16)], # (spines, bg_tors, spt)
+			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		} 
 
 	if not configs:

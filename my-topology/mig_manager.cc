@@ -1,9 +1,11 @@
 #include "mig_manager.h"
 #include "my_topology.h"
+#include "orchestrator.h"
 #include "node.h"
 #include "packet.h"
 #include <iostream>
 #include "tcp-full.h"
+#include "utility.h"
 
 int MigrationManager::tunnel_uid_counter = 0;
 
@@ -38,8 +40,6 @@ int MigrationManager::activate_tunnel(Node* in, Node* out,
 
 	// std::cout << "tunnel uid: " << td.uid << std::endl;
 	return td.uid; 
-
-
 }
 
 
@@ -237,50 +237,6 @@ bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
 }
 
 
-void MigrationManager::convert_path(Packet* p){
-	auto& topo = MyTopology::instance();
-	hdr_ip* iph = hdr_ip::access(p); 
-
-	for (int i = iph->gw_path_pointer; i >= 0; i --){
-		int addr = iph->gw_path[i]; 
-		auto node = topo.get_node_by_address(addr); 
-
-		if (node != nullptr){
-			iph->gw_path[i] = topo.get_peer(node)->address(); 
-		} 	
-	}
-}
-
-void MigrationManager::add_to_path(Packet* p, int addr){
-
-	auto& topo = MyTopology::instance();
-	hdr_ip* iph = hdr_ip::access(p); 
-
-	iph->gw_path_pointer += 1; 
-	iph->gw_path[iph->gw_path_pointer] = addr;
-}
-
-
-void MigrationManager::set_prio(Packet* p, int prio){
-	auto& topo = MyTopology::instance();
-	hdr_ip* iph = hdr_ip::access(p); 
-
-	if (prio == 1) {
-		if (topo.prioritization_level > 0) {
-			iph->is_high_prio = true;
-		} 
-	} else {
-		iph->is_high_prio = false; 
-	}
-}
-
-
-int MigrationManager::get_prio(Packet* p){
-	hdr_ip* iph = hdr_ip::access(p); 
-	return iph->prio_;
-}
-
-
 
 int MigrationManager::get_packet_dst(Packet* p){
 	hdr_ip* iph = hdr_ip::access(p); 
@@ -311,7 +267,9 @@ bool MigrationManager::tunnel_packet_in(tunnel_data td,
 
 	convert_path(p);
 	add_to_path(p, td.out->address());
-	set_prio(p, 1); 
+	set_high_prio(p); 
+	
+	MyTopology::instance().inc_tunnelled_packets();
 
     return true; 	 
 }
@@ -324,7 +282,7 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// of the original destination, the new destination
 	// will be assigned to the packet. 
 	
-	set_prio(p, 0); 
+	unset_high_prio(p); 
 
     return true; 
 }
@@ -371,18 +329,29 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
     if(iph->agent_tunnel_flag){
         return true; // don't do anything 
     } else {
-        if (dir == Direction::Outgoing){ 
-            iph->src_.addr_ = td.to->address(); 
-			convert_path(p); 
-            td.to->get_classifier()->recv(p, h);
-            return false;  
 
-        } else if (dir == Direction::Incoming){
-			hdr_tcp* tcph = hdr_tcp::access(p);
-			std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
-			iph->dst_.addr_ = td.to->address(); 
-			set_prio(p, 1); 
-            return true;         
+		auto& orch = BaseOrchestrator::instance();
+		auto node_state = orch.get_mig_state(n);
+
+        if (dir == Direction::Outgoing){ 
+			if (node_state == MigState::Normal or node_state == MigState::PreMig){
+				return true;
+			} else {
+				iph->src_.addr_ = td.to->address(); 
+				convert_path(p); 
+				td.to->get_classifier()->recv(p, h);
+				return false;  
+			}
+        } else if (dir == Direction::Incoming){		 
+			if (node_state == MigState::Normal or node_state == MigState::PreMig){
+				return true; 
+			} else {	
+				// hdr_tcp* tcph = hdr_tcp::access(p);
+				// std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
+				iph->dst_.addr_ = td.to->address(); 
+				set_high_prio(p); 
+				return true; 	
+			}        
         }
     }
 }
@@ -399,14 +368,21 @@ bool MigrationManager::handle_packet_to(tunnel_data td,
 	// had already passed the gateway when the tunnel 
 	// was established. 
 
-    hdr_ip* iph = hdr_ip::access(p); 	
+	auto& orch = BaseOrchestrator::instance();
+	auto node_state = orch.get_mig_state(n);
 
-    iph->dst_.addr_ = td.from->address(); 
-    iph->agent_tunnel_flag = true;
-    
-	td.from->get_classifier()->recv(p, h); 
+	if (node_state == MigState::Normal){
+		hdr_ip* iph = hdr_ip::access(p); 	
 
-    return false; 
+		iph->dst_.addr_ = td.from->address(); 
+		iph->agent_tunnel_flag = true;
+		
+		td.from->get_classifier()->recv(p, h); 
+
+		return false; 
+	} else {
+		return true; 
+	}
 }
 
 /**********************************************************

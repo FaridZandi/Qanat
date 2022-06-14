@@ -19,7 +19,7 @@ parser.add_argument("-m", "--mode", dest="mode",
                     help="operation mode", default="file", metavar="MODE")
 
 parser.add_argument("-d", "--directory", 
-                    dest="directory", required=True,
+                    dest="directory", required=False,
                     help="the directory to perform the processing", 
                     metavar="Directory")
 
@@ -170,6 +170,7 @@ if args.reload:
     ])
 
     for address in times: 
+        print (address)
         uid = int(address.split("-")[2])
 
         if uid < 10:
@@ -219,12 +220,12 @@ min_time = min(
     df.start_buf[df.start_buf > 0].min()
 )
 
-df["start_pre"] = df["start_pre"] - min_time  
-df["start_mig"] = df["start_mig"] - min_time  
-df["start_buf"] = df["start_buf"] - min_time  
+# df["start_pre"] = df["start_pre"] - min_time  
+# df["start_mig"] = df["start_mig"] - min_time  
+# df["start_buf"] = df["start_buf"] - min_time  
 
-max_time -= min_time
-min_time = 0
+# max_time -= min_time
+# min_time = 0
 
 # plot the protocol 
 
@@ -239,7 +240,7 @@ for i in range(3):
 
     vm_df = half_df[half_df["type"] == "VM"]
     gw_df = half_df[half_df["type"] == "GW"]
-
+    
     gw_df = gw_df.sort_values("address")
 
     print(half_df)

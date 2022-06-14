@@ -14,13 +14,14 @@ struct nf_spec{
 };
 
 
-enum MigState { 
+enum class MigState { 
     Normal, 
     PreMig, 
     InMig, 
     Buffering, 
     Migrated, 
-    OutOfService
+    OutOfService,
+    Uninitialized
 };
 
 /*
@@ -39,7 +40,6 @@ public:
     // signals 
     virtual void start_migration(){};
     virtual void setup_nodes(); 
-    virtual void migration_finished();
 
     MigState get_mig_state(Node* node);  
     std::string get_mig_state_string(Node* node);  
@@ -47,8 +47,6 @@ protected:
 
     void initiate_data_transfer(Node* node, int size, 
                                 void (*callback) (Node*));
-
-    void tunnel_subtree_tru_parent(Node* node);
 
     void log_event(std::string message, Node* node = nullptr, int arg = -1, bool print_tree = true);
 
@@ -67,7 +65,13 @@ protected:
     void set_peer_state(Node* node, MigState state);
 
     std::queue<Node*> vm_migration_queue;
-
+    std::queue<Node*> migration_queue;
+    std::queue<Node*> gw_migration_queue;
+    
+    int in_migration_gws;
+    int in_migration_vms; 
+    int in_migration_nodes; 
+    
     std::map<Node*, MigState> mig_state; 
 };
 

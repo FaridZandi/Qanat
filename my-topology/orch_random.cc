@@ -1,4 +1,4 @@
-#include "orch_top_down.h"
+#include "orch_random.h"
 #include "orchestrator.h"
 #include "my_topology.h"
 #include "mig_manager.h"
@@ -13,55 +13,65 @@
 #include <cstdlib>
 #include <ctime>
 #include "utility.h"
+#include <deque>
 
 
-OrchTopDown::OrchTopDown() : BaseOrchestrator(){ 
+OrchRandom::OrchRandom() : BaseOrchestrator(){    
 }
 
-OrchTopDown::~OrchTopDown(){
+OrchRandom::~OrchRandom(){
 
 }
 
 
-void OrchTopDown::dequeue_next_gw(){
+void OrchRandom::dequeue_next_node(){
 
-    while (gw_migration_queue.size() > 0 and 
-           in_migration_gws < MyTopology::parallel_mig){
+    // check if everything is done
 
-        auto node = gw_migration_queue.front(); 
-        gw_migration_queue.pop();
-        in_migration_gws ++;
-
-        start_gw_migration(node);
+    auto& topo = MyTopology::instance();
+    bool all_nodes_migrated = true;
+    for (auto& node: topo.get_all_nodes(topo.get_mig_root())){
+        if (mig_state[node] != MigState::Migrated){
+            all_nodes_migrated = false;
+            break;
+        }
     }
-}
+    if (all_nodes_migrated){
+        log_event("migration finished", topo.get_mig_root());
+        topo.migration_finished(); 
+        return; 
+    }
 
+    // otherwise, dequeue the next node
 
-void OrchTopDown::dequeue_next_vm(){
-    while (vm_migration_queue.size() > 0 and 
-           in_migration_vms < MyTopology::parallel_mig){
+    while (migration_queue.size() > 0 and 
+           in_migration_nodes < MyTopology::parallel_mig){
 
-        auto node = vm_migration_queue.front(); 
-        vm_migration_queue.pop();
-        in_migration_vms ++;
-        start_vm_precopy(node);
+        auto node = migration_queue.front(); 
+        migration_queue.pop();
+
+        in_migration_nodes ++;
+
+        if (is_gateway(node)){
+            start_gw_migration(node);
+        } else {
+            start_vm_precopy(node);
+        }
     }
 } 
 
 
-bool OrchTopDown::all_children_migrated(Node* node){
+bool OrchRandom::all_children_migrated(Node* node){
     auto& topo = MyTopology::instance();
-
     for(auto& child: topo.get_children(node)){
         if(mig_state[child] != MigState::Migrated){
             return false; 
         }
     }
-
     return true; 
 }
 
-void OrchTopDown::end_parent_precopy_if_needed(Node* gw){
+void OrchRandom::end_parent_precopy_if_needed(Node* gw){
     auto& topo = MyTopology::instance();
 
     auto parent = topo.get_nth_parent(gw, 1);
@@ -74,7 +84,7 @@ void OrchTopDown::end_parent_precopy_if_needed(Node* gw){
 }
 
 
-bool OrchTopDown::is_gateway(Node* node){
+bool OrchRandom::is_gateway(Node* node){
     auto& topo = MyTopology::instance();
     if (topo.get_data(node).mode == OpMode::GW){
         return true;
@@ -84,7 +94,7 @@ bool OrchTopDown::is_gateway(Node* node){
 }
 
 
-void OrchTopDown::tunnel_subtree_tru_parent(Node* node){
+void OrchRandom::tunnel_subtree_tru_parent(Node* node){
     auto& topo = MyTopology::instance();
 
     if (topo.get_mig_root() == node){
@@ -102,7 +112,7 @@ void OrchTopDown::tunnel_subtree_tru_parent(Node* node){
 }
 
 
-void OrchTopDown::start_migration(){
+void OrchRandom::start_migration(){
     std::srand(123);
 
     auto& topo = MyTopology::instance(); 
@@ -113,12 +123,18 @@ void OrchTopDown::start_migration(){
         set_peer_state(node, MigState::OutOfService);
     }
 
-    in_migration_gws ++;
-    start_gw_migration(mig_root);
+    std::deque<Node*> d;
+    for (auto& node: topo.get_all_nodes(mig_root)){
+        d.push_back(node);
+    }    
+    std::random_shuffle(d.begin(), d.end());
+    migration_queue = std::queue<Node*>(d);
+
+    dequeue_next_node(); 
 };
 
 
-void OrchTopDown::start_gw_migration(Node* gw){
+void OrchRandom::start_gw_migration(Node* gw){
     auto& topo = MyTopology::instance();
 
     set_node_state(gw, MigState::InMig);
@@ -137,7 +153,7 @@ void OrchTopDown::start_gw_migration(Node* gw){
 }
 
 
-void OrchTopDown::start_gw_snapshot(Node* gw){
+void OrchRandom::start_gw_snapshot(Node* gw){
 
     auto& topo = MyTopology::instance();
 
@@ -146,7 +162,7 @@ void OrchTopDown::start_gw_snapshot(Node* gw){
     initiate_data_transfer(
         gw, get_random_transfer_size(MyTopology::gw_snapshot_size, 10), 
         [](Node* n){
-            auto& orch = OrchTopDown::instance();
+            auto& orch = OrchRandom::instance();
             orch.gw_snapshot_send_ack_from_peer(n);
         }
     );
@@ -154,7 +170,7 @@ void OrchTopDown::start_gw_snapshot(Node* gw){
 
 
 
-void OrchTopDown::gw_snapshot_send_ack_from_peer(Node* gw){
+void OrchRandom::gw_snapshot_send_ack_from_peer(Node* gw){
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer of gw sends the S_ack to gw
 
@@ -163,13 +179,13 @@ void OrchTopDown::gw_snapshot_send_ack_from_peer(Node* gw){
     initiate_data_transfer(
         peer, 100,
         [](Node* n){
-            auto& orch = OrchTopDown::instance();
+            auto& orch = OrchRandom::instance();
             orch.gw_snapshot_ack_rcvd(n);
         }
     );    
 }
 
-void OrchTopDown::gw_snapshot_ack_rcvd(Node* gw){
+void OrchRandom::gw_snapshot_ack_rcvd(Node* gw){
     // here Node gw is the gw at the destination
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer is gw at the source
@@ -179,13 +195,13 @@ void OrchTopDown::gw_snapshot_ack_rcvd(Node* gw){
     initiate_data_transfer(
         peer, 100, 
         [](Node* n){
-            auto& orch = OrchTopDown::instance();
+            auto& orch = OrchRandom::instance();
             orch.gw_start_processing_buffer_on_peer(n);
         }
     );   
 }
 
-void OrchTopDown::gw_start_processing_buffer_on_peer(Node* gw){
+void OrchRandom::gw_start_processing_buffer_on_peer(Node* gw){
     // here Node gw is the gw at the source
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer is gw at the source
@@ -198,38 +214,13 @@ void OrchTopDown::gw_start_processing_buffer_on_peer(Node* gw){
  
     process_on_peer(gw);
     
-    in_migration_gws --; 
-    migrate_next_element(gw);
-
+    in_migration_nodes --; 
+    dequeue_next_node(); 
     end_parent_precopy_if_needed(gw);
 }; 
 
 
-void OrchTopDown::migrate_next_element(Node* gw){
-    auto& topo = MyTopology::instance();
-
-    auto next_sibling = topo.get_next_sibling(gw); 
-    auto first_child = topo.get_first_child(gw);
-
-    if (next_sibling != nullptr){
-        gw_migration_queue.push(next_sibling);
-    }
-
-    if (topo.get_data(first_child).mode == OpMode::VM){
-        for (auto& vm: topo.get_leaves(gw)){
-            vm_migration_queue.push(vm);
-        }
-        dequeue_next_vm();
-    } else {
-        gw_migration_queue.push(first_child);
-    }
-
-    dequeue_next_gw(); 
-}
-
-
-  
-void OrchTopDown::start_vm_precopy(Node* vm){
+void OrchRandom::start_vm_precopy(Node* vm){
 
     set_node_state(vm, MigState::PreMig);
     set_peer_state(vm, MigState::PreMig);
@@ -239,20 +230,21 @@ void OrchTopDown::start_vm_precopy(Node* vm){
     initiate_data_transfer(
         vm, get_random_transfer_size(MyTopology::vm_precopy_size, 10), 
         [](Node* n){
-            auto& orch = OrchTopDown::instance();
+            auto& orch = OrchRandom::instance();
             orch.vm_precopy_finished(n);
         }
     );
 }
 
-void OrchTopDown::vm_precopy_finished(Node* vm){
+
+void OrchRandom::vm_precopy_finished(Node* vm){
     log_event("end vm precopy", vm);
     start_vm_migration(vm); 
 }; 
 
 
 
-void OrchTopDown::start_vm_migration(Node* vm){
+void OrchRandom::start_vm_migration(Node* vm){
     set_node_state(vm, MigState::InMig);
     set_peer_state(vm, MigState::Buffering);
 
@@ -266,45 +258,29 @@ void OrchTopDown::start_vm_migration(Node* vm){
     initiate_data_transfer(
         vm, get_random_transfer_size(MyTopology::vm_snapshot_size, 10), 
         [](Node* n){
-            auto& orch = OrchTopDown::instance();
+            auto& orch = OrchRandom::instance();
             orch.vm_migration_finished(n);
         }
     );
 }
 
 
-void OrchTopDown::vm_migration_finished(Node* vm){
+void OrchRandom::vm_migration_finished(Node* vm){
 
     auto& topo = MyTopology::instance();
 
     set_node_state(vm, MigState::Migrated);
     set_peer_state(vm, MigState::Normal);
-
     log_event("end vm migration", vm);
     process_on_peer(vm); 
 
-    in_migration_vms --;
-
-    dequeue_next_vm();
-
+    in_migration_nodes --; 
+    dequeue_next_node();
     end_parent_precopy_if_needed(vm);
-
-    bool all_vms_migrated = true; 
-    for (auto& node: topo.get_leaves(topo.get_mig_root())){
-        if (mig_state[node] != MigState::Migrated){
-            all_vms_migrated = false;
-            break;
-        }
-    }
-
-    if (all_vms_migrated){
-        log_event("migration finished", vm);
-        topo.migration_finished(); 
-    }
 }
 
 
-std::list<nf_spec> OrchTopDown::get_vm_nf_list(){
+std::list<nf_spec> OrchRandom::get_vm_nf_list(){
     return {
         {"buffer", 2400},
         {"delayer", 0.00005},
@@ -315,7 +291,7 @@ std::list<nf_spec> OrchTopDown::get_vm_nf_list(){
     };
 }
 
-std::list<nf_spec> OrchTopDown::get_gw_nf_list(){
+std::list<nf_spec> OrchRandom::get_gw_nf_list(){
     return {
         {"priority_buffer", 2400},
         {"delayer", 0.00005},
