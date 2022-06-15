@@ -65,6 +65,7 @@ if args.reload:
         exp_info["prioritization"] = int(file_name_split[8][2:])
         exp_info["src_zone_delay"] = int(file_name_split[9][2:])
         exp_info["dst_zone_delay"] = int(file_name_split[10][2:])
+        exp_info["link_rate"] = int(file_name_split[11][1:])
         exp_info["orch_type"] = translate_orch_type(exp_info["orch_type"])
 
         # list of tuples in shape of (metrics, metric_name)
@@ -94,6 +95,11 @@ if args.reload:
         # retransmission rates 
         exp_info["vm_ret"] = vm_flows["ret"].mean()
         exp_info["bg_ret"] = bg_flows["ret"].mean()
+
+        # average_rate 
+        exp_info["vm_avg_r"] = vm_flows["avg_rate"].mean()
+        exp_info["bg_avg_r"] = bg_flows["avg_rate"].mean()
+
         
         ################ Total Migration time ###############
 
@@ -172,10 +178,13 @@ if args.reload:
         ("settings", "prioritization"),
         ("settings", "src_zone_delay"),
         ("settings", "dst_zone_delay"),
+        ("settings", "link_rate"),
         ("flow_metrics", "vm_afct"),
         ("flow_metrics", "bg_afct"),
         ("flow_metrics", "vm_ret"),
         ("flow_metrics", "bg_ret"),
+        ("flow_metrics", "vm_avg_r"),
+        ("flow_metrics", "bg_avg_r"),
         ("protocol_metrics", "tot_mig_time"),
         ("buffer_metrics", "max_hpq"),
         ("buffer_metrics", "max_lpq"),
@@ -198,7 +207,7 @@ if args.reload:
     df = df.sort_values(by=columns[0:13])
 
 
-    df = df[:].round(decimals = 2)
+    df = df[:].round(decimals = 6)
     
     data_path = args.directory + "/summary.csv" 
     df.to_csv(data_path)
