@@ -107,9 +107,7 @@ df['average_in_flight_time'] = df['average_in_flight_time'].rolling(10).max()
 df['average_buffered_time'] = df['average_buffered_time'].rolling(10).max()
 
 
-def plot_flow(fid, ax): 
-    flow_df = df[df.fid == fid].copy()
-
+def plot_flow(fid, ax, flow_df): 
     flow_df['consec_grp'] = (flow_df.packets_received_orig.diff(1) != 0).astype('int').cumsum()
     consec = pd.DataFrame({
         'begin_time' : flow_df.groupby('consec_grp').time.first(), 
@@ -130,21 +128,20 @@ def plot_flow(fid, ax):
 def plot_measure(measure):
  
     fids = df.fid.unique()
-    fig, axes = plt.subplots(len(fids), 1, sharex=True, sharey=True)
-    fig.set_size_inches(12, len(fids) * 3)
+
+    plot_count = len(fids) 
+    fig, axes = plt.subplots(plot_count, 1, sharex=True, sharey=True)
+    fig.set_size_inches(12, plot_count * 3)
 
     plot_index = 0 
+
     for fid in fids:
         print("drawing subplot", plot_index + 1)
-        
-        if len(fids) == 1:
-            ax = axes
-        else:
-            ax = axes[plot_index]
-        plot_flow(fid, ax)   
-
+        flow_df = df[df.fid == fid].copy()
+        plot_flow(fid, axes[plot_index], flow_df)   
         plot_index += 1 
 
+    
     plots_dir = args.directory + "/" + "plots"
     flows_plots_dir = plots_dir + "/" + "flow_stats/"
     plot_path = "{}/{}.png".format(flows_plots_dir, measure)
@@ -152,6 +149,19 @@ def plot_measure(measure):
     print("saving", plot_path)
     plt.tight_layout()
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+    plt.clf()
+
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    sum_df = df.groupby(['time']).sum().reset_index()
+    plot_flow("total", ax, sum_df)
+
+    plot_path = "{}/{}_total.png".format(flows_plots_dir, measure)
+    print("saving", plot_path)
+    plt.tight_layout()
+    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
+
 
 
 for measure in ["packets_received", "average_in_flight_time", "average_buffered_time"]:

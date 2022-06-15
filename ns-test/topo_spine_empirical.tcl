@@ -176,6 +176,44 @@ Queue/RED set maxthresh_ $DCTCP_K
 Queue/RED set drop_prio_ $drop_prio_
 Queue/RED set deque_prio_ $deque_prio_
 
+
+Queue/MamadQueue set bytes_ false
+Queue/MamadQueue set queue_in_bytes_ true
+Queue/MamadQueue set mean_pktsize_ [expr $pktSize+40]
+Queue/MamadQueue set setbit_ true
+Queue/MamadQueue set gentle_ false
+Queue/MamadQueue set q_weight_ 1.0
+Queue/MamadQueue set mark_p_ 1.0
+Queue/MamadQueue set thresh_ $DCTCP_K
+Queue/MamadQueue set maxthresh_ $DCTCP_K
+Queue/MamadQueue set drop_prio_ $drop_prio_
+Queue/MamadQueue set deque_prio_ $deque_prio_
+
+Queue/MamadQueue set bytes_1_ false
+Queue/MamadQueue set queue_in_bytes_1_ true
+Queue/MamadQueue set mean_pktsize_1_ [expr $pktSize+40]
+Queue/MamadQueue set setbit_1_ true
+Queue/MamadQueue set gentle_1_ false
+Queue/MamadQueue set q_weight_1_ 1.0
+Queue/MamadQueue set mark_p_1_ 1.0
+Queue/MamadQueue set thresh_1_ $DCTCP_K
+Queue/MamadQueue set maxthresh_1_ $DCTCP_K
+Queue/MamadQueue set drop_prio_1_ $drop_prio_
+Queue/MamadQueue set deque_prio_1_ $deque_prio_
+
+Queue/MamadQueue set bytes_2_ false
+Queue/MamadQueue set queue_in_bytes_2_ true
+Queue/MamadQueue set mean_pktsize_2_ [expr $pktSize+40]
+Queue/MamadQueue set setbit_2_ true
+Queue/MamadQueue set gentle_2_ false
+Queue/MamadQueue set q_weight_2_ 1.0
+Queue/MamadQueue set mark_p_2_ 1.0
+Queue/MamadQueue set thresh_2_ $DCTCP_K
+Queue/MamadQueue set maxthresh_2_ $DCTCP_K
+Queue/MamadQueue set drop_prio_2_ $drop_prio_
+Queue/MamadQueue set deque_prio_2_ $deque_prio_
+
+    
 # Queue/Priority set queue_num_ $prio_num_
 # Queue/Priority set thresh_ $DCTCP_K
 # Queue/Priority set mean_pktsize_ [expr $pktSize+40]
@@ -298,8 +336,8 @@ for {set i 0} {$i < [expr $needed_tors]} {incr i} {
     }
 
     for {set j 0} {$j < [expr $topology_spines]} {incr j} {
-        $ns duplex-link $n($i) $a($j) [set UCap]Gb $mean_link_delay $switchAlg
-        puts "--------link tor:[expr $i + 1] to spine:[expr $j + 1] is created with delay $spine_link_delay"
+        $ns duplex-link $n($i) $a($j) [set UCap]Gb $spine_link_delay $switchAlg
+        puts "link tor:[expr $i + 1] to spine:[expr $j + 1] is created with delay $spine_link_delay"
     }
 }
 
@@ -307,7 +345,7 @@ for {set i 0} {$i < [expr $needed_tors]} {incr i} {
 for {set i 0} {$i < $total_servers} {incr i} {
     set j [expr $i/$topology_spt]
     $ns duplex-link $s($i) $n($j) [set link_rate]Gb [expr $host_delay + $mean_link_delay] $switchAlg
-    puts "--------link server:[expr $i + 1] to tor:[expr $j + 1] is created"
+    puts "link server:[expr $i + 1] to tor:[expr $j + 1] is created"
 }
 
 ############ VM links ##############
@@ -320,7 +358,7 @@ for {set j 0} { $j < $topology_spt} {incr j} {
     $t add_node_to_source $v($vm_counter)
     set vm_counter [expr $vm_counter + 1]
 
-    puts "--------link vm:[expr $vm_counter] to server:[expr $server_num + 1] is created"
+    puts "link vm:[expr $vm_counter] to server:[expr $server_num + 1] is created"
 }
 
 for {set j 0} { $j < $topology_spt} {incr j} {

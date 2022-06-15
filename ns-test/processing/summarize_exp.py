@@ -45,6 +45,8 @@ if args.reload:
         if file_name == "summary.csv":
             continue
 
+        print ("Summarising exp:" + file_name)
+
         exp_info = {}
         
         # extract the exp setting from the file name
@@ -63,8 +65,10 @@ if args.reload:
         exp_info["prioritization"] = int(file_name_split[8][2:])
         exp_info["src_zone_delay"] = int(file_name_split[9][2:])
         exp_info["dst_zone_delay"] = int(file_name_split[10][2:])
-        
         exp_info["orch_type"] = translate_orch_type(exp_info["orch_type"])
+
+        # list of tuples in shape of (metrics, metric_name)
+
 
         # load the data files 
         data_directory = args.directory + "/" + file_name + "/data/"
@@ -90,7 +94,6 @@ if args.reload:
         # retransmission rates 
         exp_info["vm_ret"] = vm_flows["ret"].mean()
         exp_info["bg_ret"] = bg_flows["ret"].mean()
-
         
         ################ Total Migration time ###############
 
@@ -110,12 +113,13 @@ if args.reload:
                     df_protocol.start_pre[df_protocol.start_pre > 0].min(),
                     df_protocol.start_buf[df_protocol.start_buf > 0].min()
                 )
-                exp_info["total_mig_time"] = protocol_end - protocol_start
+                exp_info["tot_mig_time"] = protocol_end - protocol_start
             else: 
-                exp_info["total_mig_time"] = 0
+                exp_info["tot_mig_time"] = 0
         except Exception as e: 
             pass 
     
+
         ################ OOO delivery ####################
 
         ################ Buffer Sizes ####################
@@ -130,7 +134,6 @@ if args.reload:
         exp_info["avg_hpq"] = mig_node_stats_df.high_prio_buf.mean()
         exp_info["avg_lpq"] = mig_node_stats_df.low_prio_buf.mean()
 
-
         ################ VM flows stats ####################
 
         # vm flows stats corresponding to the protocol running time
@@ -138,29 +141,63 @@ if args.reload:
         mig_flow_stats_df = mig_flow_stats_df[mig_flow_stats_df["time"] <= protocol_end]
 
         # avg
-        exp_info["average_packet_in_flight_time"] = mig_flow_stats_df.average_in_flight_time.mean()
-        exp_info["average_packet_buffered_time"] = mig_flow_stats_df.average_buffered_time.mean()
+        exp_info["vm_avg_pkt_flight_t"] = mig_flow_stats_df.average_in_flight_time.mean()
+        exp_info["vm_avg_pkt_buff_t"] = mig_flow_stats_df.average_buffered_time.mean()
 
         # max 
-        exp_info["max_packet_in_flight_time"] = mig_flow_stats_df.average_in_flight_time.max()
-        exp_info["max_packet_buffered_time"] = mig_flow_stats_df.average_buffered_time.max()
-
+        exp_info["vm_max_pkt_in_flight_t"] = mig_flow_stats_df.average_in_flight_time.max()
+        exp_info["vm_max_pkt_buff_t"] = mig_flow_stats_df.average_buffered_time.max()
 
         ################ Tunnelled Packets ####################
 
-        exp_info["tunneled_packets_count"] = df_tunnelled_packets.tunnelled_packets.max()
-
+        exp_info["tnld_pkt_cnt"] = df_tunnelled_packets.tunnelled_packets.max()
 
         ######################################################
         ######################################################
         ######################################################
 
-        # add the exp info to the dataframe
         df = df.append(exp_info, ignore_index=True)
 
+    columns = [
+        ("settings", "bg_cdf"), 
+        ("settings", "migration_status"),
+        ("settings", "parallel_mig"),
+        ("settings", "load"),
+        ("settings", "oversub"),
+        ("settings", "vm_precopy_size"),
+        ("settings", "vm_snapshot_size"),
+        ("settings", "gw_snapshot_size"),
+        ("settings", "cc_protocol"),
+        ("settings", "orch_type"),
+        ("settings", "prioritization"),
+        ("settings", "src_zone_delay"),
+        ("settings", "dst_zone_delay"),
+        ("flow_metrics", "vm_afct"),
+        ("flow_metrics", "bg_afct"),
+        ("flow_metrics", "vm_ret"),
+        ("flow_metrics", "bg_ret"),
+        ("protocol_metrics", "tot_mig_time"),
+        ("buffer_metrics", "max_hpq"),
+        ("buffer_metrics", "max_lpq"),
+        ("buffer_metrics", "avg_hpq"),
+        ("buffer_metrics", "avg_lpq"),
+        ("ptk_lever_metrics", "vm_avg_pkt_flight_t"),
+        ("ptk_lever_metrics", "vm_avg_pkt_buff_t"),
+        ("ptk_lever_metrics", "vm_max_pkt_in_flight_t"),
+        ("ptk_lever_metrics", "vm_max_pkt_buff_t"),
+        ("tunnell_metrics", "tnld_pkt_cnt")
+    ]
+
+    column_order = [x[1] for x in columns]
+    df = df[column_order]
 
     # sort the datafram
-    df = df.sort_values(by=["migration_status", "parallel_mig", "load", "oversub", "vm_precopy_size", "vm_snapshot_size", "gw_snapshot_size", "cc_protocol", "orch_type", "prioritization", "src_zone_delay", "dst_zone_delay"])
+    df.columns = pd.MultiIndex.from_tuples(columns)
+
+    # sort by setting columns
+    df = df.sort_values(by=columns[0:13])
+
+
     df = df[:].round(decimals = 2)
     
     data_path = args.directory + "/summary.csv" 

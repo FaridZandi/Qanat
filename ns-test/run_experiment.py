@@ -83,8 +83,6 @@ def setup_exp(exp):
 
 	cdf_file = "CDF_" + exp["bg_traffic_cdf"] + ".tcl"
 
-	print exp["Protocol"]
-
 	if exp["network_topo"] == "datacenter":
 		sim_script = 'topo_spine_empirical.tcl'
 		cmd = ns_path + ' ' + sim_script + ' ' \
@@ -222,8 +220,8 @@ if __name__ == "__main__":
 
 	elif exp_name == "alg_effect":
 		configs = {
-			"mig_sizes": [(10, 10, 10)],
-			"parallel_mig": [1], 
+			"mig_sizes": [(100, 100, 30)],
+			"parallel_mig": [1, 2, 4], 
 			"load": [0.15],
 			"oversub": [1.0],
 			"src_zone_delay": [0.00002], # in seconds
@@ -231,9 +229,9 @@ if __name__ == "__main__":
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
 			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
 			"bg_traffic_cdf": ["dctcp"],
-			"Protocol": [("DCTCP", "MyREDQueue")], 
+			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
 			###########################################################
 			########| don't make a list out of the following |#########
 			###########################################################
@@ -245,6 +243,33 @@ if __name__ == "__main__":
 			"vm_flow_size": [200000], # in packets
 			"dc_size": [(1, 1, 16)], # (spines, bg_tors, spt)
 			"tree_shape": [(2, 2, 2)], #branching factors of the tree
+		} 
+
+	elif exp_name == "test":
+		configs = {
+			"mig_sizes": [(10, 10, 10)],
+			"parallel_mig": [1], 
+			"load": [0.15],
+			"oversub": [1.0],
+			"src_zone_delay": [0.00002, 0.00004], # in seconds
+			"dst_zone_delay": [0.00002, 0.00004], # in seconds
+			"network_topo": ["datacenter"], # "dumbell" 
+			"run_migration": ["yes"], # "no", "skip"
+			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"bg_traffic_cdf": ["dctcp"],
+			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
+			###########################################################
+			########| don't make a list out of the following |#########
+			###########################################################
+			"exp_name": [exp_name],
+			"enable_rt_dv": [1], # 0: disable, 1: enable
+			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"stat_record_interval": [0.001], # in seconds
+			"sim_end": [3000], # number of flows
+			"vm_flow_size": [100000], # in packets
+			"dc_size": [(1, 1, 5)], # (spines, bg_tors, spt)
+			"tree_shape": [(1, 1, 1)], #branching factors of the tree
 		} 
 
 	if not configs:

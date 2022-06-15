@@ -30,8 +30,50 @@ MyTopology set parallel_mig_ 1
 MyTopology set prioritization_level_ 2
 MyTopology set stat_record_interval_ 0.01
 MyTopology set process_after_migration_ 0
-
 MyTopology set orch_type_ [lindex $argv 0]
+
+
+set DCTCP_K 65.0
+set drop_prio_ true
+set deque_prio_ true
+set pktSize 1460
+
+Queue/MamadQueue set bytes_ false
+Queue/MamadQueue set queue_in_bytes_ true
+Queue/MamadQueue set mean_pktsize_ [expr $pktSize+40]
+Queue/MamadQueue set setbit_ true
+Queue/MamadQueue set gentle_ false
+Queue/MamadQueue set q_weight_ 1.0
+Queue/MamadQueue set mark_p_ 1.0
+Queue/MamadQueue set thresh_ $DCTCP_K
+Queue/MamadQueue set maxthresh_ $DCTCP_K
+Queue/MamadQueue set drop_prio_ $drop_prio_
+Queue/MamadQueue set deque_prio_ $deque_prio_
+
+Queue/MamadQueue set bytes_1_ false
+Queue/MamadQueue set queue_in_bytes_1_ true
+Queue/MamadQueue set mean_pktsize_1_ [expr $pktSize+40]
+Queue/MamadQueue set setbit_1_ true
+Queue/MamadQueue set gentle_1_ false
+Queue/MamadQueue set q_weight_1_ 1.0
+Queue/MamadQueue set mark_p_1_ 1.0
+Queue/MamadQueue set thresh_1_ $DCTCP_K
+Queue/MamadQueue set maxthresh_1_ $DCTCP_K
+Queue/MamadQueue set drop_prio_1_ $drop_prio_
+Queue/MamadQueue set deque_prio_1_ $deque_prio_
+
+Queue/MamadQueue set bytes_2_ false
+Queue/MamadQueue set queue_in_bytes_2_ true
+Queue/MamadQueue set mean_pktsize_2_ [expr $pktSize+40]
+Queue/MamadQueue set setbit_2_ true
+Queue/MamadQueue set gentle_2_ false
+Queue/MamadQueue set q_weight_2_ 1.0
+Queue/MamadQueue set mark_p_2_ 1.0
+Queue/MamadQueue set thresh_2_ $DCTCP_K
+Queue/MamadQueue set maxthresh_2_ $DCTCP_K
+Queue/MamadQueue set drop_prio_2_ $drop_prio_
+Queue/MamadQueue set deque_prio_2_ $deque_prio_
+
 
 
 set t [new MyTopology]
@@ -40,7 +82,8 @@ $t set_simulator $ns
 set UDP_INTERARRIVAL 0.000005
 set BW 10Gb
 set LAT 5us
-set QTYPE MyQueue
+# set QTYPE RED
+set QTYPE MamadQueue
 set child_count 100
 
 Queue set limit_ 400

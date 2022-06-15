@@ -68,6 +68,7 @@ static const char rcsid[] =
 #include "flags.h"
 #include "delay.h"
 #include "red.h"
+#include <iostream>
 
 static class REDClass : public TclClass {
 public:
@@ -94,7 +95,9 @@ REDQueue::REDQueue() {
  * modified to enable instantiation with special Trace objects - ratul
  */
 REDQueue::REDQueue(const char * trace) : link_(NULL), de_drop_(NULL), EDTrace(NULL), tchan_(0), idle_(1), idletime_(0.0)
-{
+{	
+
+	// std::cout << "RED Queue created" << std::endl;
 	initParams();
 	
 	//	printf("Making trace type %s\n", trace);
@@ -184,6 +187,8 @@ void REDQueue::initialize_params()
  *
  * If q_weight=-2, set it to a reasonable value of 1-exp(-10/C).
  */
+	// std::cout << "REDQueue::initialize_params()" << std::endl;
+	
 	if (edp_.q_w == 0.0) {
 		edp_.q_w = 1.0 - exp(-1.0/edp_.ptc);
  	} else if (edp_.q_w == -1.0) {
@@ -225,6 +230,8 @@ void REDQueue::initialize_params()
 
 void REDQueue::initParams() 
 {
+	// std::cout << "REDQueue::initParams()" << std::endl;
+	
 	edp_.mean_pktsize = 0;
 	edp_.idle_pktsize = 0;
 	edp_.bytes = 0;
@@ -768,7 +775,15 @@ void REDQueue::enque(Packet* pkt)
 }
 
 int REDQueue::command(int argc, const char*const* argv)
-{
+{	
+	// std::cout << "RED command" << std::endl;
+	// // print all arguments 
+	// for (int i = 0; i < argc; i++) {
+	// 	std::cout << "argv[" << i << "] = " << argv[i] << std::endl;
+	// }
+	// std:cout << "---------------------------" << std::endl;
+
+
 	Tcl& tcl = Tcl::instance();
 	if (argc == 2) {
 		if (strcmp(argv[1], "reset") == 0) {
@@ -816,6 +831,9 @@ int REDQueue::command(int argc, const char*const* argv)
 		}
 		// tell RED about link stats
 		if (strcmp(argv[1], "link") == 0) {
+
+			// std::cout << "RED: setting link to " << argv[2] << std::endl;
+
 			LinkDelay* del = (LinkDelay*)TclObject::lookup(argv[2]);
 			if (del == 0) {
 				tcl.resultf("RED: no LinkDelay object %s",

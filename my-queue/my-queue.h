@@ -25,6 +25,26 @@ class MyQueue : public Queue {
 };
 
 
+class MamadQueue : public Queue {
+ public:
+	MamadQueue();
+
+ protected:
+	void enque(Packet*);
+	Packet* deque();
+
+	int command(int argc, const char*const* argv);
+	void bindparams();
+	void reset();
+	void initialize_params();
+	void print_summarystats();
+	
+	REDQueue lpq; 
+	REDQueue hpq;
+	REDQueue vhpq;
+};
+
+
 
 class MyREDQueue : public Queue {
  public:

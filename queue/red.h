@@ -142,6 +142,7 @@ struct edv {
 class REDQueue : public Queue {
 	
 	friend class RPQ;
+	friend class MamadQueue;
 	friend class MyREDQueue; // Sorry for this :(
 
  public:	
