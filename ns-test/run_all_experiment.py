@@ -14,11 +14,11 @@ from run_constants import *
 exp_q = queue.Queue()
 
 threads = []
-number_worker_threads = 8
+number_worker_threads = 15
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
-REMOTE_RUN = False
+REMOTE_RUN = True
 
 ns_path = '../ns'
 if DEBUG_VALGRIND:
@@ -57,10 +57,16 @@ def remote_worker(m_ip):
 			exp = exp_q.get(block = 0)
 		except queue.Empty:
 			return
-
+		
+		
 		command, directory_name, exp_name = setup_exp(exp)
+		
+		print("worker", m_ip, "running", command)
+		# return 
+
 		script_dir = '/home/{}/ns-allinone-2.34/ns-2.34/ns-test'.format(USER)
 		with conn.cd(script_dir):
+			conn.run('rm -rf ' + directory_name)
 			conn.run('mkdir -p ' + "exps/%s/" % exp_name)
 			conn.run('mkdir -p ' + directory_name)
 			conn.run(command)
@@ -300,7 +306,7 @@ if __name__ == "__main__":
 
 	elif exp_name == "test_remote":
 		configs = {
-			"mig_sizes": [(10, 10, 10)],
+			"mig_sizes": [(100, 100, 100)],
 			"parallel_mig": [1], 
 			"load": [0.15],
 			"oversub": [1.0],
@@ -309,10 +315,10 @@ if __name__ == "__main__":
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
 			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"orch_type": [2,2,2,2,2,2], # 1: bottom-up, 2: top-down, 3: random
 			"bg_traffic_cdf": ["dctcp"],
-			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
-			"link_rate": [10, 40],
+			"Protocol": [("TCP", "MyQueue")], 
+			"link_rate": [10],
 			###########################################################
 			########| don't make a list out of the following |#########
 			###########################################################

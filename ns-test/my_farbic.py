@@ -43,13 +43,16 @@ def install_ns2(c):
     
 def sync_files(m_ip, dir_to_sync):
     print('sync with {}'.format(m_ip))
-    cmd = 'rsync -az {} {}@{}:/home/{}/'.format(dir_to_sync, USER, m_ip, USER)
+    cmd = 'rsync -az {} {}@{}:/home/{}/ns-allinone-2.34/ns-2.34/'.format(dir_to_sync, USER, m_ip, USER)
     os.system(cmd)
 
 def sync_repo_and_make(c, m_ip):
-    sync_files(m_ip, REPO_DIR)
-    with c.cd(REPO_DIR+"/ns-2.34"):
-        c.run("make -j64")
+    run_cmd(c, "rm -rf /home/{}/ns-allinone-2.34/ns-2.34/".format(USER))
+
+    sync_files(m_ip, REPO_DIR + "ns-2.34/")
+    # with c.cd(REPO_DIR + "ns-2.34"):
+    #     c.run("make clean")
+    #     c.run("make -j64")
 
 
 def del_files(c, dir_to_remove):
