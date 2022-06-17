@@ -85,7 +85,8 @@ CBR_Traffic::CBR_Traffic() : seqno_(0)
 }
 
 void CBR_Traffic::init()
-{
+{	
+	agent_->set_traffic_class(3); 
         // compute inter-packet interval 
 	interval_ = (double)(size_ << 3)/(double)rate_;
 	if (agent_)

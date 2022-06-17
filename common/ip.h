@@ -111,12 +111,13 @@ struct hdr_ip {
 	int traffic_class; // Sepehr
 	bool is_high_prio; // Sepehr
 	bool is_very_high_prio; // Farid
-
 	bool is_tcp_traffic; // Farid
 
 	double time_sent; // Farid
 	double time_enter_buffer; // Farid
 	double time_buffered; // Farid
+
+	bool skip_first_mngr_flag; 
 	
 	// For State Migration
 	int32_t state_dst; // Farid 

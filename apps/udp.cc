@@ -49,7 +49,8 @@ static const char rcsid[] =
 #include "random.h"
 #include "address.h"
 #include "ip.h"
-
+#include "my-topology/my_topology.h"
+#include <iostream> 
 
 static class UdpAgentClass : public TclClass {
 public:
@@ -94,6 +95,32 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 	double local_time = Scheduler::instance().clock();
 	while (n-- > 0) {
 		p = allocpkt();
+		
+		///////////////////Farid//////////////
+		hdr_ip *iph = hdr_ip::access(p); 
+		iph->traffic_class = traffic_class_; 
+
+		if (traffic_class_ == 3){
+			auto& topo = MyTopology::instance(); 
+
+			auto src_node = topo.get_node_by_address(this->here_.addr_);
+			auto dst_node = topo.get_node_by_address(this->dst_.addr_);
+
+			if (src_node == nullptr && dst_node != nullptr) {
+				// either of src and dst are logical nodes
+				std::vector<int> path; 
+				path = topo.get_path(dst_node, PATH_MODE_RECEIVER);
+				iph->dst_.addr_ = path[0];
+				iph->gw_path_pointer = path.size() - 2;
+
+				int ptr = path.size() - 1; 
+				for (auto elem: path){
+					iph->gw_path[ptr --] = elem;
+				}
+			} 
+		}
+		////////////////////////////////////
+
 		hdr_cmn::access(p)->size() = size_;
 		hdr_rtp* rh = hdr_rtp::access(p);
 		rh->flags() = 0;

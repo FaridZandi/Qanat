@@ -13,7 +13,7 @@ initWindow = 10
 ackRatio = 1
 slowstartrestart = 'true'
 DCTCP_g = 0.0625
-min_rto = 0.001
+min_rto = 0.2
 prob_cap_ = 5
 
 switchAlg = 'MyQueue'

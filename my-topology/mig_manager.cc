@@ -90,7 +90,7 @@ void MigrationManager::log_packet(Packet* p){
 	hdr_ip* iph = hdr_ip::access(p); 
 
 	std::cout << "pre_classify "; 
-    std::cout << iph->src_.addr_ << " to " << iph->dst_.addr_ << " with prio " << iph->prio_ << " with class " << iph->traffic_class;
+    std::cout << iph->src_.addr_ << " to " << get_packet_dst(p) << " with prio " << iph->prio_ << " with class " << iph->traffic_class;
     std::cout << std::endl; 
 }
 
@@ -230,13 +230,38 @@ bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
 			return handle_packet_from(td, p, h, n);
 		} else if (tp == Tunnel_Point::Tunnel_To) {
 			return handle_packet_to(td, p, h, n); 
+		} else {
+		    unset_high_prio(p); 
 		}
-
 	}
     return true; 
 }
 
 
+void MigrationManager::handle_non_ready_nodes(Packet* p, Node* node){
+	auto& topo = MyTopology::instance();
+	auto& orch = BaseOrchestrator::instance(); 
+
+	// if top-down approach or random
+	if (topo.orch_type == 2 or topo.orch_type == 3) {
+
+        // if in the destination tree 
+        if (topo.get_data(node).which_tree == 1){
+			
+   			auto node_state = orch.get_mig_state(node); 
+			if (node_state == MigState::Buffering){	
+				std::cout << "MigrationManager::handle_non_ready_nodes: " << node->address() << std::endl; 
+				std::cout << "Packet arrived at Migration Manager while buffering." << std::endl;
+			}
+            if (node_state != MigState::Normal and topo.is_migration_started){
+                convert_path(p);
+                add_to_path(p, topo.get_peer(node)->address());
+                set_high_prio(p); 
+                topo.inc_tunnelled_packets();
+            }
+        }
+    }
+}
 
 int MigrationManager::get_packet_dst(Packet* p){
 	hdr_ip* iph = hdr_ip::access(p); 
@@ -258,7 +283,7 @@ void MigrationManager::set_packet_src(Packet* p, int src){
 
 
 bool MigrationManager::tunnel_packet_in(tunnel_data td, 
-								  Packet*p, Node* n){			  
+								  		Packet*p, Node* n){			  
 
 	// The packet should be tunneled to the tunnel_out
 	// point of this tunnel. The original source and 
@@ -280,9 +305,11 @@ bool MigrationManager::tunnel_packet_out(tunnel_data td,
 	// Packet has reached the end of the tunnel. 
 	// Original source will be recovered, but instead
 	// of the original destination, the new destination
-	// will be assigned to the packet. 
-	
+	// will be assigned to the packet. 	
+
 	unset_high_prio(p); 
+
+	handle_non_ready_nodes(p, n);
 
     return true; 
 }
@@ -311,77 +338,66 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	// destination to deliver it.   
 
 	hdr_ip* iph = hdr_ip::access(p);
-	Direction dir; 
-
 	auto t_from = td.from->address(); 
 	auto p_src = iph->src_.addr_;
-
 	auto p_dst = get_packet_dst(p);
 	auto n_addr = n->address(); 
 
+
+	Direction dir; 
 	if (p_dst == n_addr){
 		dir = Direction::Incoming;
 	} else if (p_src == n_addr){
 		dir = Direction::Outgoing;
 	}
-	// std::cout << "Here" << std::endl; 
 
-    if(iph->agent_tunnel_flag){
-        return true; // don't do anything 
-    } else {
+	auto& orch = BaseOrchestrator::instance();
+	auto node_state = orch.get_mig_state(n);
 
-		auto& orch = BaseOrchestrator::instance();
-		auto node_state = orch.get_mig_state(n);
+	if (dir == Direction::Outgoing) { 
+		if (node_state == MigState::Migrated or 
+			node_state == MigState::InMig) {
 
-        if (dir == Direction::Outgoing){ 
-			if (node_state == MigState::Normal or node_state == MigState::PreMig){
-				return true;
-			} else {
-				iph->src_.addr_ = td.to->address(); 
-				convert_path(p); 
-				td.to->get_classifier()->recv(p, h);
-				return false;  
+			if(verbose){
+				std::cout << "MigrationManager::Outgoing Packet: " << n->address() << std::endl;
 			}
-        } else if (dir == Direction::Incoming){		 
-			if (node_state == MigState::Normal or node_state == MigState::PreMig){
-				return true; 
-			} else {	
-				hdr_tcp* tcph = hdr_tcp::access(p);
-				std::cout << "nasty packets with seqno: " << tcph->seqno() << std::endl;
-				iph->dst_.addr_ = td.to->address(); 
-				set_high_prio(p); 
-				MyTopology::instance().inc_tunnelled_packets();
-				return true; 	
-			}        
-        }
-    }
+
+			iph->src_.addr_ = td.to->address(); 
+			td.to->get_classifier()->recv(p, h);
+			return false;  
+		}
+	} else if (dir == Direction::Incoming) {		 
+		if (node_state == MigState::Migrated or 
+			node_state == MigState::InMig) {	
+
+			iph->dst_.addr_ = td.to->address(); 
+			set_high_prio(p); 
+			MyTopology::instance().inc_tunnelled_packets();
+			return true; 	
+		}        
+	}
 }
 
 bool MigrationManager::handle_packet_to(tunnel_data td, 
 										Packet*p, 
 										Handler* h,
 										Node* n){
+	hdr_ip* iph = hdr_ip::access(p); 	
 
-	// Turn on the tunnel flag, to differentiate it 
-	// from the traffic that had directly been sent
-	// to the dstination from the srouce, but wasn't
-	// tunneled in the gateway level, since the packet
-	// had already passed the gateway when the tunnel 
-	// was established. 
+	if (iph->skip_first_mngr_flag == false){
+		iph->skip_first_mngr_flag = true;
+		return true; 
+	}
 
 	auto& orch = BaseOrchestrator::instance();
 	auto node_state = orch.get_mig_state(n);
 
 	if (node_state == MigState::Normal){
-		hdr_ip* iph = hdr_ip::access(p); 	
-
-		iph->dst_.addr_ = td.from->address(); 
-		iph->agent_tunnel_flag = true;
-		
-		td.from->get_classifier()->recv(p, h); 
-
+		iph->dst_.addr_ = td.from->address(); 		
+		td.from->get_classifier()->recv2(p, h); 
 		return false; 
 	} else {
+		handle_non_ready_nodes(p, n); 
 		return true; 
 	}
 }

@@ -138,7 +138,13 @@ def plot_measure(measure):
     for fid in fids:
         print("drawing subplot", plot_index + 1)
         flow_df = df[df.fid == fid].copy()
-        plot_flow(fid, axes[plot_index], flow_df)   
+
+        if len(fids) > 1:
+            ax = axes[plot_index]
+        else:
+            ax = axes
+
+        plot_flow(fid, ax, flow_df)   
         plot_index += 1 
 
     

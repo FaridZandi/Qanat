@@ -79,6 +79,12 @@ TCP_pair instproc setup {snode dnode} {
     $ns attach-agent $snode $tcps;
     $ns attach-agent $dnode $tcpr;
 
+    # set the minrto for the agents 
+    if { $is_single_flow == 0 } {
+        $tcps set minrto_ 0.001
+        $tcpr set minrto_ 0.001
+    }
+
     $tcpr listen
     $ns connect $tcps $tcpr
 }

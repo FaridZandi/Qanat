@@ -71,7 +71,7 @@ Agent::Agent(packet_t pkttype) :
 	size_(0), type_(pkttype), 
 	channel_(0), traceName_(NULL),
 	oldValueList_(NULL), app_(0), et_(0),
-	is_finish_callback_set(false)
+	is_finish_callback_set(false), traffic_class_(1)
 {
 }
 
@@ -484,6 +484,8 @@ Agent::initpkt(Packet* p) const
 	iph->time_sent = -1; 
 	iph->time_enter_buffer = -1;
 	iph->time_buffered = 0;
+	
+	iph->skip_first_mngr_flag = false; 
 
 	//DEBUG
 	//if (dst_ != -1)
@@ -547,4 +549,8 @@ Agent::allocpkt(int n) const
 	        p->allocdata(n);
 
 	return(p);
+}
+
+void Agent::set_traffic_class(int class_number){
+	traffic_class_ = class_number;	
 }

@@ -65,7 +65,8 @@ if args.reload:
         exp_info["prioritization"] = int(file_name_split[8][2:])
         exp_info["src_zone_delay"] = int(file_name_split[9][2:])
         exp_info["dst_zone_delay"] = int(file_name_split[10][2:])
-        exp_info["link_rate"] = int(file_name_split[11][1:])
+        exp_info["vm_traffic_gen_delay"] = int(file_name_split[11][2:])
+        exp_info["link_rate"] = int(file_name_split[12][1:])
         exp_info["orch_type"] = translate_orch_type(exp_info["orch_type"])
 
         # list of tuples in shape of (metrics, metric_name)
@@ -178,6 +179,7 @@ if args.reload:
         ("settings", "prioritization"),
         ("settings", "src_zone_delay"),
         ("settings", "dst_zone_delay"),
+        ("settings", "vm_traffic_gen_delay"),
         ("settings", "link_rate"),
         ("flow_metrics", "vm_afct"),
         ("flow_metrics", "bg_afct"),
@@ -204,7 +206,7 @@ if args.reload:
     df.columns = pd.MultiIndex.from_tuples(columns)
 
     # sort by setting columns
-    df = df.sort_values(by=columns[0:13])
+    df = df.sort_values(by=columns[0:15])
 
 
     df = df[:].round(decimals = 6)

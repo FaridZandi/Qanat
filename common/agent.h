@@ -77,9 +77,16 @@ class Agent : public Connector {
 	
 	//added for edrop tracing - ratul
 	void recvOnly(Packet *) {};
+
+
+	///////////////////////////////////////
 	Node* node; // the owner of this agent
 	void (*finish_notify_callback) (Node*);
 	bool is_finish_callback_set;
+	void set_traffic_class(int class_number); 
+	int traffic_class_;
+	///////////////////////////////////////
+
 
 	void send(Packet* p, Handler* h) { target_->recv(p, h); }
 	virtual void timeout(int tno);
@@ -108,6 +115,7 @@ class Agent : public Connector {
 	inline packet_t get_pkttype() { return type_; }
 
  protected:
+
 	int command(int argc, const char*const* argv);
 	virtual void delay_bind_init_all();
 	virtual int delay_bind_dispatch(const char *varName, const char *localName, TclObject *tracer);

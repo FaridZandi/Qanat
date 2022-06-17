@@ -3,7 +3,7 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 55} {
+if {$argc != 56} {
     puts "wrong number of arguments $argc"
     exit 0
 }
@@ -76,10 +76,12 @@ set enable_rt_dv [lindex $argv 50]
 set b_factor_1 [lindex $argv 51]
 set b_factor_2 [lindex $argv 52]
 set b_factor_3 [lindex $argv 53]
+set vm_traffic_gen_delay [lindex $argv 54]
+
 
 
 ### result file
-set flowlog [open [lindex $argv 54] w]
+set flowlog [open [lindex $argv 55] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -151,7 +153,7 @@ if {[string compare $sourceAlg "DCTCP"] == 0} {
 
 #Shuang
 Agent/TCP/FullTcp set dynamic_dupack_ 0; #disable dupack
-Agent/TCP set window_ 100
+Agent/TCP set window_ 1500;
 Agent/TCP set windowInit_ $initWindow
 Agent/TCP set rtxcur_init_ $min_rto;
 
@@ -240,7 +242,7 @@ set myAgent "Agent/TCP/FullTcp";
 
 
 ############# Tree Structure ##############
-MyTopology set verbose_ 1
+MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
 MyTopology set vm_precopy_size_ $vm_precopy_size
@@ -331,6 +333,8 @@ for {set i 0} {$i < [expr $needed_tors]} {incr i} {
         set spine_link_delay [expr $dst_zone_delay]
     } elseif { $i == $src_zone_tor_id } {
         set spine_link_delay [expr $src_zone_delay]
+    } elseif { $i == $vm_traffic_tor_id } {
+        set spine_link_delay [expr $vm_traffic_gen_delay]
     } else {
         set spine_link_delay [expr $mean_link_delay]
     }
@@ -354,7 +358,7 @@ set vm_counter 0
 for {set j 0} { $j < $topology_spt} {incr j} {
 
     set server_num [expr $j + $src_zone_tor_id * $topology_spt]
-    $ns duplex-link $v($vm_counter) $s($server_num) [set vm_link_rate]Gb [expr $host_delay] $switchAlg
+    $ns duplex-link $v($vm_counter) $s($server_num) [set vm_link_rate]Gb 0.000001 $switchAlg
     $t add_node_to_source $v($vm_counter)
     set vm_counter [expr $vm_counter + 1]
 
@@ -364,7 +368,7 @@ for {set j 0} { $j < $topology_spt} {incr j} {
 for {set j 0} { $j < $topology_spt} {incr j} {
     
     set server_num [expr $j + $dst_zone_tor_id * $topology_spt]
-    $ns duplex-link $v($vm_counter) $s($server_num) [set vm_link_rate]Gb [expr $host_delay] $switchAlg
+    $ns duplex-link $v($vm_counter) $s($server_num) [set vm_link_rate]Gb 0.000001 $switchAlg
     $t add_node_to_dest $v($vm_counter)
     set vm_counter [expr $vm_counter + 1]
 
@@ -453,10 +457,15 @@ puts "vm traffic start_server_index: $start_server_index"
 puts "vm traffic end_server_index: $end_server_index"
 set j 0 
 
+set connections_to_vm 16
+
 foreach leaf $logical_leaves {
     puts $leaf
     for {set i $start_server_index} {$i < $end_server_index} {incr i} {
-        if { [expr {$i - $start_server_index}] == $j} {
+        set server_num [expr {$i - $start_server_index}] 
+        if { ($server_num - $j) % $topology_spt < $connections_to_vm} {
+
+            puts "Setting up flows from server:[expr $i + 1] to vm:[expr $j + 1]"
 
             set pair_first [expr $i + 2000]
             set pair_second [expr $j + 2000]
@@ -465,7 +474,7 @@ foreach leaf $logical_leaves {
             $agtagr($pair_first,$pair_second) setup $s($i) $leaf "$pair_first $pair_second" $connections_per_pair $init_fid "TCP_pair" 1 
             $agtagr($pair_first,$pair_second) attach-logfile $flowlog
 
-            $agtagr($pair_first,$pair_second) send_single_flow $vm_flow_size 4
+            $agtagr($pair_first,$pair_second) send_single_flow $vm_flow_size [expr 4]
 
             $ns at 0.1 "$agtagr($pair_first,$pair_second) warmup 3 5"
 

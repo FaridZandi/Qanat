@@ -250,25 +250,24 @@ void OrchBottomUp::migration_finished(){
 
 std::list<nf_spec> OrchBottomUp::get_vm_nf_list(){
     return {
-        {"buffer", 2400},
+        {"tunnel_manager", 0}, //Must have
+
+        {"buffer", 10000},
         {"delayer", 0.00005},
 
-        //Must have these two NFs at the end of the list
-        {"tunnel_manager", 0},
-        {"router", 0}
+        {"tunnel_manager", 0}, //Must have
+        {"router", 0} //Must have
     };
 }
 
 std::list<nf_spec> OrchBottomUp::get_gw_nf_list(){
     return {
-        {"priority_buffer", 2400},
+        {"priority_buffer", 10000},
         {"delayer", 0.00005},
-
-        // gateways have monitoring NFs
         {"monitor", 0},
 
-        //Must have these two NFs at the end of the list
-        {"tunnel_manager", 0},
-        {"router", 0}
+        
+        {"tunnel_manager", 0}, //Must have
+        {"router", 0}, //Must have
     };
 }

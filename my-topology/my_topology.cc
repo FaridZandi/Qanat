@@ -232,6 +232,9 @@ void MyTopology::start_tcp_app(Node* n1){
     agent->set_traffic_class(2);
     agent->node = n1;
 
+    tcl_command({data[n1].tcp, "set",
+                "minrto_", "0.001",});
+
     tcl_command({sim_ptr, "attach-agent",
                  data[n1].pointer, 
                  data[n1].tcp});
@@ -482,18 +485,23 @@ void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
     // std::cout << "node->address() " << node->address();
     // std::cout << std::endl;  
 
-    if(not iph->is_tcp_traffic){
-        return; 
+    // ignore class 2 traffic 
+    if (iph->traffic_class == 2){
+        node->get_classifier()->recv2(p, h);
+        return;  
     }
-    
-    if(iph->dst_.addr_ == node->address() or
-       iph->src_.addr_ == node->address()){
-        
-        auto& orch = BaseOrchestrator::instance();
 
-        if (orch.get_mig_state(node) == MigState::InMig) {
-            // std::cout << "interesting stuff happenning here: " << node->address() << std::endl; 
+    // std::cout << "is tcp? " << iph->is_tcp_traffic << " and class: " << iph->traffic_class << std::endl;
+    // allow in only the TCP traffic or non-TCP traffic with traffic_class == 3
+    if(not iph->is_tcp_traffic){
+        if (iph->traffic_class != 3){
+            node->get_classifier()->recv2(p, h); 
+            return; 
         }
+    }
+
+    if(iph->dst_.addr_ == node->address() or 
+       iph->src_.addr_ == node->address()){
 
         data[node].process_packet(p, h);
     }
@@ -804,6 +812,7 @@ void StatRecorder::record_stats(){
             }; 
         } 
     }
+    
 
     // record the stats for the VM flows 
     for(auto& fid: tracked_fids){

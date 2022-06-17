@@ -14,11 +14,11 @@ from run_constants import *
 exp_q = queue.Queue()
 
 threads = []
-number_worker_threads = 15
+number_worker_threads = 20
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
-REMOTE_RUN = True
+REMOTE_RUN = False
 
 ns_path = '../ns'
 if DEBUG_VALGRIND:
@@ -58,7 +58,6 @@ def remote_worker(m_ip):
 		except queue.Empty:
 			return
 		
-		
 		command, directory_name, exp_name = setup_exp(exp)
 		
 		print("worker", m_ip, "running", command)
@@ -91,9 +90,9 @@ def setup_exp(exp):
 	elif exp["run_migration"] == "skip":
 		mig_str = "skipmig"
 
-	directory_name = 'exps/%s/%s_%s_P%d_L%d_O%d_MS%s_A%s_OR%d_Pr%s_Sd%d_Dd%d_B%d' % (
+	directory_name = 'exps/%s/%s_%s_P%d_L%d_O%d_MS%s_A%s_OR%d_Pr%s_Sd%d_Dd%d_Td%d_B%d' % (
 		exp["exp_name"],
-		exp["bg_traffic_cdf"], 
+		exp["bg_traffic_cdf"][0], 
 		mig_str,
 		exp["parallel_mig"],
 		int(exp["load"]*100), 
@@ -104,6 +103,7 @@ def setup_exp(exp):
 		str(exp["prioritization"]),
 		int(exp["src_zone_delay"] * 1000000),
 		int(exp["dst_zone_delay"] * 1000000),
+		int(exp["traffic_zone_delay"] * 1000000),
 		exp["link_rate"], 
 	)
 
@@ -111,7 +111,7 @@ def setup_exp(exp):
 	
 	print (directory_name)
 
-	cdf_file = "CDF_" + exp["bg_traffic_cdf"] + ".tcl"
+	cdf_file = "CDF_" + exp["bg_traffic_cdf"][0] + ".tcl"
 	
 	if exp["network_topo"] == "datacenter":
 		sim_script = 'topo_spine_empirical.tcl'
@@ -123,7 +123,7 @@ def setup_exp(exp):
 			+ str(queueSize)+' '\
 			+ str(exp["load"])+' '\
 			+ str(connections_per_pair)+' '\
-			+ str(meanFlowSize)+' '\
+			+ str(exp["bg_traffic_cdf"][1] * 1460)+' '\
 			+ str(paretoShape)+' '\
 			+ str(cdf_file)+' '\
 			+ str(enableMultiPath)+' '\
@@ -170,6 +170,7 @@ def setup_exp(exp):
 			+ str(exp["tree_shape"][0])+' '\
 			+ str(exp["tree_shape"][1])+' '\
 			+ str(exp["tree_shape"][2])+' '\
+			+ str(exp["traffic_zone_delay"])+' '\
 			+ str('./'+directory_name+'/flow.tr')+'  >'\
 			+ str('./'+directory_name+'/logFile.tr')
 	else: 
@@ -200,12 +201,13 @@ if __name__ == "__main__":
 			"oversub": [1.0, 2.0, 4.0],
 			"src_zone_delay": [0.000005], # in seconds
 			"dst_zone_delay": [0.000005], # in seconds 
+			"traffic_zone_delay": [0.01], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
 			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
 			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
-			"bg_traffic_cdf": ["dctcp", "websearch"],
-			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MyREDQueue")], 
+			"bg_traffic_cdf": [("dctcp", 1138), ("vl2", 5117)],
+			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
 			###########################################################
 			########| don't make a list out of the following |#########
@@ -220,90 +222,6 @@ if __name__ == "__main__":
 			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		} 
 
-	elif exp_name == "orch_effect_3":
-		configs = {
-			"mig_sizes": [(100, 100, 20)],
-			"parallel_mig": [1, 2 ,4, 8], 
-			"load": [0.2],
-			"oversub": [1.0, 2.0, 4.0],
-			"src_zone_delay": [0.00002], # in seconds
-			"dst_zone_delay": [0.00002], # in seconds
-			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["yes"], # "no", "skip"
-			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
-			"bg_traffic_cdf": ["dctcp", "websearch"],
-			"Protocol": [("TCP", "MyQueue")], #, ("DCTCP", "MyREDQueue")], 
-			"link_rate": [10],
-			###########################################################
-			########| don't make a list out of the following |#########
-			###########################################################
-			"exp_name": [exp_name],
-			"enable_rt_dv": [1], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
-			"stat_record_interval": [0.001], # in seconds
-			"sim_end": [100000], # number of flows
-			"vm_flow_size": [200000], # in packets
-			"dc_size": [(1, 6, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(2, 2, 2)], #branching factors of the tree
-		} 
-
-	elif exp_name == "alg_effect_2":
-		configs = {
-			"mig_sizes": [(200, 200, 50)],
-			"parallel_mig": [1, 2, 4], 
-			"load": [0.15],
-			"oversub": [1.0, 2.0, 4.0],
-			"src_zone_delay": [0.00002], # in seconds
-			"dst_zone_delay": [0.00002], # in seconds
-			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["yes"], # "no", "skip"
-			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
-			"bg_traffic_cdf": ["dctcp"],
-			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
-			"link_rate": [10],
-			###########################################################
-			########| don't make a list out of the following |#########
-			###########################################################
-			"exp_name": [exp_name],
-			"enable_rt_dv": [1], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
-			"stat_record_interval": [0.001], # in seconds
-			"sim_end": [100000], # number of flows
-			"vm_flow_size": [200000], # in packets
-			"dc_size": [(3, 8, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(2, 2, 2)], #branching factors of the tree
-		} 
-
-	elif exp_name == "alg_effect_3":
-		configs = {
-			"mig_sizes": [(100, 100, 50)],
-			"parallel_mig": [1, 2, 4], 
-			"load": [0.15],
-			"oversub": [1.0, 2.0],
-			"src_zone_delay": [0.00002], # in seconds
-			"dst_zone_delay": [0.00002], # in seconds
-			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["yes"], # "no", "skip"
-			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
-			"bg_traffic_cdf": ["dctcp"],
-			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
-			"link_rate": [10],
-			###########################################################
-			########| don't make a list out of the following |#########
-			###########################################################
-			"exp_name": [exp_name],
-			"enable_rt_dv": [1], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
-			"stat_record_interval": [0.001], # in seconds
-			"sim_end": [100000], # number of flows
-			"vm_flow_size": [200000], # in packets
-			"dc_size": [(3, 8, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(2, 2, 2)], #branching factors of the tree
-		} 
-
 	elif exp_name == "test_remote":
 		configs = {
 			"mig_sizes": [(100, 100, 100)],
@@ -312,12 +230,13 @@ if __name__ == "__main__":
 			"oversub": [1.0],
 			"src_zone_delay": [0.00002], # in seconds
 			"dst_zone_delay": [0.00002], # in seconds
+			"traffic_zone_delay": [0.00001, 0.00003, 0.00007, 0.0001, 0.0003, 0.0007, 0.001, 0.003, 0.007, 0.01], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
-			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [2,2,2,2,2,2], # 1: bottom-up, 2: top-down, 3: random
-			"bg_traffic_cdf": ["dctcp"],
-			"Protocol": [("TCP", "MyQueue")], 
+			"prioritization": [2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"bg_traffic_cdf": [("dctcp", 1138)],
+			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
 			###########################################################
 			########| don't make a list out of the following |#########
@@ -328,7 +247,7 @@ if __name__ == "__main__":
 			"stat_record_interval": [0.001], # in seconds
 			"sim_end": [3000], # number of flows
 			"vm_flow_size": [100000], # in packets
-			"dc_size": [(1, 1, 5)], # (spines, bg_tors, spt)
+			"dc_size": [(1, 1, 4)], # (spines, bg_tors, spt)
 			"tree_shape": [(1, 1, 1)], #branching factors of the tree
 		} 
 

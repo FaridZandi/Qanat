@@ -23,11 +23,11 @@ proc finish {} {
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
-MyTopology set vm_precopy_size_  10000000
-MyTopology set vm_snapshot_size_ 10000000
-MyTopology set gw_snapshot_size_ 10000000
+MyTopology set vm_precopy_size_  100000000
+MyTopology set vm_snapshot_size_ 100000000
+MyTopology set gw_snapshot_size_ 100000000
 MyTopology set parallel_mig_ 1
-MyTopology set prioritization_level_ 2
+MyTopology set prioritization_level_ 1
 MyTopology set stat_record_interval_ 0.01
 MyTopology set process_after_migration_ 0
 MyTopology set orch_type_ [lindex $argv 0]
@@ -125,25 +125,27 @@ set sink_app [new Application]
 set udp0 [new Agent/UDP]
 
 
-set src_app2 [new Application]
-set sink_app2 [new Application]
+# set src_app2 [new Application]
+# set sink_app2 [new Application]
 
-# attach agents to nodes
-$ns attach-agent $n(150) $src
-$ns attach-agent $n(50) $sink
-$ns attach-agent $n(149) $src2
-$ns attach-agent $n(49) $sink2
+# # attach agents to nodes
+# $ns attach-agent $n(150) $src
+# $ns attach-agent $n(198) $sink
+# $ns attach-agent $n(149) $src2
+# $ns attach-agent $n(197) $sink2
 
 $ns attach-agent $n(150) $udp0
 set cbr0 [new Application/Traffic/CBR]
-$cbr0 set packetSize_ 1000
-$cbr0 set interval_ $UDP_INTERARRIVAL
+$cbr0 set packetSize_ 1460
+$cbr0 set interval_ 0.01
 $cbr0 attach-agent $udp0
+
 set null0 [new Agent/Null]
-$ns attach-agent $n(50) $null0
+$ns attach-agent $n(198) $null0
+
 $ns connect $udp0 $null0
-# $ns at 1.9 "$cbr0 start"
-# $ns at 10 "$cbr0 stop"
+$ns at 2 "$cbr0 start"
+$ns at 5 "$cbr0 stop"
 
 
 

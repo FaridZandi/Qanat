@@ -81,7 +81,10 @@ public:
      */
     int activate_tunnel(Node* in, Node* out, 
                         Node* from, Node* to);
+
     
+    void handle_non_ready_nodes(Packet* p, Node* n);
+
     /**
      * @brief removes the tunnel from active tunnels.
      * 

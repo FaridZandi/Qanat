@@ -87,9 +87,11 @@ public:
         	delack_timer_(this), flags_(0),
         	state_(TCPS_CLOSED), recent_ce_(FALSE),
 		  last_state_(TCPS_CLOSED), rq_(rcv_nxt_), last_ack_sent_(-1),
-		  informpacer(0),m_bPFC(0),traffic_class_(1), retrans_count(0), 
+		  informpacer(0),m_bPFC(0), retrans_count(0), 
 		  is_recording_stat(false), packets_received_stat(0),
-		  packets_total_in_flight_stat(0), packets_total_buffered_stat(0){}
+		  packets_total_in_flight_stat(0), packets_total_buffered_stat(0){
+			  this->traffic_class_ = 1; 
+		  }
 		// Mohammad: added informpacer
 
 	~FullTcpAgent() { cancel_timers(); rq_.clear(); }
@@ -195,8 +197,6 @@ protected:
 	int dsack_;	    // do DSACK as well as SACK?
 	double delack_interval_;
         int debug_;                     // Turn on/off debug output
-	int traffic_class_; /* this is to define the class for each packet
-					       to be used by the buffers */
 
 	int headersize();   // a tcp header w/opts
 	int outflags();     // state-specific tcp header flags

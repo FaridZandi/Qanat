@@ -138,9 +138,6 @@ void StatefulNF::increment_key(std::string key){
 
     int count = std::stoi(value) + 1;
     state[key] = to_string(count);
-    if (verbose){
-        std::cout << "increment " << key << " to " << state[key] << std::endl; 
-    }
 }
 
 
@@ -258,18 +255,13 @@ bool Monitor::recv(Packet* p, Handler* h){
     }
 
     log_packet("recved packet here");
-
     hdr_ip* iph = hdr_ip::access(p); 
     auto p_src = iph->src_.addr_;
 	auto p_dst = iph->dst_.addr_;
 
     increment_key("packet_count");
-    auto five_tuple = get_five_tuple(p);
-    increment_key(five_tuple); 
-
-    record_state(five_tuple, p);
-
-    update_highest_seq(p); 
+    auto packet_count = std::stoi(state["packet_count"]);
+    log_packet("packet count incremented: ", packet_count);
 
     return true; 
 }
@@ -312,7 +304,7 @@ Buffer::Buffer(TopoNode* toponode, int chain_pos, int size)
     buffering_ = false; 
     busy_ = false; 
     size_ = size; 
-    rate_ = 868055;
+    rate_ = 833333;
 }
 
 Buffer::~Buffer(){
@@ -335,7 +327,7 @@ bool Buffer::recv(Packet* p, Handler* h){
         if (pq->length() < size_){
             pq->enque(p);
             iph->time_enter_buffer = Scheduler::instance().clock();
-            log_packet("The new queue size is: ", pq->length());
+            log_packet("Enqueue the packet. The new queue size is: ", pq->length());
         } else {
             log_packet("Queue is full. dropping the packet ");
         }
@@ -385,7 +377,9 @@ void Buffer::send_if_possible(){
         busy_ = true; 
         sched_next_send(); 
 
-        Packet* p = pq->deque();        
+        Packet* p = pq->deque();  
+        log_packet("Deque Packet. New queue size is: ", pq->length());  
+
         hdr_ip* iph = hdr_ip::access(p);
         iph->time_buffered += (now - iph->time_enter_buffer);
         iph->time_enter_buffer = -1;
@@ -425,7 +419,7 @@ PriorityBuffer::PriorityBuffer(TopoNode* toponode, int chain_pos, int size)
     buffering_ = false; 
     busy_ = false; 
     size_ = size; 
-    rate_ = 868055;
+    rate_ = 833333;
 
     max_high_prio_buf_size = 0; 
     max_low_prio_buf_size = 0; 
@@ -669,15 +663,19 @@ bool DelayerNF::recv(Packet* p, Handler* h){
 
     // if the node is in the normal mode, delay is applied
     // otherwise, just let the packet pass through.
-    if (get_node_state() == MigState::Normal){
+    if (get_node_state() == MigState::Normal or 
+        get_node_state() == MigState::PreMig) {
+
         Scheduler::instance().schedule(this, p, delay);
         return false; 
     } else {
+        log_packet("Letting the packet pass through.");
         return true; 
     }
 }
 
 void DelayerNF::handle(Event* event){
+    log_packet("delay finished for the packet.");
     send(event); 
 }
 
@@ -707,35 +705,15 @@ TunnelManagerNF::~TunnelManagerNF(){
 
 bool TunnelManagerNF::recv(Packet* p, Handler* h){
     log_packet("recved a packet here.");
-
+    
     if (should_ignore(p)){
         return true;
     }
 
     auto& topo = MyTopology::instance(); 
     auto& mig_manager = topo.mig_manager(); 
-
     auto ret = mig_manager.pre_classify(p, h, toponode_->node);
-
     if (! ret) return false; 
-
-    // if top-down approach or random
-    if (topo.orch_type == 2 or topo.orch_type == 3) {
-        // if in the destination tree 
-        if (topo.get_data(toponode_->node).which_tree == 1){
-            if (get_node_state() != MigState::Normal and topo.is_migration_started){
-                convert_path(p);
-                auto this_node = toponode_->node;
-                auto peer = topo.get_peer(this_node);
-                add_to_path(p, peer->address());
-                set_high_prio(p); 
-                topo.inc_tunnelled_packets();
-            }
-        }
-    }
-    
-    // anyhow, the priority tag is removed from the packet. 
-    unset_high_prio(p); 
 
     return true;
 }

@@ -281,7 +281,7 @@ void OrchRandom::vm_migration_finished(Node* vm){
 
 std::list<nf_spec> OrchRandom::get_vm_nf_list(){
     return {
-        {"buffer", 2400},
+        {"buffer", 10000},
         {"delayer", 0.00005},
 
         //Must have these two NFs at the end of the list
@@ -292,7 +292,7 @@ std::list<nf_spec> OrchRandom::get_vm_nf_list(){
 
 std::list<nf_spec> OrchRandom::get_gw_nf_list(){
     return {
-        {"priority_buffer", 2400},
+        {"priority_buffer", 10000},
         {"delayer", 0.00005},
 
         // gateways have monitoring NFs
