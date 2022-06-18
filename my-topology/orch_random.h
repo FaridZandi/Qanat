@@ -33,13 +33,13 @@ public:
 
 private: 
     void tunnel_subtree_tru_parent(Node* node);
+    void tunnel_subtree_tru_node(Node* node);
     void dequeue_next_node();
     bool all_children_migrated(Node* node); 
     void start_vm_precopy(Node* vm); 
     void start_vm_migration(Node* vm); 
     void start_gw_migration(Node* gw);
     void start_gw_snapshot(Node* gw);
-    bool is_gateway(Node* node);
     void end_parent_precopy_if_needed(Node* gw);
 
 };

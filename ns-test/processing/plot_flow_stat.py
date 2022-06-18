@@ -103,8 +103,8 @@ else:
 
 df['packets_received_orig'] = df['packets_received']
 # df['packets_received'] = df['packets_received'].rolling(10).mean()
-df['average_in_flight_time'] = df['average_in_flight_time'].rolling(10).max()
-df['average_buffered_time'] = df['average_buffered_time'].rolling(10).max()
+# df['average_in_flight_time'] = df['average_in_flight_time'].rolling(10).max()
+# df['average_buffered_time'] = df['average_buffered_time'].rolling(10).max()
 
 
 def plot_flow(fid, ax, flow_df): 

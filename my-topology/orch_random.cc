@@ -47,7 +47,7 @@ void OrchRandom::dequeue_next_node(){
     while (migration_queue.size() > 0 and 
            in_migration_nodes < MyTopology::parallel_mig){
 
-        auto node = migration_queue.front(); 
+        auto node = migration_queue.top(); 
         migration_queue.pop();
 
         in_migration_nodes ++;
@@ -84,16 +84,6 @@ void OrchRandom::end_parent_precopy_if_needed(Node* gw){
 }
 
 
-bool OrchRandom::is_gateway(Node* node){
-    auto& topo = MyTopology::instance();
-    if (topo.get_data(node).mode == OpMode::GW){
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
 void OrchRandom::tunnel_subtree_tru_parent(Node* node){
     auto& topo = MyTopology::instance();
 
@@ -110,6 +100,17 @@ void OrchRandom::tunnel_subtree_tru_parent(Node* node){
         }
     }
 }
+
+void OrchRandom::tunnel_subtree_tru_node(Node* node){
+    auto& topo = MyTopology::instance();
+
+    int node_layer = topo.get_data(node).layer_from_bottom;
+
+    for(auto leaf: topo.get_leaves(node)){
+        topo.setup_nth_layer_tunnel(leaf, node_layer);
+    }
+}
+
 
 
 void OrchRandom::start_migration(){
@@ -128,7 +129,7 @@ void OrchRandom::start_migration(){
         d.push_back(node);
     }    
     std::random_shuffle(d.begin(), d.end());
-    migration_queue = std::queue<Node*>(d);
+    migration_queue = std::stack<Node*>(d);
 
     dequeue_next_node(); 
 };
@@ -248,7 +249,7 @@ void OrchRandom::start_vm_migration(Node* vm){
     set_node_state(vm, MigState::InMig);
     set_peer_state(vm, MigState::Buffering);
 
-    MyTopology::instance().setup_nth_layer_tunnel(vm, 1);
+    MyTopology::instance().setup_nth_layer_tunnel(vm, 0);
 
     buffer_on_peer(vm);
     
@@ -279,27 +280,29 @@ void OrchRandom::vm_migration_finished(Node* vm){
 }
 
 
+
 std::list<nf_spec> OrchRandom::get_vm_nf_list(){
     return {
+        {"tunnel_manager", 0}, //Must have
+
         {"buffer", 10000},
         {"delayer", 0.00005},
+        {"monitor", 0},
 
-        //Must have these two NFs at the end of the list
-        {"tunnel_manager", 0},
-        {"router", 0}
+        {"tunnel_manager", 0}, //Must have
+        {"router", 0} //Must have
     };
 }
+
 
 std::list<nf_spec> OrchRandom::get_gw_nf_list(){
     return {
         {"priority_buffer", 10000},
         {"delayer", 0.00005},
-
-        // gateways have monitoring NFs
         {"monitor", 0},
 
-        //Must have these two NFs at the end of the list
-        {"tunnel_manager", 0},
-        {"router", 0}
+        
+        {"tunnel_manager", 0}, //Must have
+        {"router", 0}, //Must have
     };
 }

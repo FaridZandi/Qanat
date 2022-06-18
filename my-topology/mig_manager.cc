@@ -107,14 +107,14 @@ void MigrationManager::log_tunnel(tunnel_data td,
 
 	std::cout << "[tunnel " << td.uid << "] "; 
 	
-	if (tp == Tunnel_Point::Tunnel_In) {
-		std::cout << "tunnel In detected"; 
-	} else if (tp == Tunnel_Point::Tunnel_Out) {
-		std::cout << "tunnel Out detected"; 
-	} else if (tp == Tunnel_Point::Tunnel_From) {
+	if (tp == Tunnel_Point::Tunnel_From) {
 		std::cout << "tunnel From detected"; 
 	} else if (tp == Tunnel_Point::Tunnel_To) {
 		std::cout << "tunnel To detected"; 
+	} else if (tp == Tunnel_Point::Tunnel_In) {
+		std::cout << "tunnel In detected"; 
+	} else if (tp == Tunnel_Point::Tunnel_Out) {
+		std::cout << "tunnel Out detected"; 
 	}
 	
     std::cout << std::endl; 
@@ -230,10 +230,12 @@ bool MigrationManager::pre_classify(Packet* p, Handler* h, Node* n){
 			return handle_packet_from(td, p, h, n);
 		} else if (tp == Tunnel_Point::Tunnel_To) {
 			return handle_packet_to(td, p, h, n); 
-		} else {
-		    unset_high_prio(p); 
-		}
+		} 
 	}
+
+	unset_high_prio(p);
+	handle_non_ready_nodes(p, n); 
+
     return true; 
 }
 
@@ -249,13 +251,16 @@ void MigrationManager::handle_non_ready_nodes(Packet* p, Node* node){
         if (topo.get_data(node).which_tree == 1){
 			
    			auto node_state = orch.get_mig_state(node); 
-			if (node_state == MigState::Buffering){	
-				std::cout << "MigrationManager::handle_non_ready_nodes: " << node->address() << std::endl; 
-				std::cout << "Packet arrived at Migration Manager while buffering." << std::endl;
-			}
+
+			// if (node_state == MigState::Buffering){	
+			// 	std::cout << "MigrationManager::handle_non_ready_nodes: " << node->address() << std::endl; 
+			// 	std::cout << "Packet arrived at Migration Manager while buffering." << std::endl;
+			// }
+			
             if (node_state != MigState::Normal and topo.is_migration_started){
-                convert_path(p);
+				convert_path(p);
                 add_to_path(p, topo.get_peer(node)->address());
+
                 set_high_prio(p); 
                 topo.inc_tunnelled_packets();
             }
@@ -358,10 +363,6 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 		if (node_state == MigState::Migrated or 
 			node_state == MigState::InMig) {
 
-			if(verbose){
-				std::cout << "MigrationManager::Outgoing Packet: " << n->address() << std::endl;
-			}
-
 			iph->src_.addr_ = td.to->address(); 
 			td.to->get_classifier()->recv(p, h);
 			return false;  
@@ -369,13 +370,25 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 	} else if (dir == Direction::Incoming) {		 
 		if (node_state == MigState::Migrated or 
 			node_state == MigState::InMig) {	
-
+			
+			// std::cout << "MigrationManager::handle_packet_from: " << n->address() << std::endl;
 			iph->dst_.addr_ = td.to->address(); 
 			set_high_prio(p); 
 			MyTopology::instance().inc_tunnelled_packets();
 			return true; 	
-		}        
+		} else {
+
+			if (iph->skip_first_mngr_flag == false){
+				iph->skip_first_mngr_flag = true;
+				return true; 
+			}
+			
+			n->get_classifier()->recv2(p, h); 
+			return false; 
+		}
 	}
+
+	std::cout << "packets should not reach here." << std::endl;
 }
 
 bool MigrationManager::handle_packet_to(tunnel_data td, 
@@ -388,6 +401,7 @@ bool MigrationManager::handle_packet_to(tunnel_data td,
 		iph->skip_first_mngr_flag = true;
 		return true; 
 	}
+	iph->skip_first_mngr_flag = false;
 
 	auto& orch = BaseOrchestrator::instance();
 	auto node_state = orch.get_mig_state(n);

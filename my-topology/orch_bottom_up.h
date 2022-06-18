@@ -37,12 +37,13 @@ private:
     void tunnel_subtree_tru_parent(Node* node);
 
     void migration_finished();
+    void dequeue_next_node(); 
 
-    void dequeue_next_vm();  
     bool all_children_migrated(Node* node); 
 
     void start_vm_precopy(Node* vm); 
-    void start_vm_migration(Node* vm); 
+    void start_vm_migration(Node* vm);
+    void start_gw_migration(Node* gw); 
     void start_gw_snapshot(Node* gw); 
     void copy_gw_state(Node* gw){}; 
     void try_parent_migration(Node* gw);

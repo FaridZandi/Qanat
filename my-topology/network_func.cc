@@ -305,6 +305,7 @@ Buffer::Buffer(TopoNode* toponode, int chain_pos, int size)
     busy_ = false; 
     size_ = size; 
     rate_ = 833333;
+    max_buf_size = 0; 
 }
 
 Buffer::~Buffer(){
@@ -326,6 +327,13 @@ bool Buffer::recv(Packet* p, Handler* h){
 
         if (pq->length() < size_){
             pq->enque(p);
+
+            auto q_size = pq->length();
+            
+            if (q_size > max_buf_size){
+                max_buf_size = q_size;
+            }
+
             iph->time_enter_buffer = Scheduler::instance().clock();
             log_packet("Enqueue the packet. The new queue size is: ", pq->length());
         } else {
@@ -378,6 +386,7 @@ void Buffer::send_if_possible(){
         sched_next_send(); 
 
         Packet* p = pq->deque();  
+
         log_packet("Deque Packet. New queue size is: ", pq->length());  
 
         hdr_ip* iph = hdr_ip::access(p);
@@ -535,6 +544,8 @@ void PriorityBuffer::send_if_possible(){
         iph->time_buffered += (now - iph->time_enter_buffer);
         iph->time_enter_buffer = -1;
 
+        log_packet("Deque Packet. New queue size is: ", hp_q->length());
+
         send(p); 
 
     } else if (lp_q->length() > 0) {
@@ -545,6 +556,8 @@ void PriorityBuffer::send_if_possible(){
         hdr_ip* iph = hdr_ip::access(p);
         iph->time_buffered += (now - iph->time_enter_buffer);
         iph->time_enter_buffer = -1;
+
+        log_packet("Deque Packet. New queue size is: ", lp_q->length());
 
         send(p); 
     } 
@@ -574,7 +587,7 @@ void PriorityBuffer::print_info(){
 
 RateLimiterNF::RateLimiterNF(TopoNode* toponode, int chain_pos, int rate) 
     : NF(toponode, chain_pos) {
-
+    // verbose = true; 
     busy_ = false;
     pq = new PacketQueue;
     this->rate_ = rate; 
@@ -590,15 +603,13 @@ double RateLimiterNF::get_interval(){
 }
 
 bool RateLimiterNF::recv(Packet* p, Handler* h){
-
+    
     if(busy_){
         pq->enque(p);
         log_packet("Queuing the packet. New Q length:", pq->length());
         return false; 
     } else {
-
         log_packet("Letting the packet pass through.");
-
         busy_ = true; 
         Event* e = new Event; 
         auto& sched = Scheduler::instance();

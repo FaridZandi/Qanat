@@ -22,29 +22,20 @@ OrchTopDown::~OrchTopDown(){
 
 }
 
+void OrchTopDown::dequeue_next_node(){
+    while (migration_queue.size() > 0 and 
+           in_migration_nodes < MyTopology::parallel_mig){
 
-void OrchTopDown::dequeue_next_gw(){
+        auto node = migration_queue.top(); 
+        migration_queue.pop();
 
-    while (gw_migration_queue.size() > 0 and 
-           in_migration_gws < MyTopology::parallel_mig){
+        in_migration_nodes ++;
 
-        auto node = gw_migration_queue.front(); 
-        gw_migration_queue.pop();
-        in_migration_gws ++;
-
-        start_gw_migration(node);
-    }
-}
-
-
-void OrchTopDown::dequeue_next_vm(){
-    while (vm_migration_queue.size() > 0 and 
-           in_migration_vms < MyTopology::parallel_mig){
-
-        auto node = vm_migration_queue.front(); 
-        vm_migration_queue.pop();
-        in_migration_vms ++;
-        start_vm_precopy(node);
+        if (is_gateway(node)){
+            start_gw_migration(node);
+        } else {
+            start_vm_precopy(node);
+        }
     }
 } 
 
@@ -74,15 +65,6 @@ void OrchTopDown::end_parent_precopy_if_needed(Node* gw){
 }
 
 
-bool OrchTopDown::is_gateway(Node* node){
-    auto& topo = MyTopology::instance();
-    if (topo.get_data(node).mode == OpMode::GW){
-        return true;
-    } else {
-        return false;
-    }
-}
-
 
 void OrchTopDown::tunnel_subtree_tru_parent(Node* node){
     auto& topo = MyTopology::instance();
@@ -101,7 +83,6 @@ void OrchTopDown::tunnel_subtree_tru_parent(Node* node){
     }
 }
 
-
 void OrchTopDown::start_migration(){
     std::srand(123);
 
@@ -113,8 +94,8 @@ void OrchTopDown::start_migration(){
         set_peer_state(node, MigState::OutOfService);
     }
 
-    in_migration_gws ++;
-    start_gw_migration(mig_root);
+    migration_queue.push(mig_root);
+    dequeue_next_node(); 
 };
 
 
@@ -189,43 +170,23 @@ void OrchTopDown::gw_start_processing_buffer_on_peer(Node* gw){
     // here Node gw is the gw at the source
     auto& topo = MyTopology::instance();   
     auto peer = topo.get_peer(gw); // peer is gw at the source
-
     set_node_state(gw, MigState::Migrated);
     set_peer_state(gw, MigState::Normal);
+    process_on_peer(gw);
 
     log_event("end gw migration", gw);
     log_event("start gw precopy", gw);
  
-    process_on_peer(gw);
-    
-    in_migration_gws --; 
-    migrate_next_element(gw);
-
     end_parent_precopy_if_needed(gw);
+
+    for (auto& node: topo.get_children(gw)){
+        migration_queue.push(node);
+    } 
+
+    in_migration_nodes --; 
+    dequeue_next_node(); 
 }; 
 
-
-void OrchTopDown::migrate_next_element(Node* gw){
-    auto& topo = MyTopology::instance();
-
-    auto next_sibling = topo.get_next_sibling(gw); 
-    auto first_child = topo.get_first_child(gw);
-
-    if (next_sibling != nullptr){
-        gw_migration_queue.push(next_sibling);
-    }
-
-    if (topo.get_data(first_child).mode == OpMode::VM){
-        for (auto& vm: topo.get_leaves(gw)){
-            vm_migration_queue.push(vm);
-        }
-        dequeue_next_vm();
-    } else {
-        gw_migration_queue.push(first_child);
-    }
-
-    dequeue_next_gw(); 
-}
 
 
   
@@ -283,9 +244,8 @@ void OrchTopDown::vm_migration_finished(Node* vm){
     log_event("end vm migration", vm);
     process_on_peer(vm); 
 
-    in_migration_vms --;
-
-    dequeue_next_vm();
+    in_migration_nodes --;
+    dequeue_next_node();
 
     end_parent_precopy_if_needed(vm);
 
@@ -304,14 +264,17 @@ void OrchTopDown::vm_migration_finished(Node* vm){
 }
 
 
+
 std::list<nf_spec> OrchTopDown::get_vm_nf_list(){
     return {
+        {"tunnel_manager", 0}, //Must have
+
         {"buffer", 10000},
         {"delayer", 0.00005},
+        {"monitor", 0},
 
-        //Must have these two NFs at the end of the list
-        {"tunnel_manager", 0},
-        {"router", 0}
+        {"tunnel_manager", 0}, //Must have
+        {"router", 0} //Must have
     };
 }
 
@@ -319,12 +282,10 @@ std::list<nf_spec> OrchTopDown::get_gw_nf_list(){
     return {
         {"priority_buffer", 10000},
         {"delayer", 0.00005},
-
-        // gateways have monitoring NFs
         {"monitor", 0},
 
-        //Must have these two NFs at the end of the list
-        {"tunnel_manager", 0},
-        {"router", 0}
+        
+        {"tunnel_manager", 0}, //Must have
+        {"router", 0}, //Must have
     };
 }

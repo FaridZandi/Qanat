@@ -117,6 +117,14 @@ void UdpAgent::sendmsg(int nbytes, AppData* data, const char* flags)
 				for (auto elem: path){
 					iph->gw_path[ptr --] = elem;
 				}
+
+				// print the path
+				// std::cout << "Path: "; 
+				// for (auto elem: path){
+				// 	std::cout << elem << " ";
+				// }
+				// std::cout << std::endl;
+
 			} 
 		}
 		////////////////////////////////////

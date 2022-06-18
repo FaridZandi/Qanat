@@ -173,6 +173,8 @@ public:
 
     PacketQueue* pq;
 
+    int max_buf_size;
+
 protected:
     void sched_next_send(); 
     double get_interval(); 

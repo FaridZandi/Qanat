@@ -36,6 +36,20 @@ def translate_orch_type(orch_type):
         return "Random"
 
 
+# group is a pandas dataframe
+def weighted_average(group, weight_col, value_col):
+
+    # get the sum of the weights
+    weights = group[weight_col].sum()
+
+    # get the sum of the weights * values
+    values = group[weight_col] * group[value_col]
+
+    # get the weighted average
+    return values.sum() / weights
+
+ 
+
 if args.reload: 
     directory = args.directory
 
@@ -148,8 +162,8 @@ if args.reload:
         mig_flow_stats_df = mig_flow_stats_df[mig_flow_stats_df["time"] <= protocol_end]
 
         # avg
-        exp_info["vm_avg_pkt_flight_t"] = mig_flow_stats_df.average_in_flight_time.mean()
-        exp_info["vm_avg_pkt_buff_t"] = mig_flow_stats_df.average_buffered_time.mean()
+        exp_info["vm_avg_pkt_flight_t"] = weighted_average(mig_flow_stats_df, "packets_received", "average_in_flight_time")
+        exp_info["vm_avg_pkt_buff_t"] = weighted_average(mig_flow_stats_df, "packets_received", "average_buffered_time")
 
         # max 
         exp_info["vm_max_pkt_in_flight_t"] = mig_flow_stats_df.average_in_flight_time.max()

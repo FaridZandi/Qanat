@@ -22,6 +22,25 @@ OrchBottomUp::~OrchBottomUp(){
 
 }
 
+
+void OrchBottomUp::dequeue_next_node(){
+    while (migration_queue.size() > 0 and 
+           in_migration_nodes < MyTopology::parallel_mig){
+
+        auto node = migration_queue.top(); 
+        migration_queue.pop();
+
+        in_migration_nodes ++;
+
+        if (is_gateway(node)){
+            start_gw_migration(node);
+        } else {
+            start_vm_precopy(node);
+        }
+    }
+} 
+
+
 void OrchBottomUp::tunnel_subtree_tru_parent(Node* node){
     auto& topo = MyTopology::instance();
 
@@ -51,31 +70,19 @@ void OrchBottomUp::start_migration(){
     auto& topo = MyTopology::instance(); 
     auto mig_root = topo.get_mig_root(); 
 
-    std::cout << "start migration" << std::endl;
-
-    std::cout << "VM migration Queue: ";
     for (auto& leaf: topo.get_leaves(mig_root)){
-        vm_migration_queue.push(leaf);
+        migration_queue.push(leaf);
         std::cout << leaf->address() << " ";
     }
-    std::cout << std::endl;
 
-    for(auto& node: topo.get_all_nodes(mig_root)){    
-        set_node_state(node, MigState::Normal);
-        set_peer_state(node, MigState::OutOfService);
-    }
-
-    int parallel_migrations = MyTopology::parallel_mig; 
-    std::cout << "Parallel migrations: " << parallel_migrations << std::endl;
-    for(int i = 0; i < parallel_migrations; i++){
-        dequeue_next_vm();
-    }
+    dequeue_next_node(); 
 };
 
   
 void OrchBottomUp::start_vm_precopy(Node* vm){
     set_node_state(vm, MigState::PreMig);
     set_peer_state(vm, MigState::OutOfService);
+
     log_event("start vm precopy", vm);
 
     initiate_data_transfer(
@@ -129,10 +136,14 @@ void OrchBottomUp::start_vm_migration(Node* vm){
 void OrchBottomUp::vm_migration_finished(Node* vm){
     set_node_state(vm, MigState::Migrated);
     set_peer_state(vm, MigState::Normal);
+
     log_event("end vm migration", vm);
+    in_migration_nodes --;
+
     process_on_peer(vm); 
+
     try_parent_migration(vm); 
-    dequeue_next_vm();
+    dequeue_next_node();
 }
 
 
@@ -141,21 +152,26 @@ void OrchBottomUp::try_parent_migration(Node* node){
     auto gw = topo.get_nth_parent(node, 1); 
 
     if (all_children_migrated(gw)){
-        // log_event("all conditions ok to start migrating GW: ", gw->address()); 
-        buffer_on_peer(gw);
-        set_peer_state(gw, MigState::Buffering);
-        start_gw_snapshot(gw); 
+        migration_queue.push(gw); 
     }
 }
 
+void OrchBottomUp::start_gw_migration(Node* gw){
+    auto& topo = MyTopology::instance();
+
+    set_node_state(gw, MigState::InMig);
+    set_peer_state(gw, MigState::Buffering);
+    
+    buffer_on_peer(gw);
+    
+    start_gw_snapshot(gw); 
+}
 
 void OrchBottomUp::start_gw_snapshot(Node* gw){
     auto& topo = MyTopology::instance();
-    set_node_state(gw, MigState::InMig);
     
     log_event("end gw precopy", gw);
     log_event("end gw precopy", topo.get_peer(gw));
-
     log_event("start gw migration", gw);
 
     initiate_data_transfer(
@@ -207,7 +223,8 @@ void OrchBottomUp::gw_start_processing_buffer_on_peer(Node* gw){
     auto peer = topo.get_peer(gw); // peer is gw at the source
 
     log_event("end gw migration", gw);
- 
+    in_migration_nodes --;
+
     process_on_peer(gw);
 
     set_node_state(gw, MigState::Migrated);
@@ -218,17 +235,12 @@ void OrchBottomUp::gw_start_processing_buffer_on_peer(Node* gw){
         migration_finished();
     } else {
         try_parent_migration(gw); 
+        dequeue_next_node(); 
     }
 }; 
 
 
-void OrchBottomUp::dequeue_next_vm(){
-    if(vm_migration_queue.size() > 0){
-        auto node = vm_migration_queue.front(); 
-        vm_migration_queue.pop();
-        start_vm_precopy(node);
-    }
-} 
+
 
 bool OrchBottomUp::all_children_migrated(Node* node){
     auto& topo = MyTopology::instance();
@@ -254,11 +266,13 @@ std::list<nf_spec> OrchBottomUp::get_vm_nf_list(){
 
         {"buffer", 10000},
         {"delayer", 0.00005},
+        {"monitor", 0},
 
         {"tunnel_manager", 0}, //Must have
         {"router", 0} //Must have
     };
 }
+
 
 std::list<nf_spec> OrchBottomUp::get_gw_nf_list(){
     return {

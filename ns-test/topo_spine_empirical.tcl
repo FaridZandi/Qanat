@@ -153,7 +153,7 @@ if {[string compare $sourceAlg "DCTCP"] == 0} {
 
 #Shuang
 Agent/TCP/FullTcp set dynamic_dupack_ 0; #disable dupack
-Agent/TCP set window_ 1500;
+Agent/TCP set window_ 2083;
 Agent/TCP set windowInit_ $initWindow
 Agent/TCP set rtxcur_init_ $min_rto;
 
@@ -449,23 +449,28 @@ for {set j $start_server_index} {$j < $end_server_index} {incr j} {
 
 # set up flows from the dedicated servers to the vms 
 # as the vm traffic
-puts "Setting up flows from the dedicated servers to the vms ..."; 
 
 set start_server_index [expr $vm_traffic_tor_id * $topology_spt]
 set end_server_index [expr ($vm_traffic_tor_id + 1) * $topology_spt]
 puts "vm traffic start_server_index: $start_server_index"
 puts "vm traffic end_server_index: $end_server_index"
+
+for {set i $start_server_index} {$i < $end_server_index} {incr i} {
+    $t rate_limit_node $s($i) [expr 2083 * 50]
+}
+
+puts "Setting up flows from the dedicated servers to the vms ..."; 
+
 set j 0 
-
-set connections_to_vm 16
-
+set tcp_connections_to_vm 1
 foreach leaf $logical_leaves {
     puts $leaf
     for {set i $start_server_index} {$i < $end_server_index} {incr i} {
         set server_num [expr {$i - $start_server_index}] 
-        if { ($server_num - $j) % $topology_spt < $connections_to_vm} {
+        if { ($server_num - $j) % $topology_spt < $tcp_connections_to_vm} {
 
-            puts "Setting up flows from server:[expr $i + 1] to vm:[expr $j + 1]"
+            set start_time [expr 4 + ($j * $tcp_connections_to_vm + $server_num) * 0.001]
+            puts "Setting up flows from server:[expr $i + 1] to vm:[expr $j + 1] at time $start_time"
 
             set pair_first [expr $i + 2000]
             set pair_second [expr $j + 2000]
@@ -474,11 +479,43 @@ foreach leaf $logical_leaves {
             $agtagr($pair_first,$pair_second) setup $s($i) $leaf "$pair_first $pair_second" $connections_per_pair $init_fid "TCP_pair" 1 
             $agtagr($pair_first,$pair_second) attach-logfile $flowlog
 
-            $agtagr($pair_first,$pair_second) send_single_flow $vm_flow_size [expr 4]
+            $agtagr($pair_first,$pair_second) send_single_flow $vm_flow_size $start_time
 
             $ns at 0.1 "$agtagr($pair_first,$pair_second) warmup 3 5"
 
             set init_fid [expr $init_fid + $connections_per_pair];
+        }   
+    }
+    set j [expr {$j + 1}];
+}
+
+# set up udp flows from the dedicated servers to the vms
+
+set j 0 
+set udp_connections_to_vm 0
+foreach leaf $logical_leaves {
+    puts $leaf
+    for {set i $start_server_index} {$i < $end_server_index} {incr i} {
+        set server_num [expr {$i - $start_server_index}] 
+        if { ($server_num - $j) % $topology_spt < $udp_connections_to_vm} {
+            
+            set start_time [expr 4 + ($server_num * 0.01)] 
+            puts "UDP flows from server:[expr $i + 1] to vm:[expr $j + 1] at time $start_time"
+
+            set udp_recver($server_num) [new Agent/Null]
+            set udp_sender($server_num) [new Agent/UDP]
+
+            $ns attach-agent $leaf $udp_recver($server_num)
+            $ns attach-agent $s($i) $udp_sender($server_num)
+            $ns connect $udp_recver($server_num) $udp_sender($server_num)
+
+            set cbr($server_num) [new Application/Traffic/CBR]
+            $cbr($server_num) set packetSize_ 1460
+            $cbr($server_num) set interval_ 0.0001
+            $cbr($server_num) attach-agent $udp_sender($server_num)
+
+            $ns at $start_time "$cbr($server_num) start"
+            $ns at 15 "$cbr($server_num) stop"
         }   
     }
     set j [expr {$j + 1}];

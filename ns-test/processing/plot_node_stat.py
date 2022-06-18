@@ -88,7 +88,7 @@ if args.reload:
         except Exception as e:
             print(e)
 
-    df = pd.DataFrame(data)
+    df = pd.DataFrame(data)    
     data_path = args.directory + "/data/nodes.csv" 
     df.to_csv(data_path)
 else: 
@@ -98,8 +98,8 @@ else:
     print("Loading data from the file finished")
 
 # sample the protocol df enteries to plot them 
-df['low_prio_buf'] = df['low_prio_buf'].rolling(100).max()
-df['high_prio_buf'] = df['high_prio_buf'].rolling(100).max()
+# df['low_prio_buf'] = df['low_prio_buf'].rolling(100).max()
+# df['high_prio_buf'] = df['high_prio_buf'].rolling(100).max()
 # df = df.iloc[::100, :]
 print(df.size)
 
@@ -124,7 +124,10 @@ def plot_bar(ax, bar_len, bar_start, color):
 
 def plot_node(node, ax): 
 
-    node_df = df[df.uid == node]
+    node_df = df[df.uid == node].copy()
+    node_df["packet_count_diff"] = node_df.packet_count.diff(1)
+    node_df = node_df.dropna()
+
     sns.lineplot(ax=ax, x=node_df.time, y=node_df[measure])
     ax.set_title("node: " + str(node))
 
@@ -158,7 +161,7 @@ def plot_measure(measure, nodes, prefix):
 
 
 
-for measure in ["low_prio_buf", "packet_count", "ooo_packets", "high_prio_buf"]:
+for measure in ["packet_count_diff", "packet_count", "ooo_packets", "low_prio_buf", "high_prio_buf"]:
     nodes = df.uid.unique()
 
     src_nodes = nodes[0:(len(nodes) // 2)]

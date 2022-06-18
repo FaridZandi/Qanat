@@ -1,5 +1,5 @@
 set ns [new Simulator]
-set sim_end 100000
+set sim_end 5
 
 
 # $ns rtproto DV
@@ -7,14 +7,15 @@ set sim_end 100000
 Node set multiPath_ 1
 Agent/TCP/FullTcp set segsize_ 1400
 
-set tf [open out.tr w]
+# set tf [open out.tr w]
 # $ns trace-all $tf
 
 proc finish {} {
         puts "simulation finished"
-        global ns tf
+        global t ns
         # $ns flush-trace
-        close $tf
+        # close $tf
+        $t print_stats
         exit 0
 }
 
@@ -23,9 +24,9 @@ proc finish {} {
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
-MyTopology set vm_precopy_size_  100000000
-MyTopology set vm_snapshot_size_ 100000000
-MyTopology set gw_snapshot_size_ 100000000
+MyTopology set vm_precopy_size_  10000000
+MyTopology set vm_snapshot_size_ 10000000
+MyTopology set gw_snapshot_size_ 10000000
 MyTopology set parallel_mig_ 1
 MyTopology set prioritization_level_ 1
 MyTopology set stat_record_interval_ 0.01
@@ -80,7 +81,7 @@ set t [new MyTopology]
 $t set_simulator $ns
 
 set UDP_INTERARRIVAL 0.000005
-set BW 10Gb
+set BW 1Gb
 set LAT 5us
 # set QTYPE RED
 set QTYPE MamadQueue
@@ -95,7 +96,7 @@ $ns duplex-link $n_mid_left $n_mid_right $BW $LAT $QTYPE
 
 for { set x 2} { $x < $child_count+2} { incr x } {
     set n($x) [$ns node]
-    $ns duplex-link $n_mid_left $n($x) 10Gb $LAT $QTYPE 
+    $ns duplex-link $n_mid_left $n($x) $BW $LAT $QTYPE 
     $t add_node_to_dest $n($x)
 }
 
@@ -122,7 +123,7 @@ $sink2 set fid_ 10
 # make apps
 set src_app [new Application]
 set sink_app [new Application]
-set udp0 [new Agent/UDP]
+
 
 
 # set src_app2 [new Application]
@@ -134,20 +135,48 @@ set udp0 [new Agent/UDP]
 # $ns attach-agent $n(149) $src2
 # $ns attach-agent $n(197) $sink2
 
-$ns attach-agent $n(150) $udp0
-set cbr0 [new Application/Traffic/CBR]
-$cbr0 set packetSize_ 1460
-$cbr0 set interval_ 0.01
-$cbr0 attach-agent $udp0
 
-set null0 [new Agent/Null]
-$ns attach-agent $n(198) $null0
+set leaves(0) $n(198)
+set leaves(1) $n(197)
+set leaves(2) $n(195)
+set leaves(3) $n(194)
+set leaves(4) $n(191)
+set leaves(5) $n(190)
+set leaves(6) $n(188)
+set leaves(7) $n(187)
 
-$ns connect $udp0 $null0
-$ns at 2 "$cbr0 start"
-$ns at 5 "$cbr0 stop"
+set senders(0) $n(50)
+set senders(1) $n(51)
+set senders(2) $n(52)
+set senders(3) $n(53)
+set senders(4) $n(54)
+set senders(5) $n(55)
+set senders(6) $n(56)
+set senders(7) $n(57)
 
 
+
+
+# set up a connection from one sender to one receiver
+for {set i 0} {$i < 8} {incr i} {
+    set udp($i) [new Agent/UDP]
+    set null($i) [new Agent/Null]
+
+    $ns attach-agent $senders($i) $udp($i)
+    $ns attach-agent $leaves($i) $null($i)
+
+    set cbr($i) [new Application/Traffic/CBR]
+    $cbr($i) set packetSize_ 1460
+    $cbr($i) set interval_ 0.001
+    $cbr($i) attach-agent $udp($i)
+
+    $ns connect $udp($i) $null($i)
+    $ns at 1.5 "$cbr($i) start"
+    $ns at 5 "$cbr($i) stop"
+}
+
+
+# $t rate_limit_node $n(150) 10
 
 # attach the apps
 # $src_app attach-agent $src
@@ -172,6 +201,7 @@ $t duplicate_tree
 $t print_graph
 
 $ns at 1 "$t setup_nodes"
+$ns at 1.5 "$t start_stat_record"
 $ns at 2 "$t start_migration"
 
 $ns at $sim_end "finish"

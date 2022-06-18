@@ -83,6 +83,9 @@ TCP_pair instproc setup {snode dnode} {
     if { $is_single_flow == 0 } {
         $tcps set minrto_ 0.001
         $tcpr set minrto_ 0.001
+    } else {
+        $tcps set minrto_ 0.1
+        $tcpr set minrto_ 0.1
     }
 
     $tcpr listen

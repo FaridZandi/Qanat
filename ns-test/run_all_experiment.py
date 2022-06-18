@@ -14,7 +14,7 @@ from run_constants import *
 exp_q = queue.Queue()
 
 threads = []
-number_worker_threads = 20
+number_worker_threads = 40
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
@@ -222,19 +222,19 @@ if __name__ == "__main__":
 			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		} 
 
-	elif exp_name == "test_remote":
+	elif exp_name == "rate_limited_7":
 		configs = {
-			"mig_sizes": [(100, 100, 100)],
+			"mig_sizes": [(50, 50, 50)],
 			"parallel_mig": [1], 
 			"load": [0.15],
 			"oversub": [1.0],
 			"src_zone_delay": [0.00002], # in seconds
 			"dst_zone_delay": [0.00002], # in seconds
-			"traffic_zone_delay": [0.00001, 0.00003, 0.00007, 0.0001, 0.0003, 0.0007, 0.001, 0.003, 0.007, 0.01], # in seconds
+			"traffic_zone_delay": [0.008, 0.009, 0.01, 0.011, 0.012], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
 			"prioritization": [2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
 			"bg_traffic_cdf": [("dctcp", 1138)],
 			"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
@@ -243,12 +243,12 @@ if __name__ == "__main__":
 			###########################################################
 			"exp_name": [exp_name],
 			"enable_rt_dv": [1], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"enable_bg_traffic": [0], # 0: disable, 1: enable
 			"stat_record_interval": [0.001], # in seconds
 			"sim_end": [3000], # number of flows
 			"vm_flow_size": [100000], # in packets
-			"dc_size": [(1, 1, 4)], # (spines, bg_tors, spt)
-			"tree_shape": [(1, 1, 1)], #branching factors of the tree
+			"dc_size": [(1, 1, 11)], # (spines, bg_tors, spt)
+			"tree_shape": [(1, 1, 8)], #branching factors of the tree
 		} 
 
 	if not configs:

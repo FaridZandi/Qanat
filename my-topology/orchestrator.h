@@ -5,6 +5,7 @@
 #include <list>
 #include <map>
 #include <queue>
+#include <stack>
 
 class Node; 
 
@@ -64,8 +65,11 @@ protected:
 
     void set_peer_state(Node* node, MigState state);
 
+    bool is_gateway(Node* node);
+
+
     std::queue<Node*> vm_migration_queue;
-    std::queue<Node*> migration_queue;
+    std::stack<Node*> migration_queue;
     std::queue<Node*> gw_migration_queue;
     
     int in_migration_gws;

@@ -171,6 +171,7 @@ int MyTopology::command(int argc, const char*const* argv){
             dest_nodes_ptrs.push(argv[2]);
             dest_nodes.push(new_node);
             return TCL_OK; 
+            
         } else if (strcmp(argv[1], "get_logical_leaf") == 0){
 			int leaf_id = atoi(argv[2]);
             auto children = get_leaves(mig_root);
@@ -194,7 +195,19 @@ int MyTopology::command(int argc, const char*const* argv){
             connect_agents(n1, n2); 
             return TCL_OK; 
 
-        }  
+        }  else if (strcmp(argv[1], "rate_limit_node") == 0){
+            auto limited_node = (Node*)TclObject::lookup(argv[2]);
+            int rate = atoi(argv[3]);
+            limited_node->introduce_to_classifer();      
+            data[limited_node].add_nf("rate_limiter", rate); 
+            data[limited_node].uid = toponode_uid_counter; 
+            data[limited_node].node = limited_node; 
+            data[limited_node].peer = -1; 
+            data[limited_node].pointer = argv[2];
+        
+            toponode_uid_counter += 1;
+            return TCL_OK;    
+        }
     } else if (argc == 5) { 
         if (strcmp(argv[1], "send_data") == 0) {
             Node* n1 = (Node*)TclObject::lookup(argv[2]);
@@ -812,6 +825,26 @@ void StatRecorder::record_stats(){
             }; 
         } 
     }
+
+
+    // record the stats for the internal nodes of the tree 
+    for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
+        for(auto& node: topo.get_leaves(root)){
+
+            auto buffer = (Buffer*)(topo.get_data(node).get_nf("buffer"));
+            int buf_size = buffer->max_buf_size; 
+
+            buffer->max_buf_size = buffer->pq->length(); 
+
+            auto m = (Monitor*)(topo.get_data(node).get_nf("monitr"));
+            int packet_count = m->get_packet_count(); 
+
+            auto uid = topo.uid(node); 
+
+            node_stats[uid][now] = {0,buf_size, packet_count, 0}; 
+        } 
+    }
+
     
 
     // record the stats for the VM flows 

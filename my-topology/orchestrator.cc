@@ -54,7 +54,11 @@ void BaseOrchestrator::setup_nodes(){
         for(auto& node: topo.get_leaves(root)){    
             topo.get_data(node).mode = OpMode::VM;
             for (nf_spec& nfs: get_vm_nf_list()){
-                topo.get_data(node).add_nf(nfs.type, nfs.parameter);
+                auto nf = topo.get_data(node).add_nf(nfs.type, nfs.parameter);
+                if (nfs.type == "buffer") {
+                    auto buf = (Buffer*) nf;
+                    buf->set_rate(833333 * 2);
+                }
             }
         }
 
@@ -218,3 +222,12 @@ void BaseOrchestrator::set_peer_state(Node* node, MigState state){
     mig_state[peer] = state; 
 }
 
+
+bool BaseOrchestrator::is_gateway(Node* node){
+    auto& topo = MyTopology::instance();
+    if (topo.get_data(node).mode == OpMode::GW){
+        return true;
+    } else {
+        return false;
+    }
+}
