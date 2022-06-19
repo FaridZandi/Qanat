@@ -264,7 +264,7 @@ std::list<nf_spec> OrchBottomUp::get_vm_nf_list(){
     return {
         {"tunnel_manager", 0}, //Must have
 
-        {"buffer", 10000},
+        {"buffer", 100000},
         {"delayer", 0.00005},
         {"monitor", 0},
 
@@ -276,7 +276,7 @@ std::list<nf_spec> OrchBottomUp::get_vm_nf_list(){
 
 std::list<nf_spec> OrchBottomUp::get_gw_nf_list(){
     return {
-        {"priority_buffer", 10000},
+        {"priority_buffer", 100000},
         {"delayer", 0.00005},
         {"monitor", 0},
 
