@@ -604,6 +604,15 @@ double RateLimiterNF::get_interval(){
 
 bool RateLimiterNF::recv(Packet* p, Handler* h){
     
+    hdr_ip* iph = hdr_ip::access(p);
+
+    // only rate limit packets that are coming from this node.
+    // hopefully, this will prevent the rate limiter from
+    // affecting the ack packets.
+    if (toponode_->node->address() != iph->src_.addr_){
+        return true;
+    }
+
     if(busy_){
         pq->enque(p);
         log_packet("Queuing the packet. New Q length:", pq->length());

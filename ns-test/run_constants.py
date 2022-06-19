@@ -11,7 +11,7 @@ perflowMP = 0
 
 initWindow = 10
 ackRatio = 1
-slowstartrestart = 'true'
+slowstartrestart = 'false'
 DCTCP_g = 0.0625
 min_rto = 0.2
 prob_cap_ = 5

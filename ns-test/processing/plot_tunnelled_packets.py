@@ -26,6 +26,10 @@ parser.add_argument("-r", "--reload",
                     default=False,
                     help="reload the dataset from the file")
 
+parser.add_argument("-n", "--no-plot",
+                    action="store_true", dest="no_plot", default=False,
+                    help="don't plot the data")
+
 
 args = parser.parse_args()
 
@@ -87,6 +91,8 @@ else:
     df = pd.read_csv(data_path)
     print("Loading data from the file finished")
 
+if args.no_plot:
+    exit()
 
 protocol_df = pd.read_csv(args.directory + "/data/protocol.csv") 
 print(protocol_df)

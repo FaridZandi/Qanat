@@ -32,6 +32,12 @@ parser.add_argument("-v", "--verbose",
                     action="store_true", dest="verbose", default=False,
                     help="print the lines to ouput")
 
+
+parser.add_argument("-n", "--no-plot",
+                    action="store_true", dest="no_plot", default=False,
+                    help="don't plot the data")
+
+
 args = parser.parse_args()
 
 
@@ -206,6 +212,8 @@ else:
     data_path = args.directory + "/data/protocol.csv" 
     df = pd.read_csv(data_path)
 
+if args.no_plot:
+    exit()
 
 # process the data 
 

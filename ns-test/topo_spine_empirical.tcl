@@ -153,7 +153,7 @@ if {[string compare $sourceAlg "DCTCP"] == 0} {
 
 #Shuang
 Agent/TCP/FullTcp set dynamic_dupack_ 0; #disable dupack
-Agent/TCP set window_ 2083;
+Agent/TCP set window_ 3000 ;
 Agent/TCP set windowInit_ $initWindow
 Agent/TCP set rtxcur_init_ $min_rto;
 
@@ -229,7 +229,7 @@ if {$enableMultiPath == 1} {
     } else {
         puts "not setting RT-DV"
     }
-    Agent/rtProto/DV set advertInterval	[expr 2*$sim_end]
+    Agent/rtProto/DV set advertInterval	[expr $sim_end]
     Node set multiPath_ 1
     if {$perflowMP != 0} {
         Classifier/MultiPath set perflow_ 1
@@ -395,7 +395,7 @@ while {1} {
 }
 
 
-$ns at 4 "$t start_stat_record"
+$ns at 3.75 "$t start_stat_record"
 
 if { $run_migration == "yes" } {
     puts "migration mode: migration will be run." 
@@ -407,7 +407,7 @@ if { $run_migration == "yes" } {
     MyTopology set process_after_migration_ 1
 } 
 
-$ns at 0.1 "$t setup_nodes"
+$ns at 3 "$t setup_nodes"
 
 
 #############  Agents ################
@@ -456,20 +456,22 @@ puts "vm traffic start_server_index: $start_server_index"
 puts "vm traffic end_server_index: $end_server_index"
 
 for {set i $start_server_index} {$i < $end_server_index} {incr i} {
-    $t rate_limit_node $s($i) [expr 2083 * 50]
+    $t rate_limit_node $s($i) [expr (833333) / $topology_spt]
 }
 
 puts "Setting up flows from the dedicated servers to the vms ..."; 
 
 set j 0 
-set tcp_connections_to_vm 1
+set tcp_connections_to_vm 6
 foreach leaf $logical_leaves {
     puts $leaf
     for {set i $start_server_index} {$i < $end_server_index} {incr i} {
         set server_num [expr {$i - $start_server_index}] 
-        if { ($server_num - $j) % $topology_spt < $tcp_connections_to_vm} {
+        set vm_connection_index [expr {($server_num - $j) % $topology_spt}]
 
-            set start_time [expr 4 + ($j * $tcp_connections_to_vm + $server_num) * 0.001]
+        if { $vm_connection_index < $tcp_connections_to_vm} {
+
+            set start_time [expr 3.75 + ($j * $tcp_connections_to_vm + $vm_connection_index) * 0.0026]
             puts "Setting up flows from server:[expr $i + 1] to vm:[expr $j + 1] at time $start_time"
 
             set pair_first [expr $i + 2000]
@@ -538,7 +540,7 @@ if {$enable_bg_traffic == 1} {
                 $agtagr($i,$j) set_PCarrival_process [expr $lambda/($total_servers - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
 
                 $ns at 0.1 "$agtagr($i,$j) warmup 1 5"
-                $ns at 4 "$agtagr($i,$j) init_schedule"
+                $ns at 3.5 "$agtagr($i,$j) init_schedule"
 
                 set init_fid [expr $init_fid + $connections_per_pair];
             }

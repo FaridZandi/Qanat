@@ -366,6 +366,8 @@ bool MigrationManager::handle_packet_from(tunnel_data td,
 			iph->src_.addr_ = td.to->address(); 
 			td.to->get_classifier()->recv(p, h);
 			return false;  
+		} else {	
+			return true; 
 		}
 	} else if (dir == Direction::Incoming) {		 
 		if (node_state == MigState::Migrated or 

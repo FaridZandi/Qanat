@@ -53,6 +53,7 @@ MyTopology::MyTopology(){
     is_migration_started = false;
     is_migration_finished = false; 
     is_sent_traffic_to_dest = false;
+    is_node_setup_done = false;
 
     mig_manager_ = new MigrationManager(); 
     instance_ = this; 
@@ -113,6 +114,7 @@ int MyTopology::command(int argc, const char*const* argv){
     } else if (argc == 2) {
         if (strcmp(argv[1], "setup_nodes") == 0){
             auto& orch = BaseOrchestrator::instance();
+            is_node_setup_done = true; 
             orch.setup_nodes();
             return TCL_OK; 
 
@@ -594,7 +596,6 @@ std::vector<Node*>& MyTopology::get_used_nodes(){
 
 
 std::vector<int> MyTopology::get_path(Node* n1, path_mode pm){
-
     auto dest = std::make_pair(n1, pm); 
 
     if (path_cache.find(dest) != path_cache.end()) {

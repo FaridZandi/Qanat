@@ -115,7 +115,8 @@ public:
     static int prioritization_level; 
 
     // migration-related variables
-    bool is_migration_started; 
+    bool is_migration_started;
+    bool is_node_setup_done; 
     bool is_migration_finished;
     double migration_finish_time; 
     bool is_sent_traffic_to_dest;

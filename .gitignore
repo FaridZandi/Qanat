@@ -2,3 +2,4 @@
 *.tr
 *.out
 indep-utils/*
+ns-test/exps/*

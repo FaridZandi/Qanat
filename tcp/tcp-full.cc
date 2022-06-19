@@ -946,7 +946,6 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 	// change the traffic class for determining whether 
 	// it should be bufferred or not
 	iph->traffic_class = this->traffic_class_;
-	iph->is_tcp_traffic = true;
 
 	iph->time_sent = Scheduler::instance().clock(); 
 	
@@ -965,7 +964,8 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 
 
 	if (this->traffic_class_ == 1){
-		
+		iph->is_tcp_traffic = true;
+
 		auto& topo = MyTopology::instance(); 
 
 		auto src_node = topo.get_node_by_address(this->here_.addr_);
@@ -994,18 +994,21 @@ FullTcpAgent::sendpacket(int seqno, int ackno, int pflags, int datalen, int reas
 			// std::cout << std::endl; 
 
 		} else if (dst_node != nullptr) {
-			// either of src and dst are logical nodes
 
-			std::vector<int> path; 
+			if (topo.is_node_setup_done){
+				// either of src and dst are logical nodes
 
-			path = topo.get_path(dst_node, PATH_MODE_RECEIVER);
+				std::vector<int> path; 
 
-			iph->dst_.addr_ = path[0];
-			iph->gw_path_pointer = path.size() - 2;
+				path = topo.get_path(dst_node, PATH_MODE_RECEIVER);
 
-			int ptr = path.size() - 1; 
-			for (auto elem: path){
-				iph->gw_path[ptr --] = elem;
+				iph->dst_.addr_ = path[0];
+				iph->gw_path_pointer = path.size() - 2;
+
+				int ptr = path.size() - 1; 
+				for (auto elem: path){
+					iph->gw_path[ptr --] = elem;
+				}
 			}
 			
 		} else if (src_node != nullptr) {

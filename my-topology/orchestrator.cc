@@ -44,7 +44,7 @@ void BaseOrchestrator::setup_nodes(){
         mig_state[node] = MigState::Normal;
     }
 
-    // The other tree is just out of service.
+    // The other tree is out of service.
     for(auto& node: topo.get_all_nodes(mig_root_peer)){
         mig_state[node] = MigState::OutOfService;
     }

@@ -24,6 +24,10 @@ parser.add_argument("-v", "--verbose",
                     action="store_true", dest="verbose", default=False,
                     help="print the lines to ouput")
 
+parser.add_argument("-n", "--no-plot",
+                    action="store_true", dest="no_plot", default=False,
+                    help="don't plot the data")
+
 args = parser.parse_args()
 
 
@@ -118,6 +122,10 @@ if args.reload:
 else: 
     data_path = args.directory + "/data/flows.csv" 
     df = pd.read_csv(data_path)
+
+
+if args.no_plot:
+    exit()
 
 print("finished loading the dataset")
 print(df)
@@ -240,5 +248,3 @@ plot_dst_hist(df)
 plot_fct_over_time(df)
 # plot_throughput_over_time_1(df)
 # plot_throughput_over_time_2(df)
-
-# print (df[df["dst"] == 41])

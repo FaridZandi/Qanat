@@ -27,6 +27,11 @@ parser.add_argument("-r", "--reload",
                     help="reload the dataset from the file")
 
 
+parser.add_argument("-n", "--no-plot",
+                    action="store_true", dest="no_plot", default=False,
+                    help="don't plot the data")
+
+
 args = parser.parse_args()
 
 
@@ -96,6 +101,11 @@ else:
     data_path = args.directory + "/data/nodes.csv" 
     df = pd.read_csv(data_path)
     print("Loading data from the file finished")
+
+
+if args.no_plot:
+    exit()
+    
 
 # sample the protocol df enteries to plot them 
 # df['low_prio_buf'] = df['low_prio_buf'].rolling(100).max()

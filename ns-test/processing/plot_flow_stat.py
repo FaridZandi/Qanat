@@ -31,6 +31,11 @@ parser.add_argument("-r", "--reload",
                     help="reload the dataset from the file")
 
 
+parser.add_argument("-n", "--no-plot",
+                    action="store_true", dest="no_plot", default=False,
+                    help="don't plot the data")
+
+
 args = parser.parse_args()
 
 def setup_directories():
@@ -99,7 +104,9 @@ else:
     print("Loading data from the file finished")
 
 
-
+if args.no_plot:
+    exit()
+    
 
 df['packets_received_orig'] = df['packets_received']
 # df['packets_received'] = df['packets_received'].rolling(10).mean()
