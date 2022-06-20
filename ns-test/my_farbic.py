@@ -6,9 +6,10 @@ from run_constants import *
 
 
 def run_cmd(c, cmd, pty=False):
-    print('running command on {}. cmd: {}'.format(c.host, cmd))
+    # print('running command on {}. cmd: {}'.format(c.host, cmd))
+
     result = c.run(cmd, pty=pty)
-    print(result)
+    # print(result)
 
 def create_nsuser(c):
     cmds = [
@@ -54,6 +55,17 @@ def sync_repo_and_make(c, m_ip):
     #     c.run("make clean")
     #     c.run("make -j64")
 
+def killallns(c, m_ip):
+    run_cmd(c, "killall ns")
+
+
+def show_stat(c, m_ip):
+    print(m_ip, ":")
+    run_cmd(c, "uptime")
+    run_cmd(c, "echo -n 'wc output' && ps aux | grep spine | wc")
+    run_cmd(c, "cat /proc/meminfo | head -n 3 | tail -n 1;")
+    print("----------------------------")
+
 
 def del_files(c, dir_to_remove):
     if (dir_to_remove == "./" or dir_to_remove == "/"):
@@ -71,10 +83,14 @@ if __name__ == "__main__":
         # p.map(install_ns2, connections.values())
         # p.starmap(run_cmd, zip(connections.values(), repeat("sudo pkill -f ns-allinone")))
         # p.starmap(del_files, zip(connections.values(), repeat("/home/{}/ns-allinone-2.34/ns-2.34/ns-test/exps/".format(USER))))
-        p.starmap(sync_repo_and_make, zip(connections.values(), connections.keys()))
+        # p.starmap(sync_repo_and_make, zip(connections.values(), connections.keys()))
+        # p.starmap(killallns, zip(connections.values(), connections.keys()))
+        # p.starmap(show_stat, zip(connections.values(), connections.keys()))
+        pass
 
     # For sequential runs
-    # for m_ip in MACHINES:
-    #     c = connections[m_ip]
+    for m_ip in MACHINES:
+        c = connections[m_ip]
+        show_stat(c, m_ip)
     #     install_ns2(c)
     #     os.system('ssh-copy-id {}@{}'.format(USER, m_ip)) 

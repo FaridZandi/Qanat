@@ -146,8 +146,8 @@ if args.reload:
 
             ################ Buffer Sizes ####################
 
-            protocol_end += 1000
-            protocol_start -= 1000
+            protocol_end += 100
+            protocol_start -= 100
 
             # node df corresponding to the protocol running time 
             mig_node_stats_df = df_node_stats[df_node_stats["time"] >= protocol_start]

@@ -18,7 +18,7 @@ number_worker_threads = 30
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
-REMOTE_RUN = False
+REMOTE_RUN = True
 
 ns_path = '../ns'
 if DEBUG_VALGRIND:
@@ -63,7 +63,6 @@ def remote_worker(m_ip):
 		command, directory_name, exp_name = setup_exp(exp)
 		
 		print("worker", m_ip, "running", command)
-		# return 
 
 		script_dir = '/home/{}/ns-allinone-2.34/ns-2.34/ns-test'.format(USER)
 		with conn.cd(script_dir):
@@ -201,8 +200,8 @@ if __name__ == "__main__":
 			"parallel_mig": [1], 
 			"load": [0.5],
 			"oversub": [2.0],
-			"src_zone_delay": [0.000005, 0.00005, 0.0005, 0.005, 0.05], # in seconds
-			"dst_zone_delay": [0.000005, 0.00005, 0.0005, 0.005, 0.05], # in seconds 
+			"src_zone_delay": [0.000005, 0.00005, 0.0005], # in seconds
+			"dst_zone_delay": [0.000005, 0.00005, 0.0005], # in seconds 
 			"traffic_zone_delay": [0.01], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes"], # "no", "skip"
@@ -214,12 +213,38 @@ if __name__ == "__main__":
 			###########################################################
 			########| don't make a list out of the following |#########
 			###########################################################
-			"exp_name": [exp_name],
+			"exp_name": ["lat_effect_1"],
 			"enable_rt_dv": [0], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"enable_bg_traffic": [0], # 0: disable, 1: enable
 			"stat_record_interval": [0.001], # in seconds
 			"sim_end": [30000], # number of flows
-			"vm_flow_size": [1000000], # in packets,
+			"vm_flow_size": [100000], # in packets,
+			"dc_size": [(1, 1, 7)], # (spines, bg_tors, spt)
+			"tree_shape": [(2, 1, 1)], #branching factors of the tree
+		}, {
+			"mig_sizes": [(1, 10, 10)],
+			"parallel_mig": [1], 
+			"load": [0.5],
+			"oversub": [2.0],
+			"src_zone_delay": [0.000005, 0.00005, 0.0005], # in seconds
+			"dst_zone_delay": [0.000005, 0.00005, 0.0005], # in seconds 
+			"traffic_zone_delay": [0.01], # in seconds
+			"network_topo": ["datacenter"], # "dumbell" 
+			"run_migration": ["yes"], # "no", "skip"
+			"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+			"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+			"bg_traffic_cdf": [("dctcp", 1138)],
+			"Protocol": [("DCTCP", "MamadQueue")], 
+			"link_rate": [10],
+			###########################################################
+			########| don't make a list out of the following |#########
+			###########################################################
+			"exp_name": ["lat_effect_2"],
+			"enable_rt_dv": [0], # 0: disable, 1: enable
+			"enable_bg_traffic": [0], # 0: disable, 1: enable
+			"stat_record_interval": [0.001], # in seconds
+			"sim_end": [30000], # number of flows
+			"vm_flow_size": [100000], # in packets,
 			"dc_size": [(1, 1, 7)], # (spines, bg_tors, spt)
 			"tree_shape": [(2, 1, 1)], #branching factors of the tree
 		}]
@@ -311,8 +336,8 @@ if __name__ == "__main__":
 			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		}]
 
-	elif exp_name == "paper_tests":
-		configs = [
+	elif exp_name == "paper_tests": # 24 + 84 + 32 + 7 + 168 + 25 = 108 + 39 + 193 = 147 + 193 = 340 = 180 + 160
+		configs = [ # 2 * 2 * 3 * 2  = 24 
 			{	
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
 				"parallel_mig": [1, 2], 
@@ -342,7 +367,7 @@ if __name__ == "__main__":
 			},
 
 
-			{	
+			{	# 2 * 7 * 2 * 3 = 14 * 6 = 84 
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
 				"parallel_mig": [1], 
 				"load": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
@@ -370,7 +395,7 @@ if __name__ == "__main__":
 				"tree_shape": [(2, 2, 2)], #branching factors of the tree
 			},
 
-			{	
+			{	# 2 * 8 * 2 = 32 
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
 				"parallel_mig": [1, 2, 3, 4, 5, 6, 7, 8], 
 				"load": [0.5],
@@ -400,7 +425,7 @@ if __name__ == "__main__":
 
 			
 
-			{	
+			{	# 7 
 				"mig_sizes": [
 					(1, 10, 10), (1, 50, 50), 
 					(1, 100, 100), (1, 200, 200),
@@ -433,7 +458,7 @@ if __name__ == "__main__":
 			},
 
 
-			{	
+			{	# 2 * 7 * 3 * 2 * 2 = 14 * 12 = 144 + 24 = 168 
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
 				"parallel_mig": [1], 
 				"load": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
@@ -462,13 +487,13 @@ if __name__ == "__main__":
 			},
 
 
-			{	
+			{	# 5 * 5 = 25 
 				"mig_sizes": [(1, 50, 50)],
 				"parallel_mig": [1], 
 				"load": [0.5],
 				"oversub": [2.0],
-				"src_zone_delay": [0.000005, 0.00005, 0.0005, 0.005, 0.05], # in seconds
-				"dst_zone_delay": [0.000005, 0.00005, 0.0005, 0.005, 0.05], # in seconds 
+				"src_zone_delay": [0.000005, 0.00005, 0.0005, 0.005], # in seconds
+				"dst_zone_delay": [0.000005, 0.00005, 0.0005, 0.005], # in seconds 
 				"traffic_zone_delay": [0.01], # in seconds
 				"network_topo": ["datacenter"], # "dumbell" 
 				"run_migration": ["yes"], # "no", "skip"
@@ -490,6 +515,8 @@ if __name__ == "__main__":
 				"tree_shape": [(2, 2, 2)], #branching factors of the tree
 			},
 		]
+	
+
 
 	if not configs:
 		print("No configs found for experiment: ", exp_name)
