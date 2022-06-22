@@ -248,7 +248,7 @@ void MyTopology::start_tcp_app(Node* n1){
     agent->node = n1;
 
     tcl_command({data[n1].tcp, "set",
-                "minrto_", "0.001",});
+                "minrto_", "0.05",});
 
     tcl_command({sim_ptr, "attach-agent",
                  data[n1].pointer, 
@@ -963,6 +963,8 @@ void StatRecorder::handle(Event* event){
     auto stat_record_finish = topo.migration_finish_time + record_after_finish;
 
     if(topo.is_migration_finished && now > stat_record_finish){
+        return; 
+    } else if (now >= 10) {
         return; 
     } else {
         Event* e = new Event; 

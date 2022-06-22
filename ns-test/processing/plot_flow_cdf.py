@@ -158,8 +158,8 @@ def plot_measure(measure):
 
     print("saving", plot_path)
     plt.tight_layout()
-    plt.xlim([1,35000])
-    plt.ylim([0.5,1.01])
+    plt.xlim([1,50000])
+    plt.ylim([0,1.01])
     plt.savefig(plot_path, dpi=300, bbox_inches='tight')
 
 

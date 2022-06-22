@@ -3,7 +3,13 @@ from multiprocessing import Pool
 from itertools import repeat
 import os
 from run_constants import *
+import sys
 
+if len(sys.argv) < 2:
+    print("Usage: python run_exp.py <exp_name>")
+    exit(0)
+
+what_to_do = sys.argv[1]
 
 def run_cmd(c, cmd, pty=False):
     # print('running command on {}. cmd: {}'.format(c.host, cmd))
@@ -57,6 +63,7 @@ def sync_repo_and_make(c, m_ip):
 
 def killallns(c, m_ip):
     run_cmd(c, "killall ns")
+    run_cmd(c, "killall rsync")
 
 
 def show_stat(c, m_ip):
@@ -83,14 +90,19 @@ if __name__ == "__main__":
         # p.map(install_ns2, connections.values())
         # p.starmap(run_cmd, zip(connections.values(), repeat("sudo pkill -f ns-allinone")))
         # p.starmap(del_files, zip(connections.values(), repeat("/home/{}/ns-allinone-2.34/ns-2.34/ns-test/exps/".format(USER))))
-        # p.starmap(sync_repo_and_make, zip(connections.values(), connections.keys()))
-        # p.starmap(killallns, zip(connections.values(), connections.keys()))
-        # p.starmap(show_stat, zip(connections.values(), connections.keys()))
-        pass
+        if what_to_do == "sync":
+            p.starmap(sync_repo_and_make, zip(connections.values(), connections.keys()))
+
+        if what_to_do == "killall":
+            p.starmap(killallns, zip(connections.values(), connections.keys()))
+
 
     # For sequential runs
     for m_ip in MACHINES:
         c = connections[m_ip]
-        show_stat(c, m_ip)
+        # print(m_ip)
+        # killallns(c, m_ip)
+        if what_to_do == "showstat":
+            show_stat(c, m_ip)
     #     install_ns2(c)
     #     os.system('ssh-copy-id {}@{}'.format(USER, m_ip)) 

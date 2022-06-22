@@ -81,8 +81,8 @@ TCP_pair instproc setup {snode dnode} {
 
     # set the minrto for the agents 
     if { $is_single_flow == 0 } {
-        $tcps set minrto_ 0.001
-        $tcpr set minrto_ 0.001
+        $tcps set minrto_ 0.05
+        $tcpr set minrto_ 0.05
     } else {
         $tcps set minrto_ 0.1
         $tcpr set minrto_ 0.1

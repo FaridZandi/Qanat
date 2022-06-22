@@ -9,7 +9,7 @@ paretoShape = 1.05
 enableMultiPath = 1
 perflowMP = 0
 
-initWindow = 10
+initWindow = 70
 ackRatio = 1
 slowstartrestart = 'false'
 DCTCP_g = 0.0625

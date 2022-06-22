@@ -70,6 +70,8 @@ metrics = [
 
 
 def clean_data(df):
+    df.replace('', 0, inplace=True) 
+    
     df.bg_cdf = df.bg_cdf.replace("vl2", "DataMining")
     df.bg_cdf = df.bg_cdf.replace("dctcp", "WebSearch")
 
@@ -142,7 +144,7 @@ def plot_exp_bar(conf):
             # set plot settings 
             ax.set_xlabel(x_title)
             ax.set_ylabel(desc_map[metric])
-            
+
             if conf["hue_setting"]:
                 plt.legend(title = hue_title)
 
@@ -153,65 +155,74 @@ def plot_exp_bar(conf):
             plt.clf() 
 
 
-plot_exp_bar({
-    "exp_name": "orch_test", 
-    "plot_name": "orch_test",
-    "x_setting": ["gw_snapshot_size", "parallel_mig"],
-    "hue_setting": ["orch_type"],
-    "repeat_per": ["cc_protocol"],
-    "metrics": metrics,
-}) 
+# plot_exp_bar({
+#     "exp_name": "orch_test", 
+#     "plot_name": "orch_test",
+#     "x_setting": ["gw_snapshot_size", "parallel_mig"],
+#     "hue_setting": ["orch_type", "prioritization"],
+#     "repeat_per": ["cc_protocol"],
+#     "metrics": metrics,
+# }) 
+
+# plot_exp_bar({
+#     "exp_name": "parallel_test", 
+#     "plot_name": "parallel_test",
+#     "x_setting": ["parallel_mig"],
+#     "hue_setting": ["gw_snapshot_size"],
+#     "repeat_per": ["cc_protocol"],
+#     "metrics": metrics,
+# }) 
+
+# plot_exp_bar({
+#     "exp_name": "prio_test", 
+#     "plot_name": "prio_test",
+#     "x_setting": ["load"],
+#     "hue_setting": ["prioritization"],
+#     "repeat_per": ["gw_snapshot_size", "cc_protocol"],
+#     "metrics": metrics,
+# }) 
+
+# plot_exp_bar({
+#     "exp_name": "size_test", 
+#     "plot_name": "size_test",
+#     "x_setting": ["vm_snapshot_size", "gw_snapshot_size"],
+#     "hue_setting": None,
+#     "repeat_per": ["cc_protocol"],
+#     "metrics": metrics,
+# }) 
+
+# plot_exp_bar({
+#     "exp_name": "latency_test", 
+#     "plot_name": "latency_test",
+#     "x_setting": ["src_zone_delay"],
+#     "hue_setting": ["dst_zone_delay"],
+#     "repeat_per": ["cc_protocol"],
+#     "metrics": metrics,
+# }) 
+
+# plot_exp_bar({
+#     "exp_name": "bg_test", 
+#     "plot_name": "bg_test",
+#     "x_setting": ["prioritization"],
+#     "hue_setting": ["bg_cdf", "cc_protocol"],
+#     "repeat_per": ["gw_snapshot_size", "load"],
+#     "metrics": metrics,
+# }) 
+
+# plot_exp_bar({
+#     "exp_name": "bg_test", 
+#     "plot_name": "bg_test_2",
+#     "x_setting": ["load"],
+#     "hue_setting": ["bg_cdf", "cc_protocol"],
+#     "repeat_per": ["gw_snapshot_size", "prioritization"],
+#     "metrics": metrics,
+# }) 
 
 plot_exp_bar({
-    "exp_name": "parallel_test", 
-    "plot_name": "parallel_test",
-    "x_setting": ["parallel_mig"],
-    "hue_setting": ["gw_snapshot_size"],
-    "repeat_per": ["cc_protocol"],
-    "metrics": metrics,
-}) 
-
-plot_exp_bar({
-    "exp_name": "prio_test", 
-    "plot_name": "prio_test",
-    "x_setting": ["load"],
-    "hue_setting": ["prioritization"],
-    "repeat_per": ["gw_snapshot_size", "cc_protocol"],
-    "metrics": metrics,
-}) 
-
-plot_exp_bar({
-    "exp_name": "size_test", 
-    "plot_name": "size_test",
-    "x_setting": ["vm_snapshot_size", "gw_snapshot_size"],
-    "hue_setting": None,
-    "repeat_per": ["cc_protocol"],
-    "metrics": metrics,
-}) 
-
-plot_exp_bar({
-    "exp_name": "latency_test", 
-    "plot_name": "latency_test",
-    "x_setting": ["src_zone_delay"],
-    "hue_setting": ["dst_zone_delay"],
-    "repeat_per": ["cc_protocol"],
-    "metrics": metrics,
-}) 
-
-plot_exp_bar({
-    "exp_name": "bg_test", 
-    "plot_name": "bg_test",
+    "exp_name": "rate_limited_3", 
+    "plot_name": "rate_limited_3",
     "x_setting": ["prioritization"],
-    "hue_setting": ["bg_cdf", "cc_protocol"],
-    "repeat_per": ["gw_snapshot_size", "load"],
-    "metrics": metrics,
-}) 
-
-plot_exp_bar({
-    "exp_name": "bg_test", 
-    "plot_name": "bg_test_2",
-    "x_setting": ["load"],
-    "hue_setting": ["bg_cdf", "cc_protocol"],
-    "repeat_per": ["gw_snapshot_size", "prioritization"],
+    "hue_setting": ["orch_type", "migration_status"],
+    "repeat_per": ["gw_snapshot_size"],
     "metrics": metrics,
 }) 

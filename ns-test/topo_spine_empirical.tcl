@@ -153,7 +153,7 @@ if {[string compare $sourceAlg "DCTCP"] == 0} {
 
 #Shuang
 Agent/TCP/FullTcp set dynamic_dupack_ 0; #disable dupack
-Agent/TCP set window_ 1000;
+Agent/TCP set window_ 347;
 Agent/TCP set windowInit_ $initWindow
 Agent/TCP set rtxcur_init_ $min_rto;
 

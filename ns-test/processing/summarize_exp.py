@@ -45,8 +45,10 @@ def weighted_average(group, weight_col, value_col):
     # get the sum of the weights * values
     values = group[weight_col] * group[value_col]
 
-    # get the weighted average
-    return values.sum() / weights
+    if weights == 0:
+        return 0 
+    else: 
+        return values.sum() / weights
 
  
 
@@ -106,6 +108,7 @@ if args.reload:
 
             # average fct 
             exp_info["vm_afct"] = vm_flows["fct"].mean()
+            print(exp_info["vm_afct"])
             exp_info["bg_afct"] = bg_flows["fct"].mean()
 
             # retransmission rates 
@@ -115,11 +118,10 @@ if args.reload:
             # average_rate 
             exp_info["vm_avg_r"] = vm_flows["avg_rate"].mean()
             exp_info["bg_avg_r"] = bg_flows["avg_rate"].mean()
-
             
             ################ Total Migration time ###############
 
-            protocol_end = 4000
+            protocol_end = 4500
             protocol_start = 7000
 
             try: 
@@ -146,8 +148,8 @@ if args.reload:
 
             ################ Buffer Sizes ####################
 
-            protocol_end += 100
-            protocol_start -= 100
+            protocol_end += 10
+            protocol_start -= 10
 
             # node df corresponding to the protocol running time 
             mig_node_stats_df = df_node_stats[df_node_stats["time"] >= protocol_start]
