@@ -962,7 +962,9 @@ void StatRecorder::handle(Event* event){
     auto now = Scheduler::instance().clock(); 
     auto stat_record_finish = topo.migration_finish_time + record_after_finish;
 
-    if(topo.is_migration_finished && now > stat_record_finish){
+    if(topo.is_migration_finished && now > stat_record_finish ){
+        return; 
+    } else if (now >= 10) {
         return; 
     } else {
         Event* e = new Event; 

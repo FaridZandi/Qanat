@@ -304,7 +304,7 @@ Buffer::Buffer(TopoNode* toponode, int chain_pos, int size)
     buffering_ = false; 
     busy_ = false; 
     size_ = size; 
-    rate_ = 833333;
+    rate_ = 83333;
     max_buf_size = 0; 
 }
 

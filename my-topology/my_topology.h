@@ -212,7 +212,7 @@ public:
 
     // how much should the stat-recorder continue 
     // to record after the migration is finished.
-    static constexpr double record_after_finish = 1;  
+    static constexpr double record_after_finish = 4;  
 };
 
 #endif

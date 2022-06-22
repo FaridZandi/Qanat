@@ -167,6 +167,7 @@ def plot_measure(measure):
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
+    ax.set_yscale("log")
     sum_df = df.groupby(['time']).sum().reset_index()
     plot_flow("total", ax, sum_df)
 
