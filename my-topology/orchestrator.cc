@@ -36,42 +36,54 @@ BaseOrchestrator::BaseOrchestrator(){
 void BaseOrchestrator::setup_nodes(){
     auto& topo = MyTopology::instance(); 
     
-    auto mig_root = topo.get_mig_root();
-    auto mig_root_peer = topo.get_peer(mig_root);
-
     // The main tree is just working normally.
-    for(auto& node: topo.get_all_nodes(mig_root)){
+    for(auto& node: topo.get_all_nodes(topo.mig_roots)){
         mig_state[node] = MigState::Normal;
+        topo.get_data(node).mode = OpMode::GW;
     }
 
     // The other tree is out of service.
-    for(auto& node: topo.get_all_nodes(mig_root_peer)){
+    for(auto& node: topo.get_all_nodes(topo.mig_roots_peers())){
         mig_state[node] = MigState::OutOfService;
+        topo.get_data(node).mode = OpMode::GW;
     }
 
-    for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
-        //populate the VM NFs based on the list
-        for(auto& node: topo.get_leaves(root)){    
-            topo.get_data(node).mode = OpMode::VM;
-            for (nf_spec& nfs: get_vm_nf_list()){
-                auto nf = topo.get_data(node).add_nf(nfs.type, nfs.parameter);
-                if (nfs.type == "buffer") {
-                    auto buf = (Buffer*) nf;
-                    buf->set_rate(833333 * 2);
-                }
-            }
-        }
 
-        //populate the GW NFs based on the list
-        for(auto& node: topo.get_internals(root)){     
-            topo.get_data(node).mode = OpMode::GW;
-            for (nf_spec& nfs: get_gw_nf_list()){
-                // std::cout << "Adding nf: " << nfs.type << " to ";
-                // std::cout << " uid: " << topo.get_data(node).uid << std::endl;
-                topo.get_data(node).add_nf(nfs.type, nfs.parameter);
-            }
-        }
+    // The main tree is just working normally.
+    for(auto& node: topo.get_leaves(topo.mig_roots)){
+        topo.get_data(node).mode = OpMode::VM;
     }
+
+    // The other tree is out of service.
+    for(auto& node: topo.get_leaves(topo.mig_roots_peers())){
+        topo.get_data(node).mode = OpMode::VM;
+    }
+
+
+
+    // for (auto& root: std::list<Node*>({mig_root, mig_root_peer})){
+    //     //populate the VM NFs based on the list
+    //     for(auto& node: topo.get_leaves(root)){    
+    //         topo.get_data(node).mode = OpMode::VM;
+    //         for (nf_spec& nfs: get_vm_nf_list()){
+    //             auto nf = topo.get_data(node).add_nf(nfs.type, nfs.parameter);
+    //             if (nfs.type == "buffer") {
+    //                 auto buf = (Buffer*) nf;
+    //                 buf->set_rate(833333 * 2);
+    //             }
+    //         }
+    //     }
+
+    //     //populate the GW NFs based on the list
+    //     for(auto& node: topo.get_internals(root)){     
+    //         topo.get_data(node).mode = OpMode::GW;
+    //         for (nf_spec& nfs: get_gw_nf_list()){
+    //             // std::cout << "Adding nf: " << nfs.type << " to ";
+    //             // std::cout << " uid: " << topo.get_data(node).uid << std::endl;
+    //             topo.get_data(node).add_nf(nfs.type, nfs.parameter);
+    //         }
+    //     }
+    // }
 
     topo.introduce_nodes_to_classifiers(); 
 }
@@ -144,7 +156,7 @@ void BaseOrchestrator::log_event(std::string message, Node* node, int arg, bool 
     
 
     if (print_tree){
-        topo.print_graph(true);
+        // topo.print_graph(true);
     }
 }
 
@@ -154,14 +166,14 @@ void BaseOrchestrator::buffer_on_peer(Node* node){
     auto peer_data = topo.get_data(peer);
 
     if (topo.get_data(node).mode == VM){
-        auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
+        // auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
         log_event("start vm buffering", peer);
-        peer_buffer->start_buffering();
+        // peer_buffer->start_buffering();
 
     } else if (topo.get_data(node).mode == GW){
-        auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
+        // auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
         log_event("start gw buffering", peer);
-        peer_buffer->start_buffering();
+        // peer_buffer->start_buffering();
     }
 }
 
@@ -171,14 +183,14 @@ void BaseOrchestrator::process_on_peer(Node* node){
     auto peer_data = topo.get_data(peer);
 
     if (topo.get_data(node).mode == VM){
-        auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
+        // auto peer_buffer = (Buffer*)peer_data.get_nf("buffer");
         log_event("end vm buffering", peer);
-        peer_buffer->stop_buffering();
+        // peer_buffer->stop_buffering();
         
     } else if (topo.get_data(node).mode == GW){
-        auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
+        // auto peer_buffer = (PriorityBuffer*)peer_data.get_nf("pribuf");
         log_event("end gw buffering", peer);
-        peer_buffer->stop_buffering();
+        // peer_buffer->stop_buffering();
     }
 }
 

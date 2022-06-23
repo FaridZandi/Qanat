@@ -34,6 +34,8 @@ public:
 
 private:    
 
+    void try_parent_precopy(Node* n);
+
     void tunnel_subtree_tru_parent(Node* node);
 
     void migration_finished();

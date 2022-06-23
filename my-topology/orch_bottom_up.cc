@@ -35,7 +35,7 @@ void OrchBottomUp::dequeue_next_node(){
         if (is_gateway(node)){
             start_gw_migration(node);
         } else {
-            start_vm_precopy(node);
+            start_gw_migration(node);
         }
     }
 } 
@@ -68,22 +68,27 @@ void OrchBottomUp::start_migration(){
     std::srand(123);
 
     auto& topo = MyTopology::instance(); 
-    auto mig_root = topo.get_mig_root(); 
+    auto mig_roots = topo.mig_roots; 
 
-    for (auto& leaf: topo.get_leaves(mig_root)){
+    std::cout << "Migration Queue: ";
+    for (auto& leaf: topo.get_leaves(mig_roots)){
         migration_queue.push(leaf);
-        std::cout << leaf->address() << " ";
+        std::cout << topo.uid(leaf) << " ";
     }
+    std::cout << std::endl; 
 
     dequeue_next_node(); 
 };
 
   
 void OrchBottomUp::start_vm_precopy(Node* vm){
+    auto& topo = MyTopology::instance(); 
+    
     set_node_state(vm, MigState::PreMig);
     set_peer_state(vm, MigState::OutOfService);
 
     log_event("start vm precopy", vm);
+    log_event("start vm precopy", topo.get_peer(vm));
 
     initiate_data_transfer(
         vm, get_random_transfer_size(MyTopology::vm_precopy_size, 10), 
@@ -95,31 +100,42 @@ void OrchBottomUp::start_vm_precopy(Node* vm){
 }
 
 void OrchBottomUp::vm_precopy_finished(Node* vm){
+    auto& topo = MyTopology::instance(); 
+
     log_event("end vm precopy", vm);
+    log_event("end vm precopy", topo.get_peer(vm));
+
     start_vm_migration(vm); 
 }; 
 
 
+void OrchBottomUp::try_parent_precopy(Node* n){
+    auto& topo = MyTopology::instance(); 
+    std::cout << "try parent precopy: " << topo.uid(n) << std::endl;
+
+    auto parent_gws = topo.get_parents(n);
+
+    for(auto& parent_gw: parent_gws){
+        if (mig_state[parent_gw] == MigState::Normal){        
+            set_node_state(parent_gw, MigState::PreMig);
+            set_peer_state(parent_gw, MigState::PreMig);
+            log_event("start gw precopy", parent_gw);
+            log_event("start gw precopy", topo.get_peer(parent_gw));
+        }
+    }
+}
 
 void OrchBottomUp::start_vm_migration(Node* vm){
     set_node_state(vm, MigState::InMig);
     set_peer_state(vm, MigState::Buffering);
 
-    MyTopology::instance().setup_nth_layer_tunnel(vm, 1);
-    
-    auto& topo = MyTopology::instance();
-    auto parent_gw = topo.get_nth_parent(vm,1);
-
-    if (mig_state[parent_gw] == MigState::Normal){
-        set_node_state(parent_gw, MigState::PreMig);
-        set_peer_state(parent_gw, MigState::PreMig);
-        log_event("start gw precopy", parent_gw);
-        log_event("start gw precopy", topo.get_peer(parent_gw));
-    }
-
-    buffer_on_peer(vm);
-
     log_event("start vm migration", vm);
+
+    // MyTopology::instance().setup_nth_layer_tunnel(vm, 1);
+
+    try_parent_precopy(vm); 
+   
+    buffer_on_peer(vm);
 
     // std::cout << "MyTopology::vm_snapshot_size: " << MyTopology::vm_snapshot_size << std::endl; 
 
@@ -149,15 +165,22 @@ void OrchBottomUp::vm_migration_finished(Node* vm){
 
 void OrchBottomUp::try_parent_migration(Node* node){
     auto& topo = MyTopology::instance();
-    auto gw = topo.get_nth_parent(node, 1); 
+    auto parent_gws = topo.get_parents(node); 
 
-    if (all_children_migrated(gw)){
-        migration_queue.push(gw); 
+    for (auto parent_gw: parent_gws){
+        if (all_children_migrated(parent_gw)){
+            migration_queue.push(parent_gw); 
+        }
     }
 }
 
 void OrchBottomUp::start_gw_migration(Node* gw){
     auto& topo = MyTopology::instance();
+
+    if (mig_state[gw] == MigState::PreMig){
+        log_event("end gw precopy", gw);
+        log_event("end gw precopy", topo.get_peer(gw));
+    }
 
     set_node_state(gw, MigState::InMig);
     set_peer_state(gw, MigState::Buffering);
@@ -169,9 +192,6 @@ void OrchBottomUp::start_gw_migration(Node* gw){
 
 void OrchBottomUp::start_gw_snapshot(Node* gw){
     auto& topo = MyTopology::instance();
-    
-    log_event("end gw precopy", gw);
-    log_event("end gw precopy", topo.get_peer(gw));
     log_event("start gw migration", gw);
 
     initiate_data_transfer(
@@ -213,8 +233,11 @@ void OrchBottomUp::gw_snapshot_ack_rcvd(Node* gw){
             orch.gw_start_processing_buffer_on_peer(n);
         }
     ); 
+
+    try_parent_precopy(peer); 
+
     // start to send the data through the lower priority tunnel
-    tunnel_subtree_tru_parent(peer);   
+    // tunnel_subtree_tru_parent(peer);   
 }
 
 void OrchBottomUp::gw_start_processing_buffer_on_peer(Node* gw){
@@ -230,9 +253,19 @@ void OrchBottomUp::gw_start_processing_buffer_on_peer(Node* gw){
     set_node_state(gw, MigState::Migrated);
     set_peer_state(gw, MigState::Normal);
 
-    if (gw == topo.get_mig_root()){
-        log_event("migration finished", gw);
-        migration_finished();
+    if (topo.is_mig_root(gw)){
+        bool is_all_finished = true; 
+        for (auto& mig_root: topo.mig_roots){
+            if(mig_state[mig_root] != MigState::Migrated){
+                is_all_finished = false; 
+            }
+        }
+        if (is_all_finished){
+            log_event("migration finished", gw);
+            migration_finished();
+        } else {
+            dequeue_next_node(); 
+        }
     } else {
         try_parent_migration(gw); 
         dequeue_next_node(); 

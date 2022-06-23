@@ -1,3 +1,5 @@
+from audioop import add
+from platform import node
 import pandas as pd 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -176,7 +178,6 @@ if args.reload:
     ])
 
     for address in times: 
-        print (address)
         uid = int(address.split("-")[2])
 
         if uid < 10:
@@ -215,6 +216,33 @@ else:
 if args.no_plot:
     exit()
 
+
+graph_data = {}
+log_file = args.directory + "/" + "logFile.tr"
+with open(log_file) as f: 
+    for line in f.readlines(): 
+        line = line.strip()
+        if not line.startswith("graph_data"):
+            continue 
+
+        s = line.split(" ")
+
+        uid = int(s[1])
+
+        children = [] 
+        for i in range (5, len(s)):
+            children.append(int(s[i]))
+
+        node_data = {
+            "layer": int(s[2]),
+            "child_index": int(s[3]),
+            "children": children,
+            "x": 0, 
+            "y": 0, 
+        }
+
+        graph_data[uid] = node_data
+        
 # process the data 
 
 max_time = max(
@@ -237,6 +265,7 @@ min_time = min(
 
 # plot the protocol 
 
+
 for i in range(3): 
 
     if i == 0: 
@@ -248,10 +277,26 @@ for i in range(3):
 
     vm_df = half_df[half_df["type"] == "VM"]
     gw_df = half_df[half_df["type"] == "GW"]
-    
-    gw_df = gw_df.sort_values("address")
 
+    def change_to_gw(address): 
+        return "VNF" + address[2:]
+
+    gw_df.address = gw_df.address.apply(change_to_gw)
+
+    def get_level(address):
+        return int(address.split("-")[1])
+
+    def get_level_keys(col):
+        return col.apply(get_level)
+
+    gw_df = gw_df.sort_values("start_mig").sort_values(by="address", key=get_level_keys)
     print(half_df)
+
+    for index, row in half_df.iterrows():
+        address = row["address"]
+        uid = int(address.split("-")[2])
+        node_data = graph_data[uid]
+        # print(node_data)
 
     if i == 0: 
         plot_height = 10 
@@ -261,8 +306,8 @@ for i in range(3):
         plot_height = 16
     
     legend_elements = [
-        Patch(facecolor='lime', edgecolor='g', label='VM Precopy'),
-        Patch(facecolor='green', edgecolor='g', label='VM Migration'),
+        # Patch(facecolor='lime', edgecolor='g', label='VM Precopy'),
+        # Patch(facecolor='green', edgecolor='g', label='VM Migration'),
         Patch(facecolor='red', edgecolor='r', label='VNF Migration'),
         Patch(facecolor='orange', edgecolor='r', label='VNF Tunneling'),
     ]
@@ -276,17 +321,18 @@ for i in range(3):
     
     ax.set_xlim(min_time, max_time)
 
-    ax.barh(vm_df.address, vm_df.len_pre, left=vm_df.start_pre, color="lime")
-    ax.barh(vm_df.address, vm_df.len_mig, left=vm_df.start_mig, color="green")
+    # ax.barh(vm_df.address, vm_df.len_pre, left=vm_df.start_pre, color="lime")
+    # ax.barh(vm_df.address, vm_df.len_mig, left=vm_df.start_mig, color="green")
     ax.barh(gw_df.address, gw_df.len_mig, left=gw_df.start_mig, color="red")
     ax.barh(gw_df.address, gw_df.len_pre, left=gw_df.start_pre, color="orange")
-    ax.barh(half_df.address, half_df.len_buf, left=half_df.start_buf, color="gray")
-    
+    # ax.barh(half_df.address, half_df.len_buf, left=half_df.start_buf, color="gray")
+
+
     # ax.legend(handles=legend_elements, loc='lower right', bbox_to_anchor=(1.45, 0.75))
     # ax.legend(handles=legend_elements ,loc='center right', bbox_to_anchor=(1, 1))
 
     plt.xlabel("Simulation Time (ms)")
-    plt.ylabel("Node (type - layer - id)")
+    plt.ylabel("Node (layer - id)")
     
     plots_dir = args.directory + "/" + "plots"
     protocol_plots_dir = plots_dir + "/" + "protocol"    
@@ -301,3 +347,4 @@ for i in range(3):
     plt.savefig(name+".png", dpi=300, bbox_inches='tight')
     print("min time:", min_time )
     print("max time:", max_time )
+    exit()

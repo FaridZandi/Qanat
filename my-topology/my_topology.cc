@@ -10,6 +10,8 @@
 #include "utility.h"
 #include <chrono>
 #include <ctime>  
+#include <unordered_set>
+
 
 
 static class MyTopologyClass : public TclClass {
@@ -57,9 +59,9 @@ MyTopology::MyTopology(){
 
     mig_manager_ = new MigrationManager(); 
     instance_ = this; 
-
     mig_root = nullptr; 
     stat_recorder = nullptr; 
+    is_dag = false; 
 
     tunnelled_packets = 0; 
 }
@@ -109,6 +111,20 @@ int MyTopology::command(int argc, const char*const* argv){
         int root_uid = make_tree(-1, branching_ds);
         mig_root = node[root_uid];
         tcl.resultf("%s", data[mig_root].pointer.c_str());
+
+        return TCL_OK;  
+
+    } else if (strcmp(argv[1], "make_dag") == 0) {
+        std::vector<int> branching_ds;
+        for(int i = 2; i < argc; i++){
+            branching_ds.push_back(atoi(argv[i]));
+        } 
+        make_dag(-1, branching_ds);
+        tcl.resultf("%s", data[mig_root].pointer.c_str());
+        is_dag = true; 
+        print_graph(); 
+
+
         return TCL_OK;  
 
     } else if (argc == 2) {
@@ -141,6 +157,10 @@ int MyTopology::command(int argc, const char*const* argv){
         } else if (strcmp(argv[1], "duplicate_tree") == 0) {
             int n1 = data[mig_root].uid; 
             duplicate_tree(n1);
+            return TCL_OK; 
+
+        } else if (strcmp(argv[1], "duplicate_dag") == 0) {
+            duplicate_dag();
             return TCL_OK; 
 
         } else if (strcmp(argv[1], "print_stats") == 0) {
@@ -319,6 +339,140 @@ Node* MyTopology::make_node(bool is_source){
     return this_node; 
 }
 
+
+void MyTopology::make_dag(int parent, std::vector<int> branching_ds){
+    static const int connection_factor = 1; 
+    
+    std::vector<Node*> upper_level; 
+    std::vector<Node*> current_level;
+
+    for (int level = 0; level < branching_ds.size(); level++){
+        
+        // make the nodes for the current level 
+        int current_branching = branching_ds[level];
+        for(int i = 0; i < current_branching; i++){   
+
+            Node* new_node = make_node(true);
+            int new_node_uid = data[new_node].uid;
+            current_level.push_back(new_node);
+
+            data[new_node].layer_from_bottom = branching_ds.size() - level;
+            data[new_node].which_tree = 0;
+            data[new_node].child_index = i;
+
+            std::cout << "created node " << new_node_uid << " at level " << level; 
+            std::cout << std::endl; 
+        }  
+
+
+        // make connections between the levels
+        if (level == 0) { // root level 
+            for (auto& root_node: current_level){
+                mig_roots.push_back(root_node);
+            }
+        } else {
+            int i = 0; 
+            for (auto& upper_node: upper_level){
+                int j = 0; 
+                for (auto& current_node: current_level){
+                    
+                    bool should_connect; 
+
+                    if (level == 1) {
+                        if (i == j) {
+                            should_connect = true; 
+                        } else {
+                            should_connect = false;
+                        }
+                    } else {
+                        if (abs(i - j) <= 1) {
+                            should_connect = true; 
+                        } else {
+                            should_connect = false; 
+                        }
+                    }
+                    if(should_connect) {
+                        auto parent_uid = data[upper_node].uid; 
+                        auto child_uid = data[current_node].uid;
+                        std::cout << "connecting " << parent_uid << " to " << child_uid; 
+                        std::cout << std::endl; 
+                        connect_nodes(parent_uid, child_uid);
+                    } 
+
+                    j++; 
+                }   
+                i ++; 
+            }
+        }
+
+
+        // move the current level to the upper level 
+        upper_level.clear(); 
+        for (auto& current_level_node: current_level){
+            upper_level.push_back(current_level_node);
+        }
+        current_level.clear(); 
+        std::cout << "-----------------------" << std::endl; 
+    }
+}
+
+
+
+void MyTopology::duplicate_dag(){
+    std::vector<Node*> current_level;
+    std::vector<Node*> upper_level;
+
+    int level_count = data[mig_roots[0]].layer_from_bottom; 
+
+    for (auto& root: mig_roots){
+        current_level.push_back(root); 
+    }
+
+    for (int level = 0; level < level_count; level ++) {
+        for (auto& current_node: current_level){
+
+            Node* copy = make_node(false);
+
+            std::cout << "making a duplicate for " << data[current_node].uid;
+            std::cout << " with id: " << data[copy].uid; 
+            std::cout << std::endl; 
+            
+            data[copy].layer_from_bottom = data[current_node].layer_from_bottom;
+            data[copy].child_index = data[current_node].child_index;
+            data[copy].which_tree = 1;
+            make_peers(data[current_node].uid, data[copy].uid); 
+
+            if (level > 0) {
+                auto parents = data[current_node].parents;
+                for (auto& parent: parents){
+                    int parent_peer_uid = data[node[parent]].peer;
+                    
+                    std::cout << "connecting " << parent_peer_uid << " to " << data[copy].uid; 
+                    std::cout << std::endl; 
+
+                    connect_nodes(parent_peer_uid, data[copy].uid);
+                }
+            }
+        }
+
+        upper_level.clear(); 
+        for (auto& current_level_node: current_level){
+            upper_level.push_back(current_level_node);
+        }
+        current_level.clear(); 
+
+        unordered_set<Node*> unordered_children; 
+        for (auto& upper_node: upper_level) {
+            for (auto& child: data[upper_node].children){
+                unordered_children.insert(node[child]); 
+            }
+        }
+        current_level.assign(unordered_children.begin(), unordered_children.end());
+        std::cout << "-----------------------" << std::endl; 
+    }
+}
+
+
 int MyTopology::make_tree(int parent, std::vector<int> branching_ds, int child_index){
     // assign a virtual identity to a node.
     Node* this_node = make_node(true);
@@ -352,24 +506,6 @@ int MyTopology::make_tree(int parent, std::vector<int> branching_ds, int child_i
     }
 
     return this_uid;
-}
-
-
-int MyTopology::find_node(int root, 
-                          std::vector<int> branch_ids){
-
-    int current_id = branch_ids[0]; 
-
-    auto this_node = node[root];
-    int child = data[this_node].children[current_id];
-    
-    if (branch_ids.size() == 1){
-        return child; 
-    } else {
-        std::vector<int> temp = branch_ids;
-        temp.erase(temp.begin());
-        return find_node(child, temp);
-    }
 }
 
 
@@ -416,6 +552,23 @@ int MyTopology::duplicate_tree(int root){
 }
 
 
+int MyTopology::find_node(int root, 
+                          std::vector<int> branch_ids){
+
+    int current_id = branch_ids[0]; 
+
+    auto this_node = node[root];
+    int child = data[this_node].children[current_id];
+    
+    if (branch_ids.size() == 1){
+        return child; 
+    } else {
+        std::vector<int> temp = branch_ids;
+        temp.erase(temp.begin());
+        return find_node(child, temp);
+    }
+}
+
 std::vector<Node*> MyTopology::get_subtree_nodes( 
         Node* root, 
         bool include_leaves, 
@@ -451,6 +604,51 @@ std::vector<Node*> MyTopology::get_subtree_nodes(
 
     return subtree_nodes; 
 }
+
+
+std::vector<Node*> MyTopology::get_subtree_nodes( 
+        std::vector<Node*> roots, 
+        bool include_leaves, 
+        bool include_internals) {
+
+    std::vector<Node*> subtree_nodes; 
+
+    std::stack<int> to_visit; 
+
+    for (auto& root: roots){
+        to_visit.push(data[root].uid);
+    }
+
+    while (to_visit.size() > 0){
+        int current = to_visit.top();  
+        to_visit.pop();
+
+        if (data[node[current]].children.size() == 0){
+            if (include_leaves) {
+                subtree_nodes.push_back(node[current]);
+            }
+        } else {
+            if (include_internals) {
+                subtree_nodes.push_back(node[current]);
+            }
+        }
+
+        auto children = data[node[current]].children; 
+        std::reverse(children.begin(),
+                     children.end());
+
+        for(int n: children){
+            to_visit.push(n);
+        }
+    }
+
+    // remove the duplicates 
+    std::unordered_set<Node*> s(subtree_nodes.begin(), subtree_nodes.end());
+    subtree_nodes.assign(s.begin(), s.end());
+
+    return subtree_nodes; 
+}
+
 
 Node* MyTopology::get_first_child(Node* n){
     auto children = data[n].children;
@@ -490,6 +688,23 @@ Node* MyTopology::get_nth_parent(Node* this_node, int n){
     } 
     // std::cout << "returning " << nth_parent << std::endl;
     return nth_parent; 
+}
+
+std::vector<Node*> MyTopology::get_parents(Node* this_node){
+    std::vector<Node*> parents; 
+    for(auto& child: data[this_node].parents){
+        parents.push_back(node[child]);
+    }
+    return parents;
+}
+
+bool MyTopology::is_mig_root(Node* n){
+    for(auto& mig_root: mig_roots){
+        if (mig_root == n){
+            return true; 
+        }
+    }
+    return false; 
 }
 
 void MyTopology::process_packet(Packet* p, Handler*h, Node* node){
@@ -701,13 +916,30 @@ void MyTopology::print_tree_node(std::string prefix,
 }
 
 void MyTopology::print_graph(bool print_state){
-    std::cout << "main tree: " << std::endl; 
 
-    print_tree_node("", mig_root, true, print_state); 
+    for (auto* n: get_all_nodes(mig_roots)){
+        std::cout << "graph_data";
+        std::cout << " "; 
+        std::cout << data[n].uid;
+        std::cout << " "; 
+        std::cout << data[n].layer_from_bottom; 
+        std::cout << " "; 
+        std::cout << data[n].child_index; 
+        std::cout << " children "; 
+        for (auto& child: data[n].children) {
+            std::cout << child << " ";
+        }  
+        std::cout << std::endl; 
+    }
 
-    std::cout << "other tree: " << std::endl; 
 
-    print_tree_node("", node[data[mig_root].peer], true, print_state); 
+    // std::cout << "main tree: " << std::endl; 
+
+    // print_tree_node("", mig_root, true, print_state); 
+
+    // std::cout << "other tree: " << std::endl; 
+
+    // print_tree_node("", node[data[mig_root].peer], true, print_state); 
 }
 
 
@@ -729,12 +961,35 @@ std::vector<Node*> MyTopology::get_all_nodes(Node* root){
 }
 
 
+std::vector<Node*> MyTopology::get_leaves(std::vector<Node*> roots){
+    return get_subtree_nodes(roots, true, false);
+}
+
+std::vector<Node*> MyTopology::get_internals(std::vector<Node*> roots){
+    return get_subtree_nodes(roots, false, true);
+}
+
+std::vector<Node*> MyTopology::get_all_nodes(std::vector<Node*> roots){
+    return get_subtree_nodes(roots, true, true);
+}
+
+
+
 void MyTopology::start_recording_stats(int fid,
                                        FullTcpAgent* agent){
     stat_recorder->tracked_fids.push_back(fid); 
     stat_recorder->fid_agent_map[fid] = agent;
 }
 
+std::vector<Node*> MyTopology::mig_roots_peers(){
+    std::vector<Node*> peers; 
+
+    for (auto& mig_root: mig_roots) {
+        peers.push_back(node[data[mig_root].peer]);    
+    }
+
+    return peers; 
+}
 
 void MyTopology::print_stats(){
 

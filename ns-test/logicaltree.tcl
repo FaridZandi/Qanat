@@ -1,5 +1,5 @@
 set ns [new Simulator]
-set sim_end 5
+set sim_end 50
 
 
 # $ns rtproto DV
@@ -24,12 +24,12 @@ proc finish {} {
 MyTopology set verbose_ 0
 MyTopology set verbose_nf_ 0
 MyTopology set verbose_mig_ 0
-MyTopology set vm_precopy_size_  10000000
-MyTopology set vm_snapshot_size_ 10000000
-MyTopology set gw_snapshot_size_ 10000000
+MyTopology set vm_precopy_size_  1000000
+MyTopology set vm_snapshot_size_ 1000000
+MyTopology set gw_snapshot_size_ 1000000
 MyTopology set parallel_mig_ 1
-MyTopology set prioritization_level_ 1
-MyTopology set stat_record_interval_ 0.01
+MyTopology set prioritization_level_ 2
+MyTopology set stat_record_interval_ 0.001
 MyTopology set process_after_migration_ 0
 MyTopology set orch_type_ [lindex $argv 0]
 
@@ -38,6 +38,34 @@ set DCTCP_K 65.0
 set drop_prio_ true
 set deque_prio_ true
 set pktSize 1460
+
+Agent/TCP set ecn_ 1
+Agent/TCP set old_ecn_ 1
+Agent/TCP set packetSize_ $pktSize
+Agent/TCP/FullTcp set segsize_ $pktSize
+Agent/TCP/FullTcp set spa_thresh_ 0
+Agent/TCP set slow_start_restart_ true
+Agent/TCP set windowOption_ 0
+Agent/TCP set minrto_ 0.2
+Agent/TCP set tcpTick_ 0.000001
+Agent/TCP set maxrto_ 64
+Agent/TCP set lldct_w_min_ 0.125
+Agent/TCP set lldct_w_max_ 2.5
+Agent/TCP set lldct_size_min_ 204800
+Agent/TCP set lldct_size_max_ 1048576
+
+Agent/TCP set ecnhat_ true
+Agent/TCPSink set ecnhat_ true
+Agent/TCP set ecnhat_g_ 0.0625
+Agent/TCP set lldct_ false
+Agent/TCP/FullTcp set dynamic_dupack_ 0; #disable dupack
+Agent/TCP set window_ 1328;
+Agent/TCP set windowInit_ 70
+Agent/TCP set rtxcur_init_ 0.05;
+# Agent/TCP set slow_start_restart_ false
+Queue set limit_ 240
+
+
 
 Queue/MamadQueue set bytes_ false
 Queue/MamadQueue set queue_in_bytes_ true
@@ -80,18 +108,15 @@ Queue/MamadQueue set deque_prio_2_ $deque_prio_
 set t [new MyTopology]
 $t set_simulator $ns
 
-set UDP_INTERARRIVAL 0.000005
 set BW 1Gb
-set LAT 5us
-# set QTYPE RED
-set QTYPE MamadQueue
+set LAT 1ms
+set QTYPE MyQueue
 set child_count 100
 
-Queue set limit_ 400
 
 set n_mid_left [$ns node]
 set n_mid_right [$ns node]
-$ns duplex-link $n_mid_left $n_mid_right $BW $LAT $QTYPE
+$ns duplex-link $n_mid_left $n_mid_right 100Gb 1us $QTYPE
 
 
 for { set x 2} { $x < $child_count+2} { incr x } {
@@ -103,37 +128,9 @@ for { set x 2} { $x < $child_count+2} { incr x } {
 
 for { set x [expr $child_count+2]} { $x < [expr 2*$child_count+2]} { incr x } {
     set n($x) [$ns node]
-    $ns duplex-link $n_mid_right $n($x) 10Gb $LAT $QTYPE
+    $ns duplex-link $n_mid_right $n($x) $BW $LAT $QTYPE
     $t add_node_to_source $n($x)
 }
-
-
-
-# make agents 
-set src [new Agent/TCP/FullTcp]
-set sink [new Agent/TCP/FullTcp]
-$src set fid_ 100
-$sink set fid_ 100
-
-set src2 [new Agent/TCP/FullTcp]
-set sink2 [new Agent/TCP/FullTcp]
-$src2 set fid_ 10
-$sink2 set fid_ 10
-
-# make apps
-set src_app [new Application]
-set sink_app [new Application]
-
-
-
-# set src_app2 [new Application]
-# set sink_app2 [new Application]
-
-# # attach agents to nodes
-# $ns attach-agent $n(150) $src
-# $ns attach-agent $n(198) $sink
-# $ns attach-agent $n(149) $src2
-# $ns attach-agent $n(197) $sink2
 
 
 set leaves(0) $n(198)
@@ -154,11 +151,11 @@ set senders(5) $n(55)
 set senders(6) $n(56)
 set senders(7) $n(57)
 
-
-
+set upd_connections 0 
+set tcp_connections 0 
 
 # set up a connection from one sender to one receiver
-for {set i 0} {$i < 8} {incr i} {
+for {set i 0} {$i < $upd_connections} {incr i} {
     set udp($i) [new Agent/UDP]
     set null($i) [new Agent/Null]
 
@@ -171,38 +168,64 @@ for {set i 0} {$i < 8} {incr i} {
     $cbr($i) attach-agent $udp($i)
 
     $ns connect $udp($i) $null($i)
-    $ns at 1.5 "$cbr($i) start"
-    $ns at 5 "$cbr($i) stop"
+    # $ns at 1.5 "$cbr($i) start"
+    # $ns at 5 "$cbr($i) stop"
 }
 
 
-# $t rate_limit_node $n(150) 10
 
-# attach the apps
-# $src_app attach-agent $src
-# $sink_app attach-agent $sink
-# $src_app2 attach-agent $src2
-# $sink_app2 attach-agent $sink2
+ for {set i 0} {$i < $tcp_connections} {incr i} {    
+    # make agents 
+    set tcp($i) [new Agent/TCP/FullTcp]
+    set sink($i) [new Agent/TCP/FullTcp]
 
+    $ns attach-agent $senders($i) $tcp($i)
+    $ns attach-agent $leaves($i) $sink($i)
 
-# make the connection
-$ns connect $src $sink
-$sink listen
+    $tcp($i) set fid_ [expr $i + 100]
+    $sink($i) set fid_ [expr $i + 100]
 
-$ns connect $src2 $sink2
-$sink2 listen
+    $tcp($i) set minrto_ 0.2
+    $sink($i) set minrto_ 0.2
 
+    # attach the apps
+    set src_app($i) [new Application]
+    set sink_app($i) [new Application]
+    $src_app($i) attach-agent $tcp($i)
+    $sink_app($i) attach-agent $sink($i)
+
+    # make the connection
+    $ns connect $tcp($i) $sink($i)
+    $sink($i) listen
+
+    $ns at 1.9 "$sink($i) record_stat"
+    $ns at 1.9 "$src_app($i) send 600000000"
+}
+
+$t rate_limit_node $senders(0) 83333
  
 # $t make_tree 1 2 2 2
 # $t make_tree 1 1 1 8
-$t make_tree 2 2 2
+# $t make_tree 2 2 2
+$t make_dag 4 4 4 
 
-$t duplicate_tree
-$t print_graph
+
+$t duplicate_dag
+# $t print_graph
 
 $ns at 1 "$t setup_nodes"
-$ns at 1.5 "$t start_stat_record"
-$ns at 2 "$t start_migration"
+# $ns at 1.5 "$t start_stat_record"
+$ns at 4.5 "$t start_migration"
+
+# $ns at 2 "puts 2" 
+# $ns at 3 "puts 3" 
+# $ns at 4 "puts 4" 
+# $ns at 5 "puts 5" 
+# $ns at 6 "puts 6" 
+# $ns at 7 "puts 7" 
+# $ns at 8 "puts 8" 
+# $ns at 9 "puts 9" 
+# $ns at 10 "puts 10" 
 
 $ns at $sim_end "finish"
 $ns run

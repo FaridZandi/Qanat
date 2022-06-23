@@ -73,6 +73,8 @@ public:
     Node* get_next_sibling(Node* node);
 
     Node* get_nth_parent(Node* node, int n);
+    std::vector<Node*> get_parents(Node* this_node);
+
     TopoNode& get_data(Node* node); 
     int uid(Node* node); 
     Node* get_peer(Node* n); 
@@ -85,6 +87,12 @@ public:
     std::vector<Node*> get_internals(Node* root); 
     std::vector<Node*> get_all_nodes(Node* root); 
 
+    std::vector<Node*> get_leaves(std::vector<Node*>); 
+    std::vector<Node*> get_internals(std::vector<Node*>); 
+    std::vector<Node*> get_all_nodes(std::vector<Node*>); 
+
+    std::vector<Node*> mig_roots_peers(); 
+
     std::vector<int> get_path(Node* n1, path_mode pm);
     void clear_path_cache(); 
 
@@ -96,6 +104,7 @@ public:
 
     void print_graph(bool print_state = false);
 
+    bool is_mig_root(Node* n); 
     // variables bound with the Tcl script.
     static int verbose;  
     static int verbose_mig; 
@@ -120,10 +129,15 @@ public:
     bool is_migration_finished;
     double migration_finish_time; 
     bool is_sent_traffic_to_dest;
+    bool is_dag; 
+
 
     int tunnelled_packets; 
 
-    MigrationManager* mig_manager_; 
+    MigrationManager* mig_manager_;
+
+    std::vector<Node*> mig_roots; 
+
 private:
 
 
@@ -143,9 +157,17 @@ private:
     int duplicate_tree(int root); 
     void connect_nodes(int parent, int child);
 
+    void make_dag(int parent, std::vector<int> branching_ds); 
+    void duplicate_dag(); 
+
     std::vector<Node*> get_subtree_nodes(Node* root, 
                                          bool include_leaves, 
-                                         bool include_internals ); 
+                                         bool include_internals); 
+
+
+    std::vector<Node*> get_subtree_nodes(std::vector<Node*> roots, 
+                                         bool include_leaves, 
+                                         bool include_internals); 
 
 
     void print_tree_node(std::string prefix, Node* this_node, bool isLast, bool print_state);
@@ -172,6 +194,7 @@ private:
     static int toponode_uid_counter; 
     
     StatRecorder* stat_recorder; 
+
 
 };
 
