@@ -38,19 +38,25 @@ def translate_orch_type(orch_type):
 
 # group is a pandas dataframe
 def weighted_average(group, weight_col, value_col):
-
-    # get the sum of the weights
     weights = group[weight_col].sum()
-
-    # get the sum of the weights * values
     values = group[weight_col] * group[value_col]
-
     if weights == 0:
         return 0 
     else: 
         return values.sum() / weights
 
- 
+
+def weighted_percentile(data, percents, weights=None):
+    if weights is None:
+        return np.percentile(data, percents)
+
+    ind = np.argsort(data)
+    d = data[ind]
+    w = weights[ind]
+    p = 1. * w.cumsum() / w.sum() * 100
+    y = np.interp(percents, p, d)
+    return y.tolist()
+    
 
 if args.reload: 
     directory = args.directory
@@ -59,11 +65,10 @@ if args.reload:
 
     for file_name in os.listdir(directory):
         try: 
-            if file_name == "summary.csv":
+            if file_name.startswith("summary"):
                 continue
 
             print ("Summarising exp:" + file_name)
-
             exp_info = {}
             
             # extract the exp setting from the file name
@@ -95,6 +100,7 @@ if args.reload:
             df_flows = pd.read_csv(data_directory + "flows.csv")
             vm_flows = df_flows[df_flows["type"] == "vm_traffic"]
             bg_flows = df_flows[df_flows["type"] == "bg_traffic"]
+
             
             df_protocol = pd.read_csv(data_directory + "protocol.csv")
             df_node_stats = pd.read_csv(data_directory + "nodes.csv")
@@ -107,17 +113,36 @@ if args.reload:
             ######################################################
 
             # average fct 
-            exp_info["vm_afct"] = vm_flows["fct"].mean()
-            print(exp_info["vm_afct"])
-            exp_info["bg_afct"] = bg_flows["fct"].mean()
+            exp_info["vm_afct"] = vm_flows.fct.mean()
+            exp_info["bg_afct"] = bg_flows.fct.mean()
 
             # retransmission rates 
-            exp_info["vm_ret"] = vm_flows["ret"].mean()
-            exp_info["bg_ret"] = bg_flows["ret"].mean()
+            exp_info["vm_ret"] = vm_flows.ret.mean()
+            exp_info["bg_ret"] = bg_flows.ret.mean()
 
             # average_rate 
-            exp_info["vm_avg_r"] = vm_flows["avg_rate"].mean()
-            exp_info["bg_avg_r"] = bg_flows["avg_rate"].mean()
+            exp_info["vm_avg_r"] = vm_flows.avg_rate.mean()
+            exp_info["bg_avg_r"] = bg_flows.avg_rate.mean()
+
+
+            bg_flow_percentiles = weighted_percentile(
+                bg_flows["size"].to_numpy(), 
+                [50, 75, 90], 
+            )
+            
+            bg_flows_50 = bg_flows[bg_flows["size"] < bg_flow_percentiles[0]]
+            bg_flows_75 = bg_flows[bg_flows["size"] < bg_flow_percentiles[1]]
+            bg_flows_90 = bg_flows[bg_flows["size"] < bg_flow_percentiles[2]]
+
+            exp_info["bg_50_afct"] = bg_flows_50.fct.mean()
+            exp_info["bg_75_afct"] = bg_flows_75.fct.mean()
+            exp_info["bg_90_afct"] = bg_flows_90.fct.mean()
+
+            exp_info["bg_50_ret"] = bg_flows_50.ret.mean()
+            exp_info["bg_75_ret"] = bg_flows_75.ret.mean()
+            exp_info["bg_90_ret"] = bg_flows_90.ret.mean()
+
+
             
             ################ Total Migration time ###############
 
@@ -155,11 +180,16 @@ if args.reload:
             mig_node_stats_df = df_node_stats[df_node_stats["time"] >= protocol_start]
             mig_node_stats_df = mig_node_stats_df[mig_node_stats_df["time"] <= protocol_end]
 
+            
+            mig_node_stats_df["both_buf"] = mig_node_stats_df.high_prio_buf + mig_node_stats_df.low_prio_buf 
+            
             exp_info["max_hpq"] = mig_node_stats_df.high_prio_buf.max()
             exp_info["max_lpq"] = mig_node_stats_df.low_prio_buf.max()
+            exp_info["max_bpq"] = mig_node_stats_df.both_buf.max()
 
             exp_info["avg_hpq"] = mig_node_stats_df.high_prio_buf.mean()
             exp_info["avg_lpq"] = mig_node_stats_df.low_prio_buf.mean()
+            exp_info["avg_bpq"] = mig_node_stats_df.both_buf.mean()
 
             ################ VM flows stats ####################
 
@@ -174,6 +204,30 @@ if args.reload:
             # max 
             exp_info["vm_max_pkt_in_flight_t"] = mig_flow_stats_df.average_in_flight_time.max()
             exp_info["vm_max_pkt_buff_t"] = mig_flow_stats_df.average_buffered_time.max()
+
+            try: 
+                in_flight_percentiles =  weighted_percentile(
+                    mig_flow_stats_df.average_in_flight_time.to_numpy(), 
+                    [90, 95, 99], 
+                    mig_flow_stats_df.packets_received.to_numpy()
+                )
+                
+                buffering_percentiles =  weighted_percentile(
+                    mig_flow_stats_df.average_buffered_time.to_numpy(), 
+                    [90, 95, 99], 
+                    mig_flow_stats_df.packets_received.to_numpy()
+                )
+
+                exp_info["vm_90_ptk_in_flight_t"] = in_flight_percentiles[0]
+                exp_info["vm_95_ptk_in_flight_t"] = in_flight_percentiles[1]
+                exp_info["vm_99_ptk_in_flight_t"] = in_flight_percentiles[2]
+
+                exp_info["vm_90_pkt_buff_t"] = buffering_percentiles[0]
+                exp_info["vm_95_pkt_buff_t"] = buffering_percentiles[1]
+                exp_info["vm_99_pkt_buff_t"] = buffering_percentiles[2]
+            except Exception as e:
+                pass 
+                
 
             ################ Tunnelled Packets ####################
 
@@ -207,19 +261,33 @@ if args.reload:
         ("settings", "link_rate"),
         ("flow_metrics", "vm_afct"),
         ("flow_metrics", "bg_afct"),
+        ("flow_metrics", "bg_50_afct"),
+        ("flow_metrics", "bg_75_afct"),
+        ("flow_metrics", "bg_90_afct"),
         ("flow_metrics", "vm_ret"),
         ("flow_metrics", "bg_ret"),
+        ("flow_metrics", "bg_50_ret"),
+        ("flow_metrics", "bg_75_ret"),
+        ("flow_metrics", "bg_90_ret"),
         ("flow_metrics", "vm_avg_r"),
         ("flow_metrics", "bg_avg_r"),
         ("protocol_metrics", "tot_mig_time"),
         ("buffer_metrics", "max_hpq"),
         ("buffer_metrics", "max_lpq"),
+        ("buffer_metrics", "max_bpq"),
         ("buffer_metrics", "avg_hpq"),
         ("buffer_metrics", "avg_lpq"),
+        ("buffer_metrics", "avg_bpq"),
         ("ptk_lever_metrics", "vm_avg_pkt_flight_t"),
         ("ptk_lever_metrics", "vm_avg_pkt_buff_t"),
         ("ptk_lever_metrics", "vm_max_pkt_in_flight_t"),
         ("ptk_lever_metrics", "vm_max_pkt_buff_t"),
+        ("ptk_lever_metrics", "vm_90_ptk_in_flight_t"),
+        ("ptk_lever_metrics", "vm_95_ptk_in_flight_t"),
+        ("ptk_lever_metrics", "vm_99_ptk_in_flight_t"),
+        ("ptk_lever_metrics", "vm_90_pkt_buff_t"),
+        ("ptk_lever_metrics", "vm_95_pkt_buff_t"),
+        ("ptk_lever_metrics", "vm_99_pkt_buff_t"),
         ("tunnell_metrics", "tnld_pkt_cnt")
     ]
 

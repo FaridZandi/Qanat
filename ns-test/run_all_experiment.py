@@ -194,9 +194,9 @@ if __name__ == "__main__":
 
 	configs = None
 
-	if exp_name == "rate_limited_3":
+	if exp_name == "vm_test":
 		configs = [{
-			"mig_sizes": [(10, 10, 10), (50, 50, 50)],
+			"mig_sizes": [(1000, 10, 10)],
 			"parallel_mig": [1], 
 			"load": [0.01],
 			"oversub": [1.0],
@@ -204,7 +204,7 @@ if __name__ == "__main__":
 			"dst_zone_delay": [0.00002], # in seconds
 			"traffic_zone_delay": [0.01], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["no", "yes"], # "no", "yes"
+			"run_migration": ["yes"], # "no", "yes"
 			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
 			"orch_type": [1, 2], # 1: bottom-up, 2: top-down, 3: random
 			"bg_traffic_cdf": [("dctcp", 1138)],
@@ -215,7 +215,7 @@ if __name__ == "__main__":
 			###########################################################
 			"exp_name": [exp_name],
 			"enable_rt_dv": [0], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"enable_bg_traffic": [0], # 0: disable, 1: enable
 			"stat_record_interval": [0.001], # in seconds
 			"sim_end": [100000], # number of flows
 			"vm_flow_size": [100000], # in packets
@@ -223,7 +223,42 @@ if __name__ == "__main__":
 			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		}]
 
-	elif exp_name == "paper_tests": # 48 + 84 + 32 + 7 + 168 + 25 = 364
+	elif exp_name == "more_paper_tests":
+		configs = [{# 2 * 8 * 2 = 32 
+				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
+				"parallel_mig": [1, 2, 3, 4, 5, 6, 7, 8], 
+				"load": [0.5],
+				"oversub": [4.0, 8.0],
+				"src_zone_delay": [0.000005], # in seconds
+				"dst_zone_delay": [0.000005], # in seconds 
+				"traffic_zone_delay": [0.01], # in seconds
+				"network_topo": ["datacenter"], # "dumbell" 
+				"run_migration": ["yes"], # "no", "skip"
+				"prioritization": [1], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+				"orch_type": [1], # 1: bottom-up, 2: top-down, 3: random
+				"bg_traffic_cdf": [("dctcp", 1138)],
+				"Protocol": [("TCP", "MyQueue"), ("DCTCP", "MamadQueue")], 
+				"link_rate": [10],
+				###########################################################
+				########| don't make a list out of the following |#########
+				###########################################################
+				"exp_name": ["parallel_test"],
+				"enable_rt_dv": [1], # 0: disable, 1: enable
+				"enable_bg_traffic": [1], # 0: disable, 1: enable
+				"stat_record_interval": [0.001], # in seconds
+				"sim_end": [500000], # number of flows
+				"vm_flow_size": [100000], # in packets,
+				"dc_size": [(3, 8, 16)], # (spines, bg_tors, spt)
+				"tree_shape": [(2, 2, 2)], #branching factors of the tree
+			}]
+
+	elif exp_name == "paper_tests": 
+		
+		# = 64 + 84 + 32 + 7 + 336 + 50 = 
+		# = 148 + 39 + 386 = 
+		# = 187 + 386 = 400 + 160 + 13 = 573
+		# = 3 round of execution of 6 machines of 35 threads.
+
 		configs = [ # 2 * 2 * 2 * 2 * 2  * 2 = 64 
 			{	
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
@@ -345,7 +380,7 @@ if __name__ == "__main__":
 			},
 
 
-			{	# 2 * 7 * 3 * 2 * 2 = 14 * 12 = 144 + 24 = 168 
+			{	# 2 * 7 * 3 * 2 * 2 * 2 = 336
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
 				"parallel_mig": [1], 
 				"load": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7],
@@ -374,7 +409,7 @@ if __name__ == "__main__":
 			},
 
 
-			{	# 5 * 5 = 25 
+			{	# 5 * 5 * 2 = 50 
 				"mig_sizes": [(1, 10, 10), (1, 50, 50)],
 				"parallel_mig": [1], 
 				"load": [0.5],

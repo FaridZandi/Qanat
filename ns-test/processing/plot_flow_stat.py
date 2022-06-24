@@ -1,4 +1,6 @@
 from ast import Expression
+from itertools import groupby
+from tkinter import CENTER
 import pandas as pd 
 import matplotlib.pyplot as plt
 import matplotlib
@@ -10,7 +12,7 @@ import seaborn as sns
 import os 
 
 
-off_time_threshold = 10 
+off_time_threshold = 30 
 
 
 parser = ArgumentParser()
@@ -106,12 +108,38 @@ else:
 
 if args.no_plot:
     exit()
-    
+
+
 
 df['packets_received_orig'] = df['packets_received']
-# df['packets_received'] = df['packets_received'].rolling(10).mean()
-# df['average_in_flight_time'] = df['average_in_flight_time'].rolling(10).max()
-# df['average_buffered_time'] = df['average_buffered_time'].rolling(10).max()
+# df['packets_received'] = df['packets_received'].rolling(50).mean()
+# df['average_in_flight_time'] = df[['average_in_flight_time', 'packets_received']].rolling(10).apply(lambda x: print(x))
+# df['average_buffered_time'] = df[['average_buffered_time', 'packets_received']].rolling(10).apply(lambda x: np.sum(x.average_buffered_time * x.packets_received))
+
+try: 
+    protocol_df = pd.read_csv(args.directory + "/data/protocol.csv") 
+
+    protocol_end = max(
+        protocol_df.end_mig.max(), 
+        protocol_df.end_pre.max(), 
+        protocol_df.end_buf.max()) 
+
+    protocol_start = min(
+        protocol_df.start_mig[protocol_df.start_mig > 0].min(),
+        protocol_df.start_pre[protocol_df.start_pre > 0].min(),
+        protocol_df.start_buf[protocol_df.start_buf > 0].min()
+    )
+    protocol_end += 100
+    protocol_start -= 100
+
+except Exception as e: 
+    print("loading the default")
+    protocol_start = 4500
+    protocol_end = 6000
+
+
+df = df[df["time"] >= protocol_start]
+df = df[df["time"] <= protocol_end]
 
 
 def plot_flow(fid, ax, flow_df): 
@@ -125,7 +153,8 @@ def plot_flow(fid, ax, flow_df):
     off_times = consec[consec.consecutive > off_time_threshold]
     # print(off_times)
 
-    sns.lineplot(ax=ax, x=flow_df.time, y=flow_df[measure])
+    print(flow_df.size)
+    sns.lineplot(ax=ax, data=flow_df, x="time", y=measure)
 
     for i, row in off_times.iterrows():
         ax.axvspan(row.begin_time, row.end_time, alpha=0.5, color='gray')
@@ -133,27 +162,37 @@ def plot_flow(fid, ax, flow_df):
     ax.set_title("flow: " + str(fid))
 
 def plot_measure(measure):
- 
+    flow_per_dst = 6 
     fids = df.fid.unique()
+    list_of_groups = [fids[i:i+flow_per_dst] for i in range(0, len(fids), flow_per_dst)]
 
-    plot_count = len(fids) 
+    plot_count = len(list_of_groups) 
     fig, axes = plt.subplots(plot_count, 1, sharex=True, sharey=True)
     fig.set_size_inches(12, plot_count * 3)
 
     plot_index = 0 
 
-    for fid in fids:
+    for group in list_of_groups:
         print("drawing subplot", plot_index + 1)
-        flow_df = df[df.fid == fid].copy()
 
-        if len(fids) > 1:
+        flow_dfs = [df[df.fid == fid].copy() for fid in group]
+        group_df = pd.concat(flow_dfs)
+        group_df.average_in_flight_time = group_df.average_in_flight_time * group_df.packets_received
+        group_df.average_buffered_time = group_df.average_buffered_time * group_df.packets_received
+        sum_df = group_df.groupby(['time']).sum().reset_index()
+        group_df.average_in_flight_time = group_df.average_in_flight_time / group_df.packets_received
+        group_df.average_buffered_time = group_df.average_buffered_time / group_df.packets_received
+        
+        roll = 21
+        sum_df.packets_received = sum_df.packets_received.rolling(roll, center=True).mean()
+
+        if plot_count > 1:
             ax = axes[plot_index]
         else:
             ax = axes
 
-        plot_flow(fid, ax, flow_df)   
+        plot_flow(plot_index, ax, sum_df)   
         plot_index += 1 
-
     
     plots_dir = args.directory + "/" + "plots"
     flows_plots_dir = plots_dir + "/" + "flow_stats/"

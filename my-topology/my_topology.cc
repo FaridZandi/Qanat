@@ -964,7 +964,7 @@ void StatRecorder::handle(Event* event){
 
     if(topo.is_migration_finished && now > stat_record_finish){
         return; 
-    } else if (now >= 10) {
+    } else if (now >= 12) {
         return; 
     } else {
         Event* e = new Event; 
