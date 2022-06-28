@@ -183,7 +183,7 @@ def plot_measure(measure):
         group_df.average_in_flight_time = group_df.average_in_flight_time / group_df.packets_received
         group_df.average_buffered_time = group_df.average_buffered_time / group_df.packets_received
         
-        roll = 21
+        roll = 100
         sum_df.packets_received = sum_df.packets_received.rolling(roll, center=True).mean()
 
         if plot_count > 1:
@@ -191,7 +191,7 @@ def plot_measure(measure):
         else:
             ax = axes
 
-        plot_flow(plot_index, ax, sum_df)   
+        # plot_flow(plot_index, ax, sum_df)   
         plot_index += 1 
     
     plots_dir = args.directory + "/" + "plots"
@@ -207,6 +207,8 @@ def plot_measure(measure):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     sum_df = df.groupby(['time']).sum().reset_index()
+    roll = 100
+    sum_df.packets_received = sum_df.packets_received.rolling(roll, center=True).mean()
     plot_flow("total", ax, sum_df)
 
     plot_path = "{}/{}_total.png".format(flows_plots_dir, measure)

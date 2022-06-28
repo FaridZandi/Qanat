@@ -117,8 +117,8 @@ if args.reload:
             exp_info["bg_afct"] = bg_flows.fct.mean()
 
             # retransmission rates 
-            exp_info["vm_ret"] = vm_flows.ret.mean()
-            exp_info["bg_ret"] = bg_flows.ret.mean()
+            exp_info["vm_ret"] = ((vm_flows.ret / vm_flows["size"]) * 1460).mean()
+            exp_info["bg_ret"] = ((bg_flows.ret / bg_flows["size"]) * 1460).mean()
 
             # average_rate 
             exp_info["vm_avg_r"] = vm_flows.avg_rate.mean()
@@ -133,21 +133,28 @@ if args.reload:
             bg_flows_50 = bg_flows[bg_flows["size"] < bg_flow_percentiles[0]]
             bg_flows_75 = bg_flows[bg_flows["size"] < bg_flow_percentiles[1]]
             bg_flows_90 = bg_flows[bg_flows["size"] < bg_flow_percentiles[2]]
+            bg_flows_100k = bg_flows[bg_flows["size"] < 100000]
+            bg_flows_big = bg_flows[bg_flows["size"] >= 100000]
 
             exp_info["bg_50_afct"] = bg_flows_50.fct.mean()
             exp_info["bg_75_afct"] = bg_flows_75.fct.mean()
             exp_info["bg_90_afct"] = bg_flows_90.fct.mean()
+            exp_info["bg_100k_afct"] = bg_flows_100k.fct.mean()
+            exp_info["bg_big_afct"] = bg_flows_big.fct.mean()
+            
 
-            exp_info["bg_50_ret"] = bg_flows_50.ret.mean()
-            exp_info["bg_75_ret"] = bg_flows_75.ret.mean()
-            exp_info["bg_90_ret"] = bg_flows_90.ret.mean()
 
+            exp_info["bg_50_ret"] = ((bg_flows_50.ret / bg_flows_50["size"]) * 1460).mean()
+            exp_info["bg_75_ret"] = ((bg_flows_75.ret / bg_flows_75["size"]) * 1460).mean()
+            exp_info["bg_90_ret"] = ((bg_flows_90.ret / bg_flows_90["size"]) * 1460).mean()
+            exp_info["bg_100k_ret"] = ((bg_flows_100k.ret / bg_flows_100k["size"]) * 1460).mean()
+            exp_info["bg_big_ret"] = ((bg_flows_big.ret / bg_flows_big["size"]) * 1460).mean()
 
             
             ################ Total Migration time ###############
 
-            protocol_end = 4500
-            protocol_start = 7000
+            protocol_start = 4500
+            protocol_end = 7000
 
             try: 
                 if exp_info["migration_status"] == "mig":
@@ -194,12 +201,18 @@ if args.reload:
             ################ VM flows stats ####################
 
             # vm flows stats corresponding to the protocol running time
+            # print("protocol_start", protocol_start)
+            # print("protocol_end", protocol_end)
+            
             mig_flow_stats_df = df_flow_stats[df_flow_stats["time"] >= protocol_start]
             mig_flow_stats_df = mig_flow_stats_df[mig_flow_stats_df["time"] <= protocol_end]
 
+            # print("mig_flow_stats_df", len(mig_flow_stats_df))
             # avg
             exp_info["vm_avg_pkt_flight_t"] = weighted_average(mig_flow_stats_df, "packets_received", "average_in_flight_time")
             exp_info["vm_avg_pkt_buff_t"] = weighted_average(mig_flow_stats_df, "packets_received", "average_buffered_time")
+
+            # print("vm_avg_pkt_flight_t", exp_info["vm_avg_pkt_flight_t"])
 
             # max 
             exp_info["vm_max_pkt_in_flight_t"] = mig_flow_stats_df.average_in_flight_time.max()
@@ -264,11 +277,15 @@ if args.reload:
         ("flow_metrics", "bg_50_afct"),
         ("flow_metrics", "bg_75_afct"),
         ("flow_metrics", "bg_90_afct"),
+        ("flow_metrics", "bg_100k_afct"),
+        ("flow_metrics", "bg_big_afct"),
         ("flow_metrics", "vm_ret"),
         ("flow_metrics", "bg_ret"),
         ("flow_metrics", "bg_50_ret"),
         ("flow_metrics", "bg_75_ret"),
         ("flow_metrics", "bg_90_ret"),
+        ("flow_metrics", "bg_100k_ret"),
+        ("flow_metrics", "bg_big_ret"),
         ("flow_metrics", "vm_avg_r"),
         ("flow_metrics", "bg_avg_r"),
         ("protocol_metrics", "tot_mig_time"),
