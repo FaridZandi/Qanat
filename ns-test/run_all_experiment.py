@@ -14,11 +14,12 @@ from run_constants import *
 exp_q = queue.Queue()
 
 threads = []
-number_worker_threads = 35
+number_worker_threads = 40
+exp_rep_count = 10
 
 DEBUG_VALGRIND = False
 DEBUG_GDB = False
-REMOTE_RUN = True
+REMOTE_RUN = False
 
 ns_path = '../ns'
 if DEBUG_VALGRIND:
@@ -32,7 +33,7 @@ if DEBUG_GDB:
 def process_results(exp_directory):
 	print("Processing results on %s" % exp_directory)
 	os.system("./processing/process_setting.sh %s" % exp_directory)
-
+	os.system("python3 processing/summarize_setting.py -d %s" % exp_directory)
 
 def worker():
 	while True:
@@ -44,13 +45,15 @@ def worker():
 		command, directory_name, exp_name = setup_exp(exp)
 		
 		print("running exp on ", directory_name)
-
 		os.system('mkdir -p ' + "exps/%s/" % exp_name)
 		os.system('mkdir -p ' + directory_name)
-
 		os.system(command)
-
 		process_results(directory_name)
+		os.system('rm -rf {}/data/'.format(directory_name))
+		os.system('rm -rf {}/plots/'.format(directory_name))
+		os.system('rm {}/logFile.tr'.format(directory_name))
+		os.system('rm {}/flow.tr'.format(directory_name))
+
 
 def remote_worker(m_ip):
 	conn = Connection('{}@{}'.format(USER, m_ip))
@@ -91,7 +94,7 @@ def setup_exp(exp):
 	elif exp["run_migration"] == "skip":
 		mig_str = "skipmig"
 
-	directory_name = 'exps/%s/%s_%s_P%d_L%d_O%d_MS%s_A%s_OR%d_Pr%s_Sd%d_Dd%d_Td%d_B%d' % (
+	directory_name = 'exps/%s/%s_%s_P%d_L%d_O%d_MS%s_A%s_OR%d_Pr%s_Sd%d_Dd%d_Td%d_B%d_i%d' % (
 		exp["exp_name"],
 		exp["bg_traffic_cdf"][0], 
 		mig_str,
@@ -106,6 +109,7 @@ def setup_exp(exp):
 		int(exp["dst_zone_delay"] * 1000000),
 		int(exp["traffic_zone_delay"] * 1000000),
 		exp["link_rate"], 
+		exp["iteration"],
 	)
 
 	directory_name = directory_name.lower()
@@ -172,6 +176,7 @@ def setup_exp(exp):
 			+ str(exp["tree_shape"][1])+' '\
 			+ str(exp["tree_shape"][2])+' '\
 			+ str(exp["traffic_zone_delay"])+' '\
+			+ str(exp["iteration"])+' '\
 			+ str('./'+directory_name+'/flow.tr')+'  >'\
 			+ str('./'+directory_name+'/logFile.tr')
 	else: 
@@ -193,6 +198,35 @@ if __name__ == "__main__":
 	exp_name = sys.argv[1]
 
 	configs = None
+
+	if exp_name == "random_test":
+		configs = [{
+			"mig_sizes": [(20, 20, 20)],
+			"parallel_mig": [1], 
+			"load": [0.01],
+			"oversub": [1.0],
+			"src_zone_delay": [0.00002], # in seconds
+			"dst_zone_delay": [0.00002], # in seconds
+			"traffic_zone_delay": [0.01], # in seconds
+			"network_topo": ["datacenter"], # "dumbell" 
+			"run_migration": ["yes"], # "no", "yes"
+			"prioritization": [1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
+			"orch_type": [1, 2], # 1: bottom-up, 2: top-down, 3: random
+			"bg_traffic_cdf": [("dctcp", 1138)],
+			"Protocol": [("DCTCP", "MamadQueue")], 
+			"link_rate": [10],
+			###########################################################
+			########| don't make a list out of the following |#########
+			###########################################################
+			"exp_name": [exp_name],
+			"enable_rt_dv": [0], # 0: disable, 1: enable
+			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"stat_record_interval": [0.001], # in seconds
+			"sim_end": [100000], # number of flows
+			"vm_flow_size": [30000], # in packets
+			"dc_size": [(1, 1, 16)], # (spines, bg_tors, spt)
+			"tree_shape": [(2, 2, 2)], #branching factors of the tree
+		}]
 
 	if exp_name == "vm_test":
 		configs = [{
@@ -312,7 +346,7 @@ if __name__ == "__main__":
 				"enable_bg_traffic": [1], # 0: disable, 1: enable
 				"stat_record_interval": [0.001], # in seconds
 				"sim_end": [500000], # number of flows
-				"vm_flow_size": [100000], # in packets,
+				"vm_flow_size": [10000], # in packets,
 				"dc_size": [(3, 8, 16)], # (spines, bg_tors, spt)
 				"tree_shape": [(2, 2, 2)], #branching factors of the tree
 			},
@@ -445,6 +479,7 @@ if __name__ == "__main__":
 		exit(0)
 	
 	for config in configs:
+		config["iteration"] = range(exp_rep_count)
 		# Add all possible experiments to the queue
 		keys, values = zip(*config.items())
 		permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]

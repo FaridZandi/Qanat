@@ -3,7 +3,7 @@ source "tcp-common-opt.tcl"
 set ns [new Simulator]
 set sim_start [clock seconds]
 
-if {$argc != 56} {
+if {$argc != 57} {
     puts "wrong number of arguments $argc"
     exit 0
 }
@@ -77,11 +77,12 @@ set b_factor_1 [lindex $argv 51]
 set b_factor_2 [lindex $argv 52]
 set b_factor_3 [lindex $argv 53]
 set vm_traffic_gen_delay [lindex $argv 54]
+set iteration [lindex $argv 55]
 
-
+puts "iteration: $iteration" 
 
 ### result file
-set flowlog [open [lindex $argv 55] w]
+set flowlog [open [lindex $argv 56] w]
 
 #### Packet size is in bytes.
 set pktSize 1460
@@ -461,26 +462,32 @@ for {set i $start_server_index} {$i < $end_server_index} {incr i} {
 
 puts "Setting up flows from the dedicated servers to the vms ..."; 
 
-set j 0 
+set vm_idx 0 
+set vm_count 8 
+
 set tcp_connections_to_vm 6
-foreach leaf $logical_leaves {
-    puts $leaf
+set connections_per_server [expr {$tcp_connections_to_vm * $vm_count / $topology_spt}]
+
+foreach vm $logical_leaves {
     for {set i $start_server_index} {$i < $end_server_index} {incr i} {
-        set server_num [expr {$i - $start_server_index}] 
-        set vm_connection_index [expr {($server_num - $j) % $topology_spt}]
+        set server_idx [expr {$i - $start_server_index}] 
+        set server_mod [expr {($server_idx + $vm_idx) % $vm_count}]
 
-        if { $vm_connection_index < $tcp_connections_to_vm} {
+        if { $server_mod < $connections_per_server} {
 
-            set start_time [expr 3.75 + ($j * $tcp_connections_to_vm + $vm_connection_index) * 0.0026]
-            puts "Setting up flows from server:[expr $i + 1] to vm:[expr $j + 1] at time $start_time"
+            set conn_idx [expr {$server_idx * $connections_per_server + $server_mod}]
+            set time_mult [expr {0.002 + ($iteration * 0.00011)}]
+            set start_time [expr 3.75 + $conn_idx * $time_mult]
 
-            set pair_first [expr $i + 2000]
-            set pair_second [expr $j + 2000]
+            puts "Setting up flows from server:[expr $i + 1] to vm:[expr $vm_idx + 1] at time $start_time"
+
+            set pair_first [expr $server_idx + 2000]
+            set pair_second [expr $vm_idx + 2000]
 
             set agtagr($pair_first,$pair_second) [new Agent_Aggr_pair]
-            $agtagr($pair_first,$pair_second) setup $s($i) $leaf "$pair_first $pair_second" $connections_per_pair $init_fid "TCP_pair" 1 
-            $agtagr($pair_first,$pair_second) attach-logfile $flowlog
 
+            $agtagr($pair_first,$pair_second) setup $s($i) $vm "$pair_first $pair_second" $connections_per_pair $init_fid "TCP_pair" 1 
+            $agtagr($pair_first,$pair_second) attach-logfile $flowlog
             $agtagr($pair_first,$pair_second) send_single_flow $vm_flow_size $start_time
 
             $ns at 0.1 "$agtagr($pair_first,$pair_second) warmup 3 5"
@@ -488,7 +495,7 @@ foreach leaf $logical_leaves {
             set init_fid [expr $init_fid + $connections_per_pair];
         }   
     }
-    set j [expr {$j + 1}];
+    set vm_idx [expr {$vm_idx + 1}];
 }
 
 # set up udp flows from the dedicated servers to the vms
@@ -536,8 +543,10 @@ if {$enable_bg_traffic == 1} {
                 set agtagr($i,$j) [new Agent_Aggr_pair]
                 $agtagr($i,$j) setup $s($i) $s($j) "$i $j" $connections_per_pair $init_fid "TCP_pair" 0
                 $agtagr($i,$j) attach-logfile $flowlog
-
-                $agtagr($i,$j) set_PCarrival_process [expr $lambda/($total_servers - 1)] $flow_cdf [expr 17*$i+1244*$j] [expr 33*$i+4369*$j]
+                
+                set s1 [expr (17+$iteration)*$i+(1244+$iteration)*$j] 
+                set s2 [expr (33+$iteration)*$i+(4369+$iteration)*$j]
+                $agtagr($i,$j) set_PCarrival_process [expr $lambda/($total_servers - 1)] $flow_cdf $s1 $s2
 
                 $ns at 0.1 "$agtagr($i,$j) warmup 1 5"
                 $ns at 3.5 "$agtagr($i,$j) init_schedule"
