@@ -42,3 +42,9 @@ LATEST INFORMATION:
 If you find ns useful, you may also wish to look at nam, the network
 animator <http://www.isi.edu/nsnam/nam>.
 
+
+## Changes for Qanat 
+
+Most of the added code for simulating Qanat has been added to the my-topology and the my-queue directories. 
+Minor changes have been made to NS2 base, but doesn't change the default functionality of the code. 
+
