@@ -1,5 +1,3 @@
-@(#) $Header: /cvsroot/nsnam/ns-2/README,v 1.5 2000/11/02 22:46:37 johnh Exp $
-
 ns has been maintained by the
 
 MASH Research Group (University of California, Berkeley,
@@ -57,8 +55,8 @@ To run the experiments, the following steps should be followed:
 
 * The experiment descriptions can be found in the [run_all_experiment.py](https://github.com/FaridZandi/ns-2.34/blob/master/ns-test/run_all_experiment.py) file. 
 
-* Each of the configs in the main function specifies the settings that the script will sweep through. After each experiment is done, the important metrics are calculated from the logs and stored. After all the runs for a certain setting are done, the results will be aggregated in the summary.csv file. 
+* Each of the configs in the main function specifies the settings that the script will sweep through. After each experiment is done, the important metrics are extracted from the logs and the logs are deleted. After all the runs for a certain setting are done, the results will be aggregated in the `summary.csv` file. 
 
-* When the experiments are finishe, the [plot_summary_all.sh](https://github.com/FaridZandi/ns-2.34/blob/master/ns-test/processing/plot_summary_all.sh) should be run to generate the plots. The plots can be found in the plots directory. 
+* When the experiments are finished, the [plot_summary_all.sh](https://github.com/FaridZandi/ns-2.34/blob/master/ns-test/processing/plot_summary_all.sh) should be run to generate the plots. The plots can be found in the plots directory. 
 
 * To select the desired plots that are included in the paper, the [select_paper_plots_noms.sh](https://github.com/FaridZandi/ns-2.34/blob/master/ns-test/processing/select_paper_plots_noms.sh) can be run, which will copy a handful of the plots to the `paper-plots-noms` directory. 
