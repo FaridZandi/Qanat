@@ -56,7 +56,7 @@ MKDEP	= ../../../conf/mkdep
 DEFINE = -Dstand_alone -DSTL_NAMESPACE=@STL_NAMESPACE@ -DCPP_NAMESPACE=std
 CFLAGS =  -Wall -Wno-write-strings 
 LDFLAGS = 
-LIBS =  -lnsl -ldl -lm -lm 
+LIBS =  -lnsl -lpcap -ldl -lm -lm 
 INSTALL = /usr/bin/install -c
 
 all: setdest calcdest

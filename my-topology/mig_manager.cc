@@ -423,7 +423,6 @@ bool MigrationManager::handle_packet_to(tunnel_data td,
  *********************************************************/
 
 
-
 EfficentMigrationManager::EfficentMigrationManager(){
 	verbose = MyTopology::verbose_mig; 	
 }

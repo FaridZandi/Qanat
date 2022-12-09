@@ -60,30 +60,58 @@ public:
      */
     void introduce_nodes_to_classifiers();
 
-    
+    /**
+     * Increase the counter for tunnelled packets between the 
+     * source and destination zones. 
+     */ 
     void inc_tunnelled_packets(); 
+
+    /**
+     * Notifies the Topology that the migration is completed. 
+     * To be called by the orchestrator when such event occurs. 
+     */
     void migration_finished(); 
+
+    /**
+     * Instructs the Topology to redirect the traffic to the 
+     * destination zone of the migration.
+     */ 
     void sent_traffic_to_dest(); 
     
+    /**
+     * Instructs the Topology to start recording stats for the 
+     * registered variables. 
+     */
     void start_recording_stats(int fid, FullTcpAgent* agent); 
+
+    /**
+     * Prints the collected statistics. 
+     */
     void print_stats();
+
+    /**
+     * Sets up a tunnel between the node and its peer in the 
+     * destination zone of the migration, n layers up in the 
+     * tree.
+     */
     void setup_nth_layer_tunnel(Node* vm, int n); 
 
-    Node* get_first_child(Node* node);
-    Node* get_next_sibling(Node* node);
 
-    Node* get_nth_parent(Node* node, int n);
-    TopoNode& get_data(Node* node); 
-    int uid(Node* node); 
-    Node* get_peer(Node* n); 
-    std::vector<Node*> get_children(Node* n); 
-    Node* get_node_by_address(int addr);
-    Node* get_mig_root(); 
-    std::vector<Node*>& get_used_nodes();
-    
     std::vector<Node*> get_leaves(Node* root); 
     std::vector<Node*> get_internals(Node* root); 
     std::vector<Node*> get_all_nodes(Node* root); 
+    std::vector<Node*> get_children(Node* n); 
+    Node* get_first_child(Node* node);
+    Node* get_next_sibling(Node* node);
+    Node* get_nth_parent(Node* node, int n);
+    Node* get_peer(Node* n); 
+    TopoNode& get_data(Node* node); 
+    Node* get_mig_root(); 
+
+    std::vector<Node*>& get_used_nodes();
+    Node* get_node_by_address(int addr);
+
+    int uid(Node* node); 
 
     std::vector<int> get_path(Node* n1, path_mode pm);
     void clear_path_cache(); 
@@ -105,13 +133,9 @@ public:
     static int vm_precopy_size; 
     static int vm_snapshot_size; 
     static int gw_snapshot_size; 
-
     static double stat_record_interval;
-    
     static int parallel_mig; 
-    
     static int orch_type; 
-
     static int prioritization_level; 
 
     // migration-related variables
@@ -121,14 +145,12 @@ public:
     double migration_finish_time; 
     bool is_sent_traffic_to_dest;
 
-    int tunnelled_packets; 
-
     MigrationManager* mig_manager_; 
+
+    int tunnelled_packets; 
 private:
 
-
     std::map<std::pair<Node*, path_mode>, std::vector<int> > path_cache;
-                    
 
     void tcl_command(const std::list<std::string> & myArguments);
     

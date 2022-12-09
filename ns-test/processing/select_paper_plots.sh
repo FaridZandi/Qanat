@@ -1,15 +1,15 @@
 mkdir -p paper-plots
  
 
-cp exp-cdf/NoMig-10/plots/flow_stats/average_in_flight_time_cdf_total.pdf paper-plots/exp-layering-inflight-cdf.pdf
-cp exp-cdf/NoMig-10/plots/flow_stats/average_buffered_time_cdf_total.pdf paper-plots/exp-layering-buffer-cdf.pdf
-cp prio-exp-cdf/1-level-10/plots/flow_stats/average_buffered_time_cdf_total.pdf paper-plots/exp-prio-buff-cdf.pdf
-cp prio-exp-cdf/1-level-10/plots/flow_stats/average_in_flight_time_cdf_total.pdf paper-plots/exp-prio-1-way-cdf.pdf
+cp exps/exp-cdf/NoMig-10/plots/flow_stats/average_in_flight_time_cdf_total.pdf paper-plots/exp-layering-inflight-cdf.pdf
+cp exps/exp-cdf/NoMig-10/plots/flow_stats/average_buffered_time_cdf_total.pdf paper-plots/exp-layering-buffer-cdf.pdf
+cp exps/prio-exp-cdf/1-level-10/plots/flow_stats/average_buffered_time_cdf_total.pdf paper-plots/exp-prio-buff-cdf.pdf
+cp exps/prio-exp-cdf/1-level-10/plots/flow_stats/average_in_flight_time_cdf_total.pdf paper-plots/exp-prio-1-way-cdf.pdf
 
-cp plots/prio_test_bar/gw_snapshot_size:10+cc_protocol:DCTCP/tot_mig_time.pdf paper-plots/exp-prio-tot-mig-time-10.pdf
-cp plots/prio_test_bar/gw_snapshot_size:50+cc_protocol:DCTCP/tot_mig_time.pdf paper-plots/exp-prio-tot-mig-time-50.pdf
-cp plots/prio_test_bar/gw_snapshot_size:10+cc_protocol:DCTCP/avg_bpq.pdf paper-plots/exp-prio-avg-bpq-10.pdf
-cp plots/prio_test_bar/gw_snapshot_size:50+cc_protocol:DCTCP/avg_bpq.pdf paper-plots/exp-prio-avg-bpq-50.pdf
+cp plots/prio_test_bar/gw_snapshot_size:10/tot_mig_time.pdf paper-plots/exp-prio-tot-mig-time-10.pdf
+cp plots/prio_test_bar/gw_snapshot_size:50/tot_mig_time.pdf paper-plots/exp-prio-tot-mig-time-50.pdf
+cp plots/prio_test_bar/gw_snapshot_size:10/avg_bpq.pdf paper-plots/exp-prio-avg-bpq-10.pdf
+cp plots/prio_test_bar/gw_snapshot_size:50/avg_bpq.pdf paper-plots/exp-prio-avg-bpq-50.pdf
 
 
 cp plots/parallel_test/oversub:2/tot_mig_time.pdf paper-plots/exp-parallel-tot_mig_time-oversub-2.pdf

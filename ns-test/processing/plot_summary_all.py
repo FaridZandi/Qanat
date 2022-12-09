@@ -10,8 +10,6 @@ import seaborn as sns
 import os 
 import threading
 
-
-number_worker_threads = 35
 plots_dir = "plots"
 
 desc_map = {
@@ -46,12 +44,12 @@ desc_map = {
     "vm_max_pkt_in_flight_t": "Max VNF Traffic 1-Way Delay (ms)",
     "vm_max_pkt_buff_t": "VNF Traffic Max Packet Buffer Time (ms)",
     "tnld_pkt_cnt": "Tunnelled Packets Count",
-    "vm_90_ptk_in_flight_t": "90th(%) VNF Traffic 1-Way Delay (ms)",
-    "vm_95_ptk_in_flight_t": "95th(%) VNF Traffic 1-Way Delay (ms)",
-    "vm_99_ptk_in_flight_t": "99th(%) VNF Traffic 1-Way Delay (ms)",
-    "vm_90_pkt_buff_t": "90th(%) VNF Traffic Buffering (ms)",
-    "vm_95_pkt_buff_t": "95th(%) VNF Traffic Buffering (ms)",
-    "vm_99_pkt_buff_t": "99th(%) VNF Traffic Buffering (ms)",
+    "vm_90_ptk_in_flight_t": "90th %ile VNF Traffic 1-Way Delay (ms)",
+    "vm_95_ptk_in_flight_t": "95th %ile VNF Traffic 1-Way Delay (ms)",
+    "vm_99_ptk_in_flight_t": "99th %ile VNF Traffic 1-Way Delay (ms)",
+    "vm_90_pkt_buff_t": "90th %ile VNF Traffic Buffering (ms)",
+    "vm_95_pkt_buff_t": "95th %ile VNF Traffic Buffering (ms)",
+    "vm_99_pkt_buff_t": "99th %ile VNF Traffic Buffering (ms)",
     "bg_50_ret": "50% Shortest Background Ret. Rate (%)",
     "bg_75_ret": "75% Shortest Background Ret. Rate (%)",
     "bg_90_ret": "90% Shortest Background Ret. Rate (%)",
@@ -88,19 +86,19 @@ metrics = [
     "vm_max_pkt_in_flight_t",
     "vm_max_pkt_buff_t",
     "tnld_pkt_cnt",
-    # "vm_90_ptk_in_flight_t",
-    # "vm_95_ptk_in_flight_t",
+    "vm_90_ptk_in_flight_t",
+    "vm_95_ptk_in_flight_t",
     "vm_99_ptk_in_flight_t",
-    # "vm_90_pkt_buff_t",
-    # "vm_95_pkt_buff_t",
+    "vm_90_pkt_buff_t",
+    "vm_95_pkt_buff_t",
     "vm_99_pkt_buff_t",
-    # "bg_50_ret",
-    # "bg_75_ret",
-    # "bg_90_ret",
-    # "bg_50_afct",
-    # "bg_75_afct",
-    # "bg_90_afct",
-    # "avg_bpq",
+    "bg_50_ret",
+    "bg_75_ret",
+    "bg_90_ret",
+    "bg_50_afct",
+    "bg_75_afct",
+    "bg_90_afct",
+    "avg_bpq",
     "max_bpq",
 
 ]
@@ -370,202 +368,87 @@ if len(sys.argv) < 2:
 
 plot_name = sys.argv[1]
 
-if plot_name == "orch_test":
+
+if plot_name == "prio_test":
     plot_exp_bar({
-        "exp_name": "orch_test", 
-        "plot_name": "orch_test",
-        "x_setting": ["prioritization"],
-        "hue_setting": ["migration_status", "orch_type",],
+        "exp_name": "prio_test", 
+        "plot_name": "prio_test",
+        "x_setting": ["load"],
+        "hue_setting": ["prioritization"],
         "repeat_per": ["gw_snapshot_size"],
-        "metrics": metrics,
+        "metrics": ["max_bpq", "tot_mig_time", "tnld_pkt_cnt"],
+        "limit": {"gw_snapshot_size": 50},
         "plot_type": "bar",
-    }) 
+    })  
 
 if plot_name == "parallel_test":
     plot_exp_bar({
         "exp_name": "parallel_test", 
         "plot_name": "parallel_test",
         "x_setting": ["parallel_mig"],
-        "hue_setting": ["gw_snapshot_size"],
-        "repeat_per": ["oversub"],
-        "limit": {"cc_protocol": "DCTCP"},
-        "metrics": metrics,
-        "plot_type": "bar",
-    }) 
-
-if plot_name == "parallel_test_2":
-    plot_exp_bar({
-        "exp_name": "parallel_test", 
-        "plot_name": "parallel_test_2",
-        "x_setting": ["parallel_mig"],
         "hue_setting": ["oversub"],
-        "repeat_per": ["gw_snapshot_size", "prioritization"],
-        "metrics": ["vm_99_ptk_in_flight_t"],# "tot_mig_time", "max_bpq"],
+        "repeat_per": ["gw_snapshot_size"],
+        "metrics": ["vm_99_ptk_in_flight_t", "tot_mig_time", "tnld_pkt_cnt"],
+        "limit": {"prioritization": "2-Levels"},
         "plot_type": "bar",
         "sort_hue": None
     }) 
 
-if plot_name == "prio_test_line":
-    plot_exp_bar({
-        "exp_name": "prio_test", 
-        "plot_name": "prio_test_line",
-        "x_setting": ["load"],
-        "hue_setting": ["prioritization"],
-        "repeat_per": ["gw_snapshot_size"],
-        "metrics": metrics,
-        "plot_type": "line",
-    })  
-
-
-if plot_name == "prio_test_bar":
-    plot_exp_bar({
-        "exp_name": "prio_test", 
-        "plot_name": "prio_test_bar",
-        "x_setting": ["load"],
-        "hue_setting": ["prioritization"],
-        "repeat_per": ["gw_snapshot_size"],
-        "metrics": metrics,
-        "plot_type": "bar",
-    })  
-
-if plot_name == "size_test":
-    plot_exp_bar({
-        "exp_name": "size_test", 
-        "plot_name": "size_test",
-        "x_setting": ["vm_snapshot_size", "gw_snapshot_size"],
-        "hue_setting": None,
-        "repeat_per": ["cc_protocol"],
-        "metrics": metrics,
-        "plot_type": "bar",
-    }) 
-
-if plot_name == "latency_test":
-    plot_exp_bar({
-        "exp_name": "latency_test", 
-        "plot_name": "latency_test",
-        "x_setting": ["src_zone_delay"],
-        "hue_setting": ["migration_status", "dst_zone_delay"],
-        "repeat_per": ["gw_snapshot_size"],
-        "metrics": metrics,
-        "plot_type": "bar",
-    }) 
-
-if plot_name == "latency_test_heatmap":
-    plot_exp_bar({
-        "exp_name": "latency_test", 
-        "plot_name": "latency_test_heatmap",
-        "x_setting": ["src_zone_delay"],
-        "hue_setting": ["dst_zone_delay"],
-        "repeat_per": ["gw_snapshot_size", "migration_status"],
-        "limit": {"migration_status": "Migration"},
-        "metrics": metrics,
-        "plot_type": "heatmap",
-        "x_title": desc_map["src_zone_delay"],
-        "y_title": desc_map["dst_zone_delay"]
-    }) 
-
-
-if plot_name == "bg_test_bar":
+if plot_name == "bg_test":
     plot_exp_bar({
         "exp_name": "bg_test", 
-        "plot_name": "bg_test_bar",
-        "x_setting": ["prioritization"],
-        "hue_setting": ["migration_status"],
-        "repeat_per": ["cc_protocol", "gw_snapshot_size", "bg_cdf", "load"],
-        "metrics": metrics,
-        "plot_type": "bar",
-    }) 
-
-if plot_name == "bg_test_line":
-    plot_exp_bar({
-        "exp_name": "bg_test", 
-        "plot_name": "bg_test_line",
-        "x_setting": ["prioritization"],
-        "hue_setting": ["migration_status"],
-        "repeat_per": ["cc_protocol", "gw_snapshot_size", "bg_cdf", "load"],
-        "metrics": metrics,
-        "plot_type": "line",
-    }) 
-
-if plot_name == "bg_test_2_line":
-    plot_exp_bar({
-        "exp_name": "bg_test", 
-        "plot_name": "bg_test_2_line",
+        "plot_name": "bg_test",
         "x_setting": ["load"],
-        "hue_setting": ["migration_status"],
-        "repeat_per": ["cc_protocol","bg_cdf","gw_snapshot_size", "prioritization"],
-        "legend": None,
+        "hue_setting": ["migration_status", "gw_snapshot_size"],
+        "repeat_per": ["bg_cdf", "prioritization"],
+        "metrics": ["vm_afct", "vm_99_ptk_in_flight_t", "bg_100k_afct", "bg_big_afct" ,"tnld_pkt_cnt"],
         "limit": {"cc_protocol": "DCTCP"},
-        "metrics": metrics,
-        "plot_type": "line",
+        "plot_type": "bar",
+        "sort_hue": None
     }) 
 
-if plot_name == "bg_test_2_bar":
+
+if plot_name == "bg_test_no_legend":
     plot_exp_bar({
         "exp_name": "bg_test", 
-        "plot_name": "bg_test_2_bar",
+        "plot_name": "bg_test_no_legend",
         "x_setting": ["load"],
         "hue_setting": ["migration_status", "gw_snapshot_size"],
-        "repeat_per": ["bg_cdf"],
-        "legend": None,
-        "limit": {"cc_protocol": "DCTCP", "prioritization" : "2-Levels"},
-        "metrics": metrics,
+        "repeat_per": ["bg_cdf", "prioritization"],
+        "metrics": ["vm_afct", "vm_99_ptk_in_flight_t", "bg_100k_afct", "bg_big_afct","tnld_pkt_cnt"],
+        "limit": {"cc_protocol": "DCTCP"},
         "plot_type": "bar",
+        "legend": None,
+        "sort_hue": None
+    }) 
+
+
+if plot_name == "bg_test_log":
+    plot_exp_bar({
+        "exp_name": "bg_test", 
+        "plot_name": "bg_test_log",
+        "x_setting": ["load"],
+        "hue_setting": ["migration_status", "gw_snapshot_size"],
+        "repeat_per": ["bg_cdf", "prioritization"],
+        "metrics": ["vm_afct", "vm_99_ptk_in_flight_t", "bg_100k_afct", "bg_big_afct","tnld_pkt_cnt"],
+        "limit": {"cc_protocol": "DCTCP"},
+        "plot_type": "bar",
+        "sort_hue": None,
         "y_scale": "log",
     }) 
 
-if plot_name == "bg_test_2_bar_legend":
+
+if plot_name == "bg_test_no_legend_log":
     plot_exp_bar({
         "exp_name": "bg_test", 
-        "plot_name": "bg_test_2_bar_legend",
+        "plot_name": "bg_test_no_legend_log",
         "x_setting": ["load"],
         "hue_setting": ["migration_status", "gw_snapshot_size"],
-        "repeat_per": ["bg_cdf"],
-        "legend": 'best',
-        "sort": False,
-        "limit": {"cc_protocol": "DCTCP", "prioritization" : "2-Levels"},
-        "metrics": metrics,
+        "repeat_per": ["bg_cdf", "prioritization"],
+        "metrics": ["vm_afct", "vm_99_ptk_in_flight_t", "bg_100k_afct", "bg_big_afct","tnld_pkt_cnt"],
+        "limit": {"cc_protocol": "DCTCP"},
         "plot_type": "bar",
+        "sort_hue": None,
+        "legend": None,
         "y_scale": "log",
-    }) 
-
-
-if plot_name == "bg_test_3_bar":
-    plot_exp_bar({
-        "exp_name": "bg_test", 
-        "plot_name": "bg_test_3_bar",
-        "x_setting": ["load"],
-        "hue_setting": ["migration_status", "gw_snapshot_size"],
-        "repeat_per": ["bg_cdf"],
-        "legend": None,
-        "limit": {"prioritization" : "2-Levels", "cc_protocol": "DCTCP"},
-        "metrics": metrics,
-        "plot_type": "bar",
-    }) 
-
-
-if plot_name == "bg_test_4_bar":
-    plot_exp_bar({
-        "exp_name": "bg_test", 
-        "plot_name": "bg_test_4_bar",
-        "x_setting": ["prioritization"],
-        "hue_setting": ["migration_status", "gw_snapshot_size"],
-        "repeat_per": ["bg_cdf"],
-        "limit": {"load" : 50, "cc_protocol": "DCTCP"},
-        "legend": None,
-        "metrics": metrics,
-        "plot_type": "bar",
-    }) 
-
-if plot_name == "bg_test_5_bar":
-    plot_exp_bar({
-        "exp_name": "bg_test", 
-        "plot_name": "bg_test_5_bar",
-        "x_setting": ["prioritization"],
-        "hue_setting": ["migration_status", "gw_snapshot_size"],
-        "repeat_per": ["bg_cdf"],
-        "legend": None,
-        "limit": {"load" : 50, "cc_protocol": "DCTCP"},
-        "metrics": metrics,
-        "plot_type": "bar",
     }) 
