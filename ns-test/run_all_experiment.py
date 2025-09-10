@@ -49,10 +49,10 @@ def worker():
 		os.system('mkdir -p ' + directory_name)
 		os.system(command)
 		process_results(directory_name)
-		os.system('rm -rf {}/data/'.format(directory_name))
-		os.system('rm -rf {}/plots/'.format(directory_name))
-		os.system('rm {}/logFile.tr'.format(directory_name))
-		os.system('rm {}/flow.tr'.format(directory_name))
+		# os.system('rm -rf {}/data/'.format(directory_name))
+		# os.system('rm -rf {}/plots/'.format(directory_name))
+		# os.system('rm {}/logFile.tr'.format(directory_name))
+		# os.system('rm {}/flow.tr'.format(directory_name))
 
 
 def remote_worker(m_ip):
@@ -219,9 +219,9 @@ if __name__ == "__main__":
 			"dst_zone_delay": [0.00002], # in seconds
 			"traffic_zone_delay": [0.01], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["yes"], # "no", "yes"
+			"run_migration": ["yes", "no"], # "no", "yes"
 			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1, 2], # 1: bottom-up, 2: top-down, 3: random
+			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
 			"bg_traffic_cdf": [("dctcp", 1138)],
 			"Protocol": [("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
@@ -230,12 +230,12 @@ if __name__ == "__main__":
 			###########################################################
 			"exp_name": [exp_name],
 			"enable_rt_dv": [0], # 0: disable, 1: enable
-			"enable_bg_traffic": [1], # 0: disable, 1: enable
+			"enable_bg_traffic": [0], # 0: disable, 1: enable
 			"stat_record_interval": [0.001], # in seconds
-			"sim_end": [100000], # number of flows
+			"sim_end": [100], # number of flows
 			"vm_flow_size": [30000], # in packets
 			"dc_size": [(1, 1, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(2, 2, 2)], #branching factors of the tree
+			"tree_shape": [(1, 1, 1)], #branching factors of the tree
 		}]
 
 	if exp_name == "vm_test":
