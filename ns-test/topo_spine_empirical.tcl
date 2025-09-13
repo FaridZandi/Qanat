@@ -465,7 +465,7 @@ puts "Setting up flows from the dedicated servers to the vms ...";
 set vm_idx 0 
 set vm_count 8 
 
-set tcp_connections_to_vm 6
+set tcp_connections_to_vm 2
 set connections_per_server [expr {$tcp_connections_to_vm * $vm_count / $topology_spt}]
 
 foreach vm $logical_leaves {

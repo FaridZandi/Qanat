@@ -264,6 +264,19 @@ bool Monitor::recv(Packet* p, Handler* h){
     auto packet_count = std::stoi(state["packet_count"]);
     log_packet("packet count incremented: ", packet_count);
 
+
+
+    double arrival_time = Scheduler::instance().clock();
+    hdr_tcp* tcph = hdr_tcp::access(p);
+    
+    int seqno = tcph->seqno();
+    int my_id = toponode_->uid;
+    int flow_id = hdr_ip::access(p)->fid_;
+
+    std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
+              << ", seqno: " << seqno << ", node ID: " << my_id 
+              << ", flow ID: " << flow_id << std::endl;
+
     return true; 
 }
 
@@ -842,18 +855,19 @@ LoggerNF::~LoggerNF(){
 
 bool LoggerNF::recv(Packet* p, Handler* h){
     // Store arrival time and seq number
-    double arrival_time = Scheduler::instance().clock();
-    hdr_tcp* tcph = hdr_tcp::access(p);
-    int seqno = tcph->seqno();
+//     double arrival_time = Scheduler::instance().clock();
+//     hdr_tcp* tcph = hdr_tcp::access(p);
+//     int seqno = tcph->seqno();
 
-    // Store the info in the packet_log vector
-    this->packet_log.emplace_back(arrival_time, seqno);
+//     // Store the info in the packet_log vector
+//     this->packet_log.emplace_back(arrival_time, seqno);
 
-    int my_id = toponode_->uid;
-
-// Print to stdout
-    std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
-              << ", seqno: " << seqno << ", node ID: " << my_id << std::endl;
+//     int my_id = toponode_->uid;
+//     int flow_id = hdr_ip::access(p)->fid_;
+// // Print to stdout
+//     std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
+//               << ", seqno: " << seqno << ", node ID: " << my_id 
+//               << ", flow ID: " << flow_id << std::endl;
 
 
     return true; 

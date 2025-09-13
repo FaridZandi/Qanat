@@ -131,69 +131,77 @@ def setup_exp(exp):
 
 	cdf_file = "CDF_" + exp["bg_traffic_cdf"][0] + ".tcl"
 	mean_flow_size = exp["bg_traffic_cdf"][1]
-	gnrtd_flows = int(exp["sim_end"] * exp["load"] * (1138.0 / mean_flow_size))
 	
+	if exp_name == "random_test":
+		gnrtd_flows = exp["sim_end"]
+	else:	
+		gnrtd_flows = int(exp["sim_end"] * exp["load"] * (1138.0 / mean_flow_size))
+ 
 	if exp["network_topo"] == "datacenter":
 		sim_script = 'topo_spine_empirical.tcl'
-		cmd = ns_path + ' ' + sim_script + ' ' \
-			+ str(gnrtd_flows)+' '\
-			+ str(exp["link_rate"])+' '\
-			+ str(mean_link_delay)+' '\
-			+ str(host_delay)+' '\
-			+ str(queueSize)+' '\
-			+ str(exp["load"])+' '\
-			+ str(connections_per_pair)+' '\
-			+ str(mean_flow_size * 1460)+' '\
-			+ str(paretoShape)+' '\
-			+ str(cdf_file)+' '\
-			+ str(enableMultiPath)+' '\
-			+ str(perflowMP)+' '\
-			+ str(exp["Protocol"][0])+' '\
-			+ str(initWindow)+' '\
-			+ str(ackRatio)+' '\
-			+ str(slowstartrestart)+' '\
-			+ str(DCTCP_g)+' '\
-			+ str(min_rto)+' '\
-			+ str(prob_cap_)+' '\
-			+ str(exp["Protocol"][1])+' '\
-			+ str(DCTCP_K)+' '\
-			+ str(drop_prio_)+' '\
-			+ str(prio_scheme_)+' '\
-			+ str(deque_prio_)+' '\
-			+ str(keep_order_)+' '\
-			+ str(prio_num_)+' '\
-			+ str(ECN_scheme_)+' '\
-			+ str(pias_thresh_0)+' '\
-			+ str(pias_thresh_1)+' '\
-			+ str(pias_thresh_2)+' '\
-			+ str(pias_thresh_3)+' '\
-			+ str(pias_thresh_4)+' '\
-			+ str(pias_thresh_5)+' '\
-			+ str(pias_thresh_6)+' '\
-			+ str(exp["dc_size"][2])+' '\
-			+ str(exp["dc_size"][1])+' '\
-			+ str(exp["dc_size"][0])+' '\
-			+ str(exp["oversub"])+' '\
-			+ str(mig_sizes[0] * 1000000)+' '\
-			+ str(mig_sizes[1] * 1000000)+' '\
-			+ str(mig_sizes[2] * 1000000)+' '\
-			+ str(exp["parallel_mig"])+' '\
-			+ str(exp["run_migration"])+' '\
-			+ str(exp["stat_record_interval"])+' '\
-			+ str(exp["orch_type"])+' '\
-			+ str(exp["prioritization"])+' '\
-			+ str(exp["src_zone_delay"])+' '\
-			+ str(exp["dst_zone_delay"])+' '\
-			+ str(exp["enable_bg_traffic"])+' '\
-			+ str(exp["vm_flow_size"])+' '\
-			+ str(exp["enable_rt_dv"])+' '\
-			+ str(exp["tree_shape"][0])+' '\
-			+ str(exp["tree_shape"][1])+' '\
-			+ str(exp["tree_shape"][2])+' '\
-			+ str(exp["traffic_zone_delay"])+' '\
-			+ str(exp["iteration"])+' '\
-			+ str('./'+directory_name+'/flow.tr')+'  >'\
-			+ str('./'+directory_name+'/logFile.tr')
+		cmd_parts = [
+			ns_path,
+			sim_script,
+			str(gnrtd_flows),  # 0
+			str(exp["link_rate"]),  # 1
+			str(mean_link_delay),  # 2
+			str(host_delay),  # 3
+			str(queueSize),  # 4
+			str(exp["load"]),  # 5
+			str(connections_per_pair),  # 6
+			str(mean_flow_size * 1460),  # 7
+			str(paretoShape),  # 8
+			str(cdf_file),  # 9
+			str(enableMultiPath),  # 10
+			str(perflowMP),  # 11
+			str(exp["Protocol"][0]),  # 12
+			str(initWindow),  # 13
+			str(ackRatio),  # 14
+			str(slowstartrestart),  # 15
+			str(DCTCP_g),  # 16
+			str(min_rto),  # 17
+			str(prob_cap_),  # 18
+			str(exp["Protocol"][1]),  # 19
+			str(DCTCP_K),  # 20
+			str(drop_prio_),  # 21
+			str(prio_scheme_),  # 22
+			str(deque_prio_),  # 23
+			str(keep_order_),  # 24
+			str(prio_num_),  # 25
+			str(ECN_scheme_),  # 26
+			str(pias_thresh_0),  # 27
+			str(pias_thresh_1),  # 28
+			str(pias_thresh_2),  # 29
+			str(pias_thresh_3),  # 30
+			str(pias_thresh_4),  # 31
+			str(pias_thresh_5),  # 32
+			str(pias_thresh_6),  # 33
+			str(exp["dc_size"][2]),  # 34
+			str(exp["dc_size"][1]),  # 35
+			str(exp["dc_size"][0]),  # 36
+			str(exp["oversub"]),  # 37
+			str(mig_sizes[0] * 1000000),  # 38
+			str(mig_sizes[1] * 1000000),  # 39
+			str(mig_sizes[2] * 1000000),  # 40
+			str(exp["parallel_mig"]),  # 41
+			str(exp["run_migration"]),  # 42
+			str(exp["stat_record_interval"]),  # 43
+			str(exp["orch_type"]),  # 44
+			str(exp["prioritization"]),  # 45
+			str(exp["src_zone_delay"]),  # 46
+			str(exp["dst_zone_delay"]),  # 47
+			str(exp["enable_bg_traffic"]),  # 48
+			str(exp["vm_flow_size"]),  # 49
+			str(exp["enable_rt_dv"]),  # 50
+			str(exp["tree_shape"][0]),  # 51
+			str(exp["tree_shape"][1]),  # 52
+			str(exp["tree_shape"][2]),  # 53
+			str(exp["traffic_zone_delay"]),  # 54
+			str(exp["iteration"]),  # 55
+			'./' + directory_name + '/flow.tr',  # 56
+			'>' + './' + directory_name + '/logFile.tr'  
+		]
+		cmd = ' '.join(cmd_parts)
 	else: 
 		pass
 
@@ -234,13 +242,13 @@ if __name__ == "__main__":
 			########| don't make a list out of the following |#########
 			###########################################################
 			"exp_name": [exp_name],
-			"enable_rt_dv": [0], # 0: disable, 1: enable
+			"enable_rt_dv": [1], # 0: disable, 1: enable
 			"enable_bg_traffic": [0], # 0: disable, 1: enable
 			"stat_record_interval": [0.001], # in seconds
 			"sim_end": [100], # number of flows
 			"vm_flow_size": [30000], # in packets
 			"dc_size": [(1, 1, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(1, 1, 1)], #branching factors of the tree
+			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		}]
 
 	if exp_name == "vm_test":

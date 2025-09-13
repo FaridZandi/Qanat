@@ -153,6 +153,9 @@ TCP_pair instproc setpairid { pid } {
 }
 
 TCP_pair instproc setfid { fid } {
+    # print something
+    puts "setting flow ID: $fid"
+
     $self instvar tcps tcpr
     $self instvar id
     $self set id $fid
@@ -187,6 +190,9 @@ TCP_pair instproc start { nr_bytes } {
 
     $self set start_time [$ns now] ;# memorize
     $self set bytes       $nr_bytes  ;# memorize
+
+
+    puts "aoeuaoe: is_single_flow = $is_single_flow, flow_gen = $flow_gen, sim_end = $sim_end"
 
     if {$flow_gen >= $sim_end} {
 	    return
