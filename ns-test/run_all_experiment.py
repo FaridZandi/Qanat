@@ -1,7 +1,11 @@
 import sys
 sys.dont_write_bytecode = True
 
-from fabric import Connection
+# Optional fabric import for remote runs only
+try:
+    from fabric import Connection
+except Exception:
+    Connection = None
 import itertools
 import threading
 import os
@@ -14,6 +18,7 @@ import time
 exp_q = queue.Queue()
 
 threads = []
+# Restore default worker threads for full experiment
 number_worker_threads = 20
 exp_rep_count = 1
 
@@ -219,9 +224,9 @@ if __name__ == "__main__":
 			"dst_zone_delay": [0.00002], # in seconds
 			"traffic_zone_delay": [0.01], # in seconds
 			"network_topo": ["datacenter"], # "dumbell" 
-			"run_migration": ["yes", "no"], # "no", "yes"
-			"prioritization": [0, 1, 2], # 0: disable, 1: enable_lvl_1, 2: enable_lvl_2
-			"orch_type": [1, 2, 3], # 1: bottom-up, 2: top-down, 3: random
+			"run_migration": ["yes", "no"], # full grid
+			"prioritization": [0, 1, 2], # full grid
+			"orch_type": [1, 2, 3], # full grid
 			"bg_traffic_cdf": [("dctcp", 1138)],
 			"Protocol": [("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
@@ -235,7 +240,7 @@ if __name__ == "__main__":
 			"sim_end": [100], # number of flows
 			"vm_flow_size": [30000], # in packets
 			"dc_size": [(1, 1, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(1, 1, 1)], #branching factors of the tree
+			"tree_shape": [(2, 2, 2)], #branching factors of the tree
 		}]
 
 	if exp_name == "vm_test":
