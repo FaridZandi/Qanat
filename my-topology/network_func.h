@@ -4,6 +4,8 @@
 #include "object.h"
 #include <string>
 #include <map>
+#include <vector>
+#include <utility>
 
 class Packet; 
 class Handler; 
@@ -319,5 +321,23 @@ public:
     virtual void print_info(); 
 };
 
+
+class LoggerNF : public NF {    
+public: 
+    LoggerNF(TopoNode* toponode, int chain_pos); 
+    
+    virtual ~LoggerNF(); 
+
+    virtual bool recv(Packet* p, Handler* h);
+
+    virtual void handle(Event* event){};
+
+    virtual std::string get_type(); 
+
+    virtual void print_info(); 
+    
+private:
+    std::vector<std::pair<double, int> > packet_log;
+};
 
 #endif

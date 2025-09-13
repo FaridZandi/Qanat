@@ -240,7 +240,7 @@ if __name__ == "__main__":
 			"sim_end": [100], # number of flows
 			"vm_flow_size": [30000], # in packets
 			"dc_size": [(1, 1, 16)], # (spines, bg_tors, spt)
-			"tree_shape": [(2, 2, 2)], #branching factors of the tree
+			"tree_shape": [(1, 1, 1)], #branching factors of the tree
 		}]
 
 	if exp_name == "vm_test":

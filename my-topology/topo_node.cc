@@ -1,5 +1,5 @@
 #include "topo_node.h"
-
+#include <iostream>
 
 TopoNode::TopoNode(){
         uid = 0; 
@@ -75,6 +75,12 @@ NF* TopoNode::add_nf(std::string type, double param){
             this, current_length); 
         nfs.push_back(r); 
         return r; 
+    } else if (type == "logger"){
+        std::cout << "Adding a logger NF to node " << node->address() << std::endl;
+        LoggerNF* lg = new LoggerNF(
+            this, current_length); 
+        nfs.push_back(lg); 
+        return lg; 
     }
 
     return nullptr;

@@ -11,6 +11,7 @@
 #include "tcp-full.h"
 #include <iomanip>
 #include "utility.h"
+#include <iostream>
 
 NF::NF(TopoNode* toponode, 
        int chain_pos) : toponode_(toponode),
@@ -823,4 +824,44 @@ void LastPacketNotifNF::print_info(){
     std::cout << "Last Packet Notifier on node " ;
     std::cout << this->toponode_->node->address();
     std::cout << std::endl;  
+}
+
+/**********************************************************
+ * LoggerNF's Implementation                                 *  
+ *********************************************************/
+
+LoggerNF::LoggerNF(TopoNode* toponode, int chain_pos) 
+    : NF(toponode, chain_pos) {
+    // Initialize data structure to store arrival times and seq numbers
+    this->packet_log.clear();
+}
+
+LoggerNF::~LoggerNF(){
+
+}
+
+bool LoggerNF::recv(Packet* p, Handler* h){
+    // Store arrival time and seq number
+    double arrival_time = Scheduler::instance().clock();
+    hdr_tcp* tcph = hdr_tcp::access(p);
+    int seqno = tcph->seqno();
+
+    // Store the info in the packet_log vector
+    this->packet_log.emplace_back(arrival_time, seqno);
+
+    int my_id = toponode_->uid;
+
+// Print to stdout
+    std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
+              << ", seqno: " << seqno << ", node ID: " << my_id << std::endl;
+
+
+    return true; 
+}
+
+std::string LoggerNF::get_type(){
+    return "logger"; 
+}
+
+void LoggerNF::print_info(){
 }
