@@ -26,6 +26,7 @@ import io
 import sys
 from collections import defaultdict
 from typing import Dict, List, Tuple, Iterable
+import matplotlib.pyplot as plt
 
 SortKey = Tuple[float, int]  # (arrival_time, line) default
 
@@ -65,7 +66,7 @@ def _strict_equal(seqs: Dict[int, List[int]]) -> bool:
         return True
     return all(s == first for s in it)
 
-def _order_consistent(a: List[int], b: List[int]) -> Tuple[bool, Tuple[int, int] or None]:
+def _order_consistent_2(a: List[int], b: List[int]) -> Tuple[bool, Tuple[int, int] or None]:
     """
     Returns (True, None) if order consistent; else (False, (x,y)) giving
     the first inversion pair that appears in opposite order between a and b.
@@ -81,6 +82,44 @@ def _order_consistent(a: List[int], b: List[int]) -> Tuple[bool, Tuple[int, int]
             return False, (y, x)  # y should not precede x in 'a' if it follows in 'b'
         last = p
     return True, None
+
+def _order_consistent(a: List[int], b: List[int]) -> Tuple[bool, Tuple[int, int] or None]:
+    bad_count = 0
+    
+    # find who's next for each value in a 
+    next_in_a = {}
+    for i in range(len(a) - 1):
+        if a[i] not in next_in_a:
+            next_in_a[a[i]] = [a[i + 1]]
+        else:
+            next_in_a[a[i]].append(a[i + 1])
+    next_in_a[a[-1]] = None  # last has no next
+    
+    next_in_b = {} 
+    for i in range(len(b) - 1):
+        if b[i] not in next_in_b:
+            next_in_b[b[i]] = [b[i + 1]]
+        else:
+            next_in_b[b[i]].append(b[i + 1])
+    next_in_b[b[-1]] = None  # last has no next
+    
+    for a_seqno, a_nexts in next_in_a.items():
+        if a_seqno not in next_in_b:
+            continue
+        b_nexts = next_in_b[a_seqno]
+        if b_nexts is None or a_nexts is None:
+            continue
+        # are they the same? 
+        for x in a_nexts:
+            if x in b_nexts:
+                break
+        else:
+            # no match found, inversion
+            print(f"DEBUG: inversion detected for {a_seqno}: a_nexts={a_nexts}, b_nexts={b_nexts}")
+            bad_count += 1
+                 
+    return bad_count
+
 
 def main():
     ap = argparse.ArgumentParser(description="Check per-node seqno ordering for a flow_id.")
@@ -187,15 +226,76 @@ def main():
         for j in range(i + 1, len(nodes)):
             a_id, b_id = nodes[i], nodes[j]
             a, b = seqs[a_id], seqs[b_id]
-            ok, inv = _order_consistent(a, b)
-            if ok:
+            bad_count = _order_consistent(a, b)
+            if bad_count == 0:
                 print(f"  {a_id} vs {b_id}: OK")
             else:
-                all_order_ok = False
-                y, x = inv  # y appears before x in 'b' but after in 'a'
-                print(f"  {a_id} vs {b_id}: INVERSION (… {y} before {x} in B, reversed in A)")
+                print("bad_count", bad_count)
     if all_order_ok:
         print("All pairs consistent in relative order.")
 
+
+    # make a csv, print the sequence of each node. The columns are node IDs, the rows are seqnos
+    with open(f"flow_{args.flow}_sequences.csv", "w", newline="", encoding="utf-8") as outfh:
+        writer = csv.writer(outfh)
+        writer.writerow(nodes_sorted)
+        max_len = max(len(seqs[n]) for n in nodes_sorted)
+        for i in range(max_len):
+            row = []
+            for n in nodes_sorted:
+                s = seqs[n]
+                v = s[i] if i < len(s) else ""
+                row.append(v)
+            writer.writerow(row)    
+    print(f"\nWrote sequences to flow_{args.flow}_sequences.csv")
+
+    # Plot receiving rates per node
+    first_half_of_sorted_nodes = nodes_sorted[:len(nodes_sorted)//2]
+    second_half_of_sorted_nodes = nodes_sorted[len(nodes_sorted)//2:]
+
+    def compute_receiving_rate(rows, window_size=0.03):
+        # rows: list of (key, seqno, arrival_time, line)
+        # window_size: seconds
+        times = [t for _, _, t, _ in rows]
+        if not times:
+            return [], []
+        min_time = min(times)
+        max_time = max(times)
+        bins = []
+        rates = []
+        t = min_time
+        while t < max_time:
+            next_t = t + window_size
+            count = sum(1 for time in times if t <= time < next_t)
+            bins.append(t + window_size / 2)
+            rates.append(count / window_size)
+            t = next_t
+        return bins, rates
+    
+    fig, axes = plt.subplots(
+        nrows=max(len(first_half_of_sorted_nodes), len(second_half_of_sorted_nodes)),
+        ncols=1, figsize=(6, 6), sharex=True, sharey=True
+    )
+
+    for col, node_list in enumerate([first_half_of_sorted_nodes, second_half_of_sorted_nodes]):
+        for row, node_id in enumerate(node_list):
+            ax = axes[row]
+            bins, rates = compute_receiving_rate(per_node[node_id])
+            if node_id in first_half_of_sorted_nodes:
+                zone = "src"
+                color = "blue"
+            else:
+                zone = "dst"
+                color = "orange"
+            ax.plot(bins, rates, label=f"Node {node_id} ({zone})", color=color)
+            ax.set_title(f"Node {node_id}")
+            ax.set_ylabel("Receiving rate (pkts/sec)")
+            ax.set_xlabel("Time (s)")
+            ax.grid(True)
+            ax.legend()
+
+    plt.tight_layout()
+    plt.savefig(f"flow_{args.flow}_receiving_rates.png", dpi=200)
+    
 if __name__ == "__main__":
     main()
