@@ -124,25 +124,4 @@ protected:
     bool verbose;
 };
 
-
-class EfficentMigrationManager: public MigrationManager{
-
-public: 
-    EfficentMigrationManager(); 
-
-    virtual ~EfficentMigrationManager(); 
-
-    virtual bool pre_classify(Packet* p, Handler* h, Node* n);
-
-    virtual void deactivate_tunnel(int uid); 
-
-protected: 
-
-    virtual void add_tunnel(tunnel_data tunnel); 
-private: 
-
-    std::map<int, std::map<int, Tunnel_Point> > rules; 
-    std::map<int, std::map<int, tunnel_data> > data; 
-};
-
 #endif

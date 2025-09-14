@@ -264,18 +264,21 @@ bool Monitor::recv(Packet* p, Handler* h){
     auto packet_count = std::stoi(state["packet_count"]);
     log_packet("packet count incremented: ", packet_count);
 
+    //////////// Logging /////////////
+    bool print_logger_stuff = false;
+    if(print_logger_stuff){
+        double arrival_time = Scheduler::instance().clock();
+        hdr_tcp* tcph = hdr_tcp::access(p);
+        
+        int seqno = tcph->seqno();
+        int my_id = toponode_->uid;
+        int flow_id = hdr_ip::access(p)->fid_;
 
-
-    double arrival_time = Scheduler::instance().clock();
-    hdr_tcp* tcph = hdr_tcp::access(p);
-    
-    int seqno = tcph->seqno();
-    int my_id = toponode_->uid;
-    int flow_id = hdr_ip::access(p)->fid_;
-
-    std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
-              << ", seqno: " << seqno << ", node ID: " << my_id 
-              << ", flow ID: " << flow_id << std::endl;
+        std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
+                << ", seqno: " << seqno << ", node ID: " << my_id 
+                << ", flow ID: " << flow_id << std::endl;
+    }   
+    ////////////////////////////////////
 
     return true; 
 }
