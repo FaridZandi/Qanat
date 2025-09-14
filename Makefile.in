@@ -165,6 +165,9 @@ OBJ_CC = \
 	my-topology/utility.o \
 	my-topology/network_func.o \
 	my-topology/mig_manager.o \
+	my-topology/mig_manager_bottom_up.o \
+	my-topology/mig_manager_top_down.o \
+	my-topology/mig_manager_random.o \
 	my-topology/topo_node.o \
 	my-topology/orch_bottom_up.o \
 	my-topology/orch_top_down.o \

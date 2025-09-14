@@ -1,5 +1,8 @@
 #include "my_topology.h"
 #include "mig_manager.h"
+#include "mig_manager_bottom_up.h"
+#include "mig_manager_top_down.h"
+#include "mig_manager_random.h"
 #include "orchestrator.h"
 #include "tcp-full.h"
 #include <iostream>
@@ -55,7 +58,18 @@ MyTopology::MyTopology(){
     is_sent_traffic_to_dest = false;
     is_node_setup_done = false;
 
-    mig_manager_ = new MigrationManager(); 
+    mig_manager_ = nullptr; 
+    if(orch_type == 1){
+        mig_manager_ = new MigrationManagerBottomUp();
+    } else if (orch_type == 2){
+        mig_manager_ = new MigrationManagerTopDown();
+    } else if (orch_type == 3){       
+        mig_manager_ = new MigrationManagerRandom();
+    } else {
+        std::cerr << "Unknown orch_type: " << orch_type << std::endl; 
+        exit(1); 
+    }
+
     instance_ = this; 
 
     mig_root = nullptr; 
