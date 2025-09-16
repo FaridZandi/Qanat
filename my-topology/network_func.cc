@@ -265,7 +265,7 @@ bool Monitor::recv(Packet* p, Handler* h){
     log_packet("packet count incremented: ", packet_count);
 
     //////////// Logging /////////////
-    bool print_logger_stuff = false;
+    bool print_logger_stuff = true;
     if(print_logger_stuff){
         double arrival_time = Scheduler::instance().clock();
         hdr_tcp* tcph = hdr_tcp::access(p);
