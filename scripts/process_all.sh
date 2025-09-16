@@ -8,6 +8,10 @@ EXPS_ROOT="${ROOT_DIR}/ns-test/exps"
 PARSER="${ROOT_DIR}/scripts/parse_logger.py"
 FLOW_CHECKER="${ROOT_DIR}/scripts/check_flow.py"
 
+if [[ $# -ge 1 ]]; then
+    EXPS_ROOT="$(cd "$1" && pwd)"
+fi
+
 if [[ ! -d "${EXPS_ROOT}" ]]; then
     echo "No experiments found under ${EXPS_ROOT}" >&2
     exit 1
@@ -151,3 +155,5 @@ done
 wait_remaining
 
 echo "Done." >&2
+
+trap 'echo "Terminating..."; pkill -P $$; exit 1' SIGINT SIGTERM

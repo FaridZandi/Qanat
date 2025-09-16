@@ -218,6 +218,18 @@ if __name__ == "__main__":
 		print("Usage: python run_exp.py <exp_name>")
 		exit(0)
 
+ 
+	# step back a dir, run make, then come back
+	
+	os.chdir("../")
+	print("running make...")
+	ret = os.system("make -j")
+	if ret != 0:
+		print("Make failed with exit code", ret)
+		exit(1)
+	os.chdir("ns-test")
+	print("make done.")
+ 
 	exp_name = sys.argv[1]
 
 	configs = None

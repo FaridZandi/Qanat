@@ -1,22 +1,6 @@
 #!/usr/bin/env python3
 """
 Analyze seqno ordering across nodes for a given flow_id.
-
-Input CSV columns expected (header names, case-sensitive):
-  line, arrival_time, seqno, node_id, flow_id
-
-Typical upstream row:
-  line,arrival_time,seqno,node_id,flow_id
-  42,3.76007,8761,0,1
-
-Two checks:
-  1) strict  : sequences are exactly identical across all nodes
-  2) order   : relative order is consistent pairwise (no inversions on shared seqnos)
-
-Usage:
-  python3 check_flow_order.py path/to/log.csv --flow 1
-  python3 check_flow_order.py log.csv --flow 1 --sort line
-  python3 check_flow_order.py log.csv --flow 1 --nodes 0,5,7 --show 10
 """
 
 import argparse
@@ -25,7 +9,7 @@ import gzip
 import io
 import sys
 from collections import defaultdict
-from typing import Dict, List, Tuple, Iterable
+from typing import Dict, List, Tuple, Iterable, Set
 import matplotlib.pyplot as plt
 
 SortKey = Tuple[float, int]  # (arrival_time, line) default
@@ -66,60 +50,41 @@ def _strict_equal(seqs: Dict[int, List[int]]) -> bool:
         return True
     return all(s == first for s in it)
 
-def _order_consistent_2(a: List[int], b: List[int]) -> Tuple[bool, Tuple[int, int] or None]:
-    """
-    Returns (True, None) if order consistent; else (False, (x,y)) giving
-    the first inversion pair that appears in opposite order between a and b.
-    """
-    pos_a = {v: i for i, v in enumerate(a)}
-    common = [x for x in b if x in pos_a]
-    last = -1
-    for i, x in enumerate(common):
-        p = pos_a[x]
-        if p < last:
-            # inversion: find the previous element causing it
-            y = common[i - 1]
-            return False, (y, x)  # y should not precede x in 'a' if it follows in 'b'
-        last = p
-    return True, None
-
-def _order_consistent(a: List[int], b: List[int]) -> Tuple[bool, Tuple[int, int] or None]:
-    bad_count = 0
-    
-    # find who's next for each value in a 
+def _order_consistent(a: List[int], b: List[int], rows_a, rows_b):
     next_in_a = {}
     for i in range(len(a) - 1):
-        if a[i] not in next_in_a:
-            next_in_a[a[i]] = [a[i + 1]]
-        else:
-            next_in_a[a[i]].append(a[i + 1])
-    next_in_a[a[-1]] = None  # last has no next
-    
-    next_in_b = {} 
-    for i in range(len(b) - 1):
-        if b[i] not in next_in_b:
-            next_in_b[b[i]] = [b[i + 1]]
-        else:
-            next_in_b[b[i]].append(b[i + 1])
-    next_in_b[b[-1]] = None  # last has no next
-    
-    for a_seqno, a_nexts in next_in_a.items():
-        if a_seqno not in next_in_b:
-            continue
-        b_nexts = next_in_b[a_seqno]
-        if b_nexts is None or a_nexts is None:
-            continue
-        # are they the same? 
-        for x in a_nexts:
-            if x in b_nexts:
-                break
-        else:
-            # no match found, inversion
-            print(f"DEBUG: inversion detected for {a_seqno}: a_nexts={a_nexts}, b_nexts={b_nexts}")
-            bad_count += 1
-                 
-    return bad_count
+        next_in_a.setdefault(a[i], []).append(a[i + 1])
+    if a:
+        next_in_a.setdefault(a[-1], None)
 
+    next_in_b = {}
+    for i in range(len(b) - 1):
+        next_in_b.setdefault(b[i], []).append(b[i + 1])
+    if b:
+        next_in_b.setdefault(b[-1], None)
+
+    arrival_map_a = {seq: rows_a[i][2] for i, seq in enumerate(a)}
+    arrival_map_b = {seq: rows_b[i][2] for i, seq in enumerate(b)}
+
+    bad_pairs = []
+
+    for seqno, a_nexts in next_in_a.items():
+        if seqno not in next_in_b:
+            continue
+        b_nexts = next_in_b[seqno]
+        if a_nexts is None or b_nexts is None:
+            continue
+        if not any(x in b_nexts for x in a_nexts):
+            times = []
+            for nxt in a_nexts:
+                if nxt in arrival_map_a:
+                    times.append(arrival_map_a[nxt])
+            for nxt in b_nexts:
+                if nxt in arrival_map_b:
+                    times.append(arrival_map_b[nxt])
+            conflict_time = min(times) if times else None
+            bad_pairs.append((seqno, conflict_time))
+    return bad_pairs
 
 def main():
     ap = argparse.ArgumentParser(description="Check per-node seqno ordering for a flow_id.")
@@ -136,7 +101,6 @@ def main():
     if args.nodes:
         include_nodes = set(int(x.strip()) for x in args.nodes.split(",") if x.strip())
 
-    # Gather rows per node
     per_node: Dict[int, List[Tuple[SortKey, int, float, int]]] = defaultdict(list)
     total_rows = 0
     with _open_csv(args.csvfile) as f:
@@ -165,7 +129,6 @@ def main():
             if args.sort == "arrival":
                 key = (arrival_time, line)
             else:
-                # line-only, but keep arrival_time as tie info in tuple
                 key = (float(line), line)
 
             per_node[node_id].append((key, seqno, arrival_time, line))
@@ -174,20 +137,19 @@ def main():
         print(f"No rows for flow_id={args.flow}.", file=sys.stderr)
         return
 
-    # Build ordered, de-duplicated seq lists per node
     seqs: Dict[int, List[int]] = {}
+    seq_rows: Dict[int, List[Tuple[SortKey, int, float, int]]] = {}
     dup_counts: Dict[int, int] = {}
     counts: Dict[int, int] = {}
     for node_id, rows in per_node.items():
         rows.sort(key=lambda t: t[0])
+        seq_rows[node_id] = rows
         seq_list = [seq for _, seq, _, _ in rows]
         counts[node_id] = len(seq_list)
-        # dedup = _dedup_preserve_order(seq_list)
         dedup = seq_list
         dup_counts[node_id] = len(seq_list) - len(dedup)
         seqs[node_id] = dedup
 
-    # Summary
     nodes_sorted = sorted(seqs.keys())
     print(f"Flow {args.flow}: {len(nodes_sorted)} node(s) with data -> {', '.join(map(str, nodes_sorted))}")
     for n in nodes_sorted:
@@ -196,19 +158,17 @@ def main():
         extra = f" (dedup dropped {dup_counts[n]})" if dup_counts[n] else ""
         print(f"  Node {n}: {counts[n]} rows -> {len(seqs[n])} unique seqnos{extra}.{sample_str}")
 
-    # for each, show the range of the arrival times 
     for n in nodes_sorted:
-        rows = per_node[n]
+        rows = seq_rows[n]
         if not rows:
             continue
         times = [t for _, _, t, _ in rows]
         print(f"  Node {n}: arrival_time range: {min(times)} .. {max(times)}")
-        
-    # Strict equality check
+
     all_strict_equal = _strict_equal(seqs)
     print(f"\nSTRICT equality across nodes: {'OK' if all_strict_equal else 'MISMATCH'}")
+
     if not all_strict_equal:
-        # Group nodes by their exact sequence signature (hash on tuple of seqs)
         sig_to_nodes: Dict[Tuple[int, ...], List[int]] = defaultdict(list)
         for node_id, s in seqs.items():
             sig_to_nodes[tuple(s)].append(node_id)
@@ -218,24 +178,28 @@ def main():
             suffix = " …" if len(sig) > 10 else ""
             print(f"    [{i}] nodes {group_nodes}: len={len(sig)}, head={preview}{suffix}")
 
-    # Relative order consistency (pairwise)
     print("\nPAIRWISE relative-order consistency (shared seqnos):")
+
     nodes = nodes_sorted
     all_order_ok = True
+    inconsistency_times: Set[float] = set()
     for i in range(len(nodes)):
         for j in range(i + 1, len(nodes)):
             a_id, b_id = nodes[i], nodes[j]
             a, b = seqs[a_id], seqs[b_id]
-            bad_count = _order_consistent(a, b)
-            if bad_count == 0:
+            bad_pairs = _order_consistent(a, b, seq_rows[a_id], seq_rows[b_id])
+            if not bad_pairs:
                 print(f"  {a_id} vs {b_id}: OK")
             else:
-                print("bad_count", bad_count)
+                all_order_ok = False
+                bad_pairs_sorted = sorted(bad_pairs, key=lambda x: (x[1] if x[1] is not None else float('inf')))
+                for seqno, conflict_time in bad_pairs_sorted:
+                    if conflict_time is not None:
+                        inconsistency_times.add(conflict_time)
+                    print(f"  {a_id} vs {b_id}: ORDER MISMATCH around seq {seqno} (time {conflict_time})")
     if all_order_ok:
         print("All pairs consistent in relative order.")
 
-
-    # make a csv, print the sequence of each node. The columns are node IDs, the rows are seqnos
     with open(f"flow_{args.flow}_sequences.csv", "w", newline="", encoding="utf-8") as outfh:
         writer = csv.writer(outfh)
         writer.writerow(nodes_sorted)
@@ -246,16 +210,14 @@ def main():
                 s = seqs[n]
                 v = s[i] if i < len(s) else ""
                 row.append(v)
-            writer.writerow(row)    
+            writer.writerow(row)
     print(f"\nWrote sequences to flow_{args.flow}_sequences.csv")
 
-    # Plot receiving rates per node
+
     first_half_of_sorted_nodes = nodes_sorted[:len(nodes_sorted)//2]
     second_half_of_sorted_nodes = nodes_sorted[len(nodes_sorted)//2:]
 
     def compute_receiving_rate(rows, window_size=0.03):
-        # rows: list of (key, seqno, arrival_time, line)
-        # window_size: seconds
         times = [t for _, _, t, _ in rows]
         if not times:
             return [], []
@@ -271,31 +233,37 @@ def main():
             rates.append(count / window_size)
             t = next_t
         return bins, rates
-    
-    fig, axes = plt.subplots(
-        nrows=max(len(first_half_of_sorted_nodes), len(second_half_of_sorted_nodes)),
-        ncols=1, figsize=(6, 6), sharex=True, sharey=True
-    )
+
+    max_rows = max(len(first_half_of_sorted_nodes), len(second_half_of_sorted_nodes))
+    if max_rows == 0:
+        print("No nodes to plot.")
+        return
+
+    fig, axes = plt.subplots(nrows=max_rows, ncols=2, figsize=(12, 3 * max_rows), sharex=True, sharey=True)
+    if max_rows == 1:
+        axes = axes.reshape(1, 2)
 
     for col, node_list in enumerate([first_half_of_sorted_nodes, second_half_of_sorted_nodes]):
-        for row, node_id in enumerate(node_list):
-            ax = axes[row]
-            bins, rates = compute_receiving_rate(per_node[node_id])
-            if node_id in first_half_of_sorted_nodes:
-                zone = "src"
-                color = "blue"
-            else:
-                zone = "dst"
-                color = "orange"
+        for row in range(max_rows):
+            ax = axes[row, col]
+            if row >= len(node_list):
+                ax.axis('off')
+                continue
+            node_id = node_list[row]
+            bins, rates = compute_receiving_rate(seq_rows[node_id])
+            color = 'blue' if node_id in first_half_of_sorted_nodes else 'orange'
+            zone = 'src' if node_id in first_half_of_sorted_nodes else 'dst'
             ax.plot(bins, rates, label=f"Node {node_id} ({zone})", color=color)
             ax.set_title(f"Node {node_id}")
             ax.set_ylabel("Receiving rate (pkts/sec)")
             ax.set_xlabel("Time (s)")
             ax.grid(True)
             ax.legend()
+            # for t in sorted(inconsistency_times):
+            #     ax.axvline(t, linestyle='--', color='red', alpha=0.4)
 
     plt.tight_layout()
     plt.savefig(f"flow_{args.flow}_receiving_rates.png", dpi=200)
-    
+
 if __name__ == "__main__":
     main()
