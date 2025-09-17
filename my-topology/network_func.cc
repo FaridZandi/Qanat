@@ -265,7 +265,7 @@ bool Monitor::recv(Packet* p, Handler* h){
     log_packet("packet count incremented: ", packet_count);
 
     //////////// Logging /////////////
-    bool print_logger_stuff = true;
+    bool print_logger_stuff = false;
     if(print_logger_stuff){
         double arrival_time = Scheduler::instance().clock();
         hdr_tcp* tcph = hdr_tcp::access(p);
@@ -860,20 +860,38 @@ LoggerNF::~LoggerNF(){
 }
 
 bool LoggerNF::recv(Packet* p, Handler* h){
+    // conditions for skipping: if on the left tree, if migrated, skip
+    // if on the right tree, if not migrated, skip
+    if (should_ignore(p)){
+        return true;
+    }   
+
+    auto node_state = get_node_state(); 
+    if (toponode_->which_tree == 0){
+        if (node_state == MigState::Migrated or
+            node_state == MigState::InMig){
+            return true;
+        }
+    } else if (toponode_->which_tree == 1){
+        if (node_state != MigState::Normal){
+            return true;
+        }
+    }
+
     // Store arrival time and seq number
-//     double arrival_time = Scheduler::instance().clock();
-//     hdr_tcp* tcph = hdr_tcp::access(p);
-//     int seqno = tcph->seqno();
+    double arrival_time = Scheduler::instance().clock();
+    hdr_tcp* tcph = hdr_tcp::access(p);
+    int seqno = tcph->seqno();
 
-//     // Store the info in the packet_log vector
-//     this->packet_log.emplace_back(arrival_time, seqno);
+    // Store the info in the packet_log vector
+    this->packet_log.emplace_back(arrival_time, seqno);
 
-//     int my_id = toponode_->uid;
-//     int flow_id = hdr_ip::access(p)->fid_;
-// // Print to stdout
-//     std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
-//               << ", seqno: " << seqno << ", node ID: " << my_id 
-//               << ", flow ID: " << flow_id << std::endl;
+    int my_id = toponode_->uid;
+    int flow_id = hdr_ip::access(p)->fid_;
+// Print to stdout
+    std::cout << "LOGGERNF: Packet arrival time: " << arrival_time 
+              << ", seqno: " << seqno << ", node ID: " << my_id 
+              << ", flow ID: " << flow_id << std::endl;
 
 
     return true; 

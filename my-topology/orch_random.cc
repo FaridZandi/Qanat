@@ -297,9 +297,9 @@ std::list<nf_spec> OrchRandom::get_vm_nf_list(){
 
 std::list<nf_spec> OrchRandom::get_gw_nf_list(){
     return {
-        {"logger", 0}, 
         {"priority_buffer", 100000},
         {"delayer", 0.00005},
+        {"logger", 0}, 
         {"monitor", 0},
 
         
