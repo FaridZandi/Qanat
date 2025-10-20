@@ -39,7 +39,9 @@ def translate_orch_type(orch_type):
         return "BottUpSimpl"
     elif orch_type == 5:
         return "Experimental"
-
+    elif orch_type == 6:    
+        return "AllTogether"
+    
 # group is a pandas dataframe
 def weighted_average(group, weight_col, value_col):
     weights = group[weight_col].sum()

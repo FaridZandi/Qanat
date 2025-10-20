@@ -246,7 +246,7 @@ if __name__ == "__main__":
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes", "no"], # full grid
 			"prioritization": [0, 1, 2], # full grid
-			"orch_type": [1, 2, 3, 4, 5], # full grid
+			"orch_type": [6], # full grid
 			"bg_traffic_cdf": [("dctcp", 1138)],
 			"Protocol": [("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
