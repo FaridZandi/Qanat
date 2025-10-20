@@ -35,7 +35,10 @@ def translate_orch_type(orch_type):
         return "TopDwn"
     elif orch_type == 3:
         return "Random"
-
+    elif orch_type == 4:
+        return "BottUpSimpl"
+    elif orch_type == 5:    
+        return "Experimental"
 
 # group is a pandas dataframe
 def weighted_average(group, weight_col, value_col):

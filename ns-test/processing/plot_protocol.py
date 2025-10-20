@@ -187,7 +187,7 @@ if args.reload:
         # if times[address]["type"] == "VM":
         #     address = VM + address.split("-")[2]
 
-        df = df.append({
+        df = pd.concat([df, pd.DataFrame([{
             "address": new_address[:-2], 
             "id": uid, 
             "layer": int(address.split("-")[1]), 
@@ -199,7 +199,7 @@ if args.reload:
             "end_mig": times[address]["end_mig"], 
             "start_buf": times[address]["start_buf"], 
             "end_buf": times[address]["end_buf"],
-        }, ignore_index=True)
+        }])], ignore_index=True)
 
 
     df["len_pre"] = df["end_pre"] - df["start_pre"]  

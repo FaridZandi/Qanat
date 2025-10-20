@@ -3,6 +3,7 @@
 #include "mig_manager_bottom_up.h"
 #include "mig_manager_top_down.h"
 #include "mig_manager_random.h"
+#include "mig_manager_experimental.h"
 #include "orchestrator.h"
 #include "tcp-full.h"
 #include <iostream>
@@ -65,6 +66,10 @@ MyTopology::MyTopology(){
         mig_manager_ = new MigrationManagerTopDown();
     } else if (orch_type == 3){       
         mig_manager_ = new MigrationManagerRandom();
+    } else if (orch_type == 4){
+        mig_manager_ = new MigrationManagerBottomUpSimplified();
+    } else if (orch_type == 5){
+        mig_manager_ = new MigrationManagerExperimental();
     } else {
         std::cerr << "Unknown orch_type: " << orch_type << std::endl; 
         exit(1); 

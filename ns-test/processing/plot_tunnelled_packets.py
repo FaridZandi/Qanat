@@ -81,6 +81,10 @@ if args.reload:
 
     df = pd.DataFrame(data)
 
+    if len(df) == 0:
+        print("No data found")
+        sys.exit(1)
+    
     df["tunnelled_packets_diff"] = df.tunnelled_packets.diff()
 
     data_path = args.directory + "/data/tunnelled_stats.csv" 

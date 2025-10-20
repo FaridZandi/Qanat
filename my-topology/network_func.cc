@@ -618,8 +618,8 @@ double RateLimiterNF::get_interval(){
     double wait = 1.0 / rate_;
     // experimental:
     // apply some randomness to the wait time
-    // double factor = ((double) rand() / RAND_MAX) * 0.1;
-    // wait = wait * (1 + factor);
+    double factor = ((double) rand() / RAND_MAX) * 0.1;
+    wait = wait * (1 + factor);
     return wait;  
 }
 

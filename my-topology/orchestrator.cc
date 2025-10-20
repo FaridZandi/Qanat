@@ -2,6 +2,7 @@
 #include "orch_bottom_up.h"
 #include "orch_top_down.h"
 #include "orch_random.h"
+#include "orch_experimental.h"
 #include "my_topology.h"
 #include "node.h"
 #include "utility.h"
@@ -12,12 +13,14 @@
 BaseOrchestrator& BaseOrchestrator::instance(){
     auto& topo = MyTopology::instance();
 
-    if(topo.orch_type == 1) {
+    if(topo.orch_type == 1 or topo.orch_type == 4){
         return OrchBottomUp::instance(); 
     } else if (topo.orch_type == 2) {
         return OrchTopDown::instance(); 
     } else if (topo.orch_type == 3) {
         return OrchRandom::instance(); 
+    } else if (topo.orch_type == 5) {
+        return OrchExperimental::instance();
     } else {
         std::cout << "Please specify the orchestrator type you wish to use.";
         std::cout << std::endl; 

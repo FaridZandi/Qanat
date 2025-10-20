@@ -8,6 +8,7 @@
 #include "utility.h"
 
 int MigrationManagerBottomUp::tunnel_uid_counter = 0;
+int MigrationManagerBottomUpSimplified::tunnel_uid_counter = 0;
 
 MigrationManagerBottomUp::MigrationManagerBottomUp(){
 	tunnels = new tunnel_data[tunnel_count]; 
@@ -56,7 +57,6 @@ void MigrationManagerBottomUp::deactivate_tunnel(int uid){
 
 bool MigrationManagerBottomUp::should_ignore(Packet* p){
 	hdr_ip* iph = hdr_ip::access(p); 
-	hdr_tcp* tcph = hdr_tcp::access(p); 
 
 	if (iph->traffic_class == 2){
 		// std::cout << "background traffic detected" << std::endl; 
@@ -219,39 +219,10 @@ bool MigrationManagerBottomUp::pre_classify(Packet* p, Handler* h, Node* n){
 	}
 
 	unset_high_prio(p);
-	handle_non_ready_nodes(p, n); 
 
     return true; 
 }
 
-
-void MigrationManagerBottomUp::handle_non_ready_nodes(Packet* p, Node* node){
-	auto& topo = MyTopology::instance();
-	auto& orch = BaseOrchestrator::instance(); 
-
-	// if top-down approach or random
-	if (topo.orch_type == 2 or topo.orch_type == 3) {
-
-        // if in the destination tree 
-        if (topo.get_data(node).which_tree == 1){
-			
-   			auto node_state = orch.get_mig_state(node); 
-
-			// if (node_state == MigState::Buffering){	
-			// 	std::cout << "MigrationManagerBottomUp::handle_non_ready_nodes: " << node->address() << std::endl; 
-			// 	std::cout << "Packet arrived at Migration Manager while buffering." << std::endl;
-			// }
-			
-            if (node_state != MigState::Normal and topo.is_migration_started){
-				convert_path(p);
-                add_to_path(p, topo.get_peer(node)->address());
-
-                set_high_prio(p); 
-                topo.inc_tunnelled_packets();
-            }
-        }
-    }
-}
 
 int MigrationManagerBottomUp::get_packet_dst(Packet* p){
 	hdr_ip* iph = hdr_ip::access(p); 
@@ -299,8 +270,6 @@ bool MigrationManagerBottomUp::tunnel_packet_out(tunnel_data td,
 
 	unset_high_prio(p); 
 
-	handle_non_ready_nodes(p, n);
-
     return true; 
 }
 
@@ -328,13 +297,12 @@ bool MigrationManagerBottomUp::handle_packet_from(tunnel_data td,
 	// destination to deliver it.   
 
 	hdr_ip* iph = hdr_ip::access(p);
-	auto t_from = td.from->address(); 
 	auto p_src = iph->src_.addr_;
 	auto p_dst = get_packet_dst(p);
 	auto n_addr = n->address(); 
 
 
-	Direction dir; 
+	Direction dir = Direction::Dir_None; 
 	if (p_dst == n_addr){
 		dir = Direction::Incoming;
 	} else if (p_src == n_addr){
@@ -376,6 +344,7 @@ bool MigrationManagerBottomUp::handle_packet_from(tunnel_data td,
 	}
 
 	std::cout << "packets should not reach here." << std::endl;
+	return true;
 }
 
 bool MigrationManagerBottomUp::handle_packet_to(tunnel_data td, 
@@ -398,7 +367,360 @@ bool MigrationManagerBottomUp::handle_packet_to(tunnel_data td,
 		td.from->get_classifier()->recv2(p, h); 
 		return false; 
 	} else {
-		handle_non_ready_nodes(p, n); 
 		return true; 
+	}
+}
+
+
+MigrationManagerBottomUpSimplified::MigrationManagerBottomUpSimplified()
+    : verbose_(MyTopology::verbose_mig) {}
+
+MigrationManagerBottomUpSimplified::~MigrationManagerBottomUpSimplified() = default;
+
+bool MigrationManagerBottomUpSimplified::pre_classify(Packet* p, Handler* h, Node* n){
+	if (should_ignore(p)){
+		return true; 
+	}
+
+	log_packet(p);
+
+	auto endpoint_it = endpoint_bindings_.find(n);
+	if (endpoint_it != endpoint_bindings_.end()) {
+		for (const auto& binding : endpoint_it->second) {
+			if (binding.tunnel_index >= tunnels_.size()){
+				continue;
+			}
+			auto& td = tunnels_[binding.tunnel_index];
+			if (not td.valid){
+				continue;
+			}
+
+			if (binding.role == Tunnel_Point::Tunnel_From) {
+				if (not matches_from(td, p, n)){
+					continue;
+				}
+				log_tunnel(td, Tunnel_Point::Tunnel_From, p);
+				return handle_from(td, p, h, n);
+			} else if (binding.role == Tunnel_Point::Tunnel_To) {
+				if (not matches_to(td, p, n)){
+					continue;
+				}
+				log_tunnel(td, Tunnel_Point::Tunnel_To, p);
+				return handle_to(td, p, h, n);
+			}
+		}
+	}
+
+	auto in_it = transit_in_bindings_.find(n);
+	if (in_it != transit_in_bindings_.end()) {
+		for (auto idx : in_it->second) {
+			if (idx >= tunnels_.size()){
+				continue;
+			}
+			auto& td = tunnels_[idx];
+			if (not td.valid){
+				continue;
+			}
+			if (not matches_in(td, p, n)){
+				continue;
+			}
+			log_tunnel(td, Tunnel_Point::Tunnel_In, p);
+			return handle_in(td, p, n);
+		}
+	}
+
+	auto out_it = transit_out_bindings_.find(n);
+	if (out_it != transit_out_bindings_.end()) {
+		for (auto idx : out_it->second) {
+			if (idx >= tunnels_.size()){
+				continue;
+			}
+			auto& td = tunnels_[idx];
+			if (not td.valid){
+				continue;
+			}
+			if (not matches_out(td, p, n)){
+				continue;
+			}
+			log_tunnel(td, Tunnel_Point::Tunnel_Out, p);
+			return handle_out(td, p, n);
+		}
+	}
+
+	unset_high_prio(p);
+	return true;
+}
+
+int MigrationManagerBottomUpSimplified::activate_tunnel(Node* in, Node* out, Node* from, Node* to){
+	tunnel_data td{};
+	td.valid = true;
+	td.in = in;
+	td.out = out;
+	td.from = from;
+	td.to = to;
+	td.uid = MigrationManagerBottomUpSimplified::tunnel_uid_counter++;
+
+	size_t index = tunnels_.size();
+	tunnels_.push_back(td);
+	uid_to_index_[td.uid] = index;
+
+	transit_in_bindings_[in].push_back(index);
+	transit_out_bindings_[out].push_back(index);
+	add_endpoint_binding(from, Tunnel_Point::Tunnel_From, index);
+	add_endpoint_binding(to, Tunnel_Point::Tunnel_To, index);
+
+	return td.uid;
+}
+
+void MigrationManagerBottomUpSimplified::deactivate_tunnel(int uid){
+	auto uid_it = uid_to_index_.find(uid);
+	if (uid_it == uid_to_index_.end()){
+		return;
+	}
+
+	size_t index = uid_it->second;
+	if (index >= tunnels_.size()){
+		uid_to_index_.erase(uid_it);
+		return;
+	}
+
+	auto& td = tunnels_[index];
+	if (not td.valid){
+		uid_to_index_.erase(uid_it);
+		return;
+	}
+
+	remove_endpoint_binding(td.from, Tunnel_Point::Tunnel_From, index);
+	remove_endpoint_binding(td.to, Tunnel_Point::Tunnel_To, index);
+
+	remove_transit_binding(transit_in_bindings_, td.in, index);
+	remove_transit_binding(transit_out_bindings_, td.out, index);
+
+	td.valid = false;
+	uid_to_index_.erase(uid_it);
+}
+
+bool MigrationManagerBottomUpSimplified::should_ignore(Packet* p){
+	hdr_ip* iph = hdr_ip::access(p);
+
+	if (iph->traffic_class == 2){
+		return true;
+	}
+
+	return false;
+}
+
+void MigrationManagerBottomUpSimplified::log_packet(Packet* p){
+	if (not verbose_){
+		return;
+	}
+
+	hdr_ip* iph = hdr_ip::access(p);
+
+	std::cout << "pre_classify ";
+	std::cout << iph->src_.addr_ << " to " << get_packet_dst(p) << " with prio " << iph->prio_ << " with class " << iph->traffic_class;
+	std::cout << std::endl;
+}
+
+void MigrationManagerBottomUpSimplified::log_tunnel(const tunnel_data& td, Tunnel_Point tp, Packet* p){
+	if (not verbose_){
+		return;
+	}
+
+	if (tp == Tunnel_Point::Tunnel_None){
+		return;
+	}
+
+	std::cout << "[tunnel " << td.uid << "] ";
+
+	if (tp == Tunnel_Point::Tunnel_From) {
+		std::cout << "tunnel From detected";
+	} else if (tp == Tunnel_Point::Tunnel_To) {
+		std::cout << "tunnel To detected";
+	} else if (tp == Tunnel_Point::Tunnel_In) {
+		std::cout << "tunnel In detected";
+	} else if (tp == Tunnel_Point::Tunnel_Out) {
+		std::cout << "tunnel Out detected";
+	}
+
+	std::cout << std::endl;
+}
+
+int MigrationManagerBottomUpSimplified::get_packet_dst(Packet* p){
+	hdr_ip* iph = hdr_ip::access(p);
+
+	auto p_dst = iph->dst_.addr_;
+
+	if (iph->gw_path_pointer != -1){
+		p_dst = iph->gw_path[0];
+	}
+
+	return p_dst;
+}
+
+bool MigrationManagerBottomUpSimplified::matches_in(const tunnel_data& td, Packet* p, Node* n){
+	if (not td.valid){
+		return false;
+	}
+	if (td.in != n){
+		return false;
+	}
+	hdr_ip* iph = hdr_ip::access(p);
+	auto p_dst = get_packet_dst(p);
+	auto p_src = iph->src_.addr_;
+	return (p_dst == td.from->address() || p_src == td.to->address());
+}
+
+bool MigrationManagerBottomUpSimplified::matches_out(const tunnel_data& td, Packet* p, Node* n){
+	if (not td.valid){
+		return false;
+	}
+	if (td.out != n){
+		return false;
+	}
+	hdr_ip* iph = hdr_ip::access(p);
+	auto p_dst = get_packet_dst(p);
+	auto p_src = iph->src_.addr_;
+	return (p_src == td.to->address() || p_dst == td.to->address());
+}
+
+bool MigrationManagerBottomUpSimplified::matches_from(const tunnel_data& td, Packet* p, Node* n){
+	if (not td.valid){
+		return false;
+	}
+	if (td.from != n){
+		return false;
+	}
+	hdr_ip* iph = hdr_ip::access(p);
+	auto n_addr = n->address();
+	auto p_dst = get_packet_dst(p);
+	auto p_src = iph->src_.addr_;
+	return (p_dst == n_addr || p_src == n_addr);
+}
+
+bool MigrationManagerBottomUpSimplified::matches_to(const tunnel_data& td, Packet* p, Node* n){
+	if (not td.valid){
+		return false;
+	}
+	if (td.to != n){
+		return false;
+	}
+	auto p_dst = get_packet_dst(p);
+	return (p_dst == td.to->address());
+}
+
+bool MigrationManagerBottomUpSimplified::handle_in(const tunnel_data& td, Packet* p, Node* n){
+	convert_path(p);
+	add_to_path(p, td.out->address());
+	set_high_prio(p);
+	MyTopology::instance().inc_tunnelled_packets();
+	return true;
+}
+
+bool MigrationManagerBottomUpSimplified::handle_out(const tunnel_data& td, Packet* p, Node* n){
+	unset_high_prio(p);
+	return true;
+}
+
+bool MigrationManagerBottomUpSimplified::handle_from(const tunnel_data& td, Packet* p, Handler* h, Node* n){
+	hdr_ip* iph = hdr_ip::access(p);
+	auto p_src = iph->src_.addr_;
+	auto p_dst = get_packet_dst(p);
+	auto n_addr = n->address();
+
+	Direction dir = Direction::Dir_None;
+	if (p_dst == n_addr){
+		dir = Direction::Incoming;
+	} else if (p_src == n_addr){
+		dir = Direction::Outgoing;
+	}
+
+	auto& orch = BaseOrchestrator::instance();
+	auto node_state = orch.get_mig_state(n);
+
+	if (dir == Direction::Outgoing) {
+		if (node_state == MigState::Migrated || node_state == MigState::InMig) {
+			iph->src_.addr_ = td.to->address();
+			td.to->get_classifier()->recv(p, h);
+			return false;
+		}
+		return true;
+	} else if (dir == Direction::Incoming) {
+		if (node_state == MigState::Migrated || node_state == MigState::InMig) {
+			iph->dst_.addr_ = td.to->address();
+			set_high_prio(p);
+			MyTopology::instance().inc_tunnelled_packets();
+			return true;
+		}
+
+		if (iph->skip_first_mngr_flag == false){
+			iph->skip_first_mngr_flag = true;
+			return true;
+		}
+
+		n->get_classifier()->recv2(p, h);
+		return false;
+	}
+
+	return true;
+}
+
+bool MigrationManagerBottomUpSimplified::handle_to(const tunnel_data& td, Packet* p, Handler* h, Node* n){
+	hdr_ip* iph = hdr_ip::access(p);
+
+	if (iph->skip_first_mngr_flag == false){
+		iph->skip_first_mngr_flag = true;
+		return true;
+	}
+	iph->skip_first_mngr_flag = false;
+
+	auto& orch = BaseOrchestrator::instance();
+	auto node_state = orch.get_mig_state(n);
+
+	if (node_state == MigState::Normal){
+		iph->dst_.addr_ = td.from->address();
+		td.from->get_classifier()->recv2(p, h);
+		return false;
+	}
+
+	return true;
+}
+
+void MigrationManagerBottomUpSimplified::add_endpoint_binding(Node* node, Tunnel_Point role, size_t tunnel_index){
+	if (node == nullptr){
+		return;
+	}
+	endpoint_bindings_[node].push_back({role, tunnel_index});
+}
+
+void MigrationManagerBottomUpSimplified::remove_endpoint_binding(Node* node, Tunnel_Point role, size_t tunnel_index){
+	if (node == nullptr){
+		return;
+	}
+	auto it = endpoint_bindings_.find(node);
+	if (it == endpoint_bindings_.end()){
+		return;
+	}
+	auto& vec = it->second;
+	vec.erase(std::remove_if(vec.begin(), vec.end(), [role, tunnel_index](const EndpointBinding& binding){
+		return binding.role == role && binding.tunnel_index == tunnel_index;
+	}), vec.end());
+	if (vec.empty()){
+		endpoint_bindings_.erase(it);
+	}
+}
+
+void MigrationManagerBottomUpSimplified::remove_transit_binding(std::unordered_map<Node*, std::vector<size_t>>& map, Node* node, size_t tunnel_index){
+	if (node == nullptr){
+		return;
+	}
+	auto it = map.find(node);
+	if (it == map.end()){
+		return;
+	}
+	auto& vec = it->second;
+	vec.erase(std::remove(vec.begin(), vec.end(), tunnel_index), vec.end());
+	if (vec.empty()){
+		map.erase(it);
 	}
 }

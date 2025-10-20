@@ -239,13 +239,13 @@ def main():
         print("No nodes to plot.")
         return
 
-    fig, axes = plt.subplots(nrows=max_rows, ncols=2, figsize=(12, 3 * max_rows), sharex=True, sharey=True)
+    fig, axes = plt.subplots(nrows=max_rows, ncols=1, figsize=(12, 3 * max_rows), sharex=True, sharey=True)
     if max_rows == 1:
-        axes = axes.reshape(1, 2)
+        axes = axes.reshape(1, 1)
 
     for col, node_list in enumerate([first_half_of_sorted_nodes, second_half_of_sorted_nodes]):
         for row in range(max_rows):
-            ax = axes[row, col]
+            ax = axes[row]
             if row >= len(node_list):
                 ax.axis('off')
                 continue

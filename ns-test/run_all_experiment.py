@@ -19,7 +19,7 @@ exp_q = queue.Queue()
 
 threads = []
 # Restore default worker threads for full experiment
-number_worker_threads = 20
+number_worker_threads = 30
 exp_rep_count = 1
 
 DEBUG_VALGRIND = False
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 			"network_topo": ["datacenter"], # "dumbell" 
 			"run_migration": ["yes", "no"], # full grid
 			"prioritization": [0, 1, 2], # full grid
-			"orch_type": [1, 2, 3], # full grid
+			"orch_type": [1, 2, 3, 4, 5], # full grid
 			"bg_traffic_cdf": [("dctcp", 1138)],
 			"Protocol": [("DCTCP", "MamadQueue")], 
 			"link_rate": [10],
